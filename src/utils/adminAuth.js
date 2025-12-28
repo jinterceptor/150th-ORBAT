@@ -1,106 +1,216 @@
-// /src/utils/adminAuth.js
-// Uses your existing Netlify Function: /.netlify/functions/gas
-// Robustly extracts displayName; preserves it if backend doesn't send one.
+// src/utils/adminAuth.js
+// Staff session + displayName hydration (from /staff.json)
 
-const LS_USER = "admin:user";
-const LS_ROLE = "admin:role";
-const LS_TOKEN = "admin:token";
-const LS_EXP  = "admin:exp";
+const SS_USER = "admin:user";
+const SS_ROLE = "admin:role";
+const SS_TOKEN = "admin:token";
+const SS_EXP = "admin:exp";
 
 const _subs = new Set();
-function _notify(){ for (const cb of Array.from(_subs)) { try { cb(); } catch {} } }
-export function subscribe(cb){ if (typeof cb === "function") _subs.add(cb); return () => _subs.delete(cb); }
 
-// Point to your existing function proxy to GAS
-export function adminEndpoint() { return "/.netlify/functions/gas"; }
-export function adminSecret() { return ""; } // legacy import compatibility
-
-function _set(k,v){ sessionStorage.setItem(k, String(v)); }
-function _get(k){ return sessionStorage.getItem(k); }
-function _del(k){ sessionStorage.removeItem(k); }
-
-export function adminUser(){ try { const raw=_get(LS_USER); return raw ? JSON.parse(raw) : null; } catch { return null; } }
-export function adminRole(){ return _get(LS_ROLE); }
-export function adminToken(){ return _get(LS_TOKEN); }
-function _notExpired(){ const exp = Number(_get(LS_EXP) || 0); return Number.isFinite(exp) && Date.now() < exp; }
-
-export function isOfficerOrStaff(){
-  const role = adminRole(); if (!role || !_notExpired()) return false;
-  const r = String(role).toLowerCase();
-  return r === "staff" || r === "officer" || r === "admin";
+function _notify() {
+  for (const cb of Array.from(_subs)) {
+    try { cb(); } catch { /* ignore */ }
+  }
 }
-export function isAdmin(){ return isOfficerOrStaff(); }
 
-function _writeSession({ username, displayName, role, token, ttlSec = 3600 }) {
-  const prev = adminUser() || {};
-  // preserve previous displayName if new one is empty
-  const finalDisplay = displayName || prev.displayName || "";
-  const exp = Date.now() + Math.max(1, Number(ttlSec)) * 1000;
+export function subscribe(cb) {
+  if (typeof cb === "function") _subs.add(cb);
+  return () => _subs.delete(cb);
+}
 
-  const user = {
-    username: username || prev.username || "",
-    displayName: finalDisplay,  // Header shows ONLY this
-  };
-  _set(LS_USER, JSON.stringify(user));
-  _set(LS_ROLE, role || adminRole() || "staff");
-  _set(LS_TOKEN, token || adminToken() || "");
-  _set(LS_EXP, String(exp));
+export function adminEndpoint() {
+  return "/.netlify/functions/gas";
+}
+
+export function adminSecret() {
+  return ""; // legacy compatibility
+}
+
+function _ssSet(k, v) { window.sessionStorage.setItem(k, String(v)); }
+function _ssGet(k) { return window.sessionStorage.getItem(k); }
+function _ssDel(k) { window.sessionStorage.removeItem(k); }
+
+function _safeJsonParse(s) {
+  try { return JSON.parse(s); } catch { return null; }
+}
+
+function _pickDisplayName(obj) {
+  if (!obj || typeof obj !== "object") return "";
+  const v =
+    obj.displayName ||
+    obj.display_name ||
+    obj.fullName ||
+    obj.full_name ||
+    obj.name ||
+    obj.username ||
+    "";
+  return typeof v === "string" ? v.trim() : "";
+}
+
+function _writeSession({ username, displayName, role, token, ttlSec }) {
+  const exp = Date.now() + Math.max(60, Number(ttlSec || 3600)) * 1000;
+
+  const prev = adminUser();
+  const mergedDisplay =
+    (displayName && String(displayName).trim()) ||
+    (prev?.displayName ? String(prev.displayName).trim() : "");
+
+  _ssSet(SS_USER, JSON.stringify({ username, displayName: mergedDisplay }));
+  _ssSet(SS_ROLE, role || "");
+  _ssSet(SS_TOKEN, token || "");
+  _ssSet(SS_EXP, String(exp));
   _notify();
 }
 
-export function clearAdminSession(){ _del(LS_USER); _del(LS_ROLE); _del(LS_TOKEN); _del(LS_EXP); _notify(); }
+export function adminUser() {
+  const raw = _ssGet(SS_USER);
+  return raw ? _safeJsonParse(raw) : null;
+}
 
-/** Find a display name in many possible server response shapes (case-insensitive). */
-function pickDisplayName(obj) {
-  if (!obj || typeof obj !== "object") return "";
-  // direct fields (various casings)
-  for (const k of ["displayName","DisplayName","name","fullName","display","RealName"]) {
-    const v = obj[k]; if (v && typeof v === "string" && v.trim()) return v.trim();
+export function adminRole() {
+  return _ssGet(SS_ROLE) || "";
+}
+
+export function adminToken() {
+  return _ssGet(SS_TOKEN) || "";
+}
+
+function _notExpired() {
+  const exp = Number(_ssGet(SS_EXP) || 0);
+  return Number.isFinite(exp) && Date.now() < exp;
+}
+
+export function isOfficerOrStaff() {
+  if (!_notExpired()) return false;
+  const r = String(adminRole() || "").toLowerCase();
+  return r === "staff" || r === "officer";
+}
+
+export function isAdmin() {
+  return isOfficerOrStaff();
+}
+
+export function clearAdminSession() {
+  _ssDel(SS_USER);
+  _ssDel(SS_ROLE);
+  _ssDel(SS_TOKEN);
+  _ssDel(SS_EXP);
+  _notify();
+}
+
+async function _fetchStaffJson() {
+  try {
+    const res = await fetch("/staff.json", { cache: "no-store" });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
   }
-  // common nests
-  const nests = [obj.user, obj.result, obj.account, obj.profile, obj.data];
-  for (const n of nests) {
-    const v = pickDisplayName(n); if (v) return v;
-  }
-  // staff list shape: { staff:[{username, displayName,...}] }
-  if (Array.isArray(obj.staff) && obj.staff.length) {
-    // cannot know which is current user here—handled in server for login normally
-    const hit = obj.staff.find(s => pickDisplayName(s));
-    if (hit) return pickDisplayName(hit);
+}
+
+function _normalize(s) {
+  return String(s || "").trim().toLowerCase();
+}
+
+function _findDisplayNameFromStaff(staff, username) {
+  const u = _normalize(username);
+  if (!u) return "";
+
+  for (const entry of staff) {
+    if (!entry || typeof entry !== "object") continue;
+
+    const eUser = _normalize(entry.username || entry.login || entry.user);
+    const eMail = _normalize(entry.email);
+
+    if (eUser && eUser === u) return _pickDisplayName(entry);
+    if (eMail && (eMail === u || eMail.split("@")[0] === u)) return _pickDisplayName(entry);
   }
   return "";
 }
 
+export async function ensureAdminDisplayName() {
+  const u = adminUser();
+  if (!u?.username) return "";
+  if (u.displayName && String(u.displayName).trim()) return String(u.displayName).trim();
+
+  const staff = await _fetchStaffJson();
+  const displayName = _findDisplayNameFromStaff(staff, u.username);
+
+  if (displayName) {
+    _writeSession({
+      username: u.username,
+      displayName,
+      role: adminRole(),
+      token: adminToken(),
+      ttlSec: Math.floor((Number(_ssGet(SS_EXP)) - Date.now()) / 1000) || 3600,
+    });
+  }
+  return displayName || "";
+}
+
+// Optional helper if you later add a UI field for users to set it themselves.
+export function setAdminDisplayName(displayName) {
+  const u = adminUser();
+  if (!u?.username) return false;
+  _writeSession({
+    username: u.username,
+    displayName: String(displayName || "").trim(),
+    role: adminRole(),
+    token: adminToken(),
+    ttlSec: Math.floor((Number(_ssGet(SS_EXP)) - Date.now()) / 1000) || 3600,
+  });
+  return true;
+}
+
 // Accepts adminLogin({ username, password }) or adminLogin(username, password)
 export async function adminLogin(arg1, arg2) {
-  let username, password;
-  if (typeof arg1 === "string") { username = arg1; password = arg2; }
-  else if (arg1 && typeof arg1 === "object") { username = arg1.username; password = arg1.password; }
+  let username;
+  let password;
+
+  if (typeof arg1 === "string") {
+    username = arg1;
+    password = arg2;
+  } else if (arg1 && typeof arg1 === "object") {
+    username = arg1.username;
+    password = arg1.password;
+  }
+
   if (!username || !password) throw new Error("Missing credentials");
 
   const res = await fetch(adminEndpoint(), {
     method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" }, // matches your gas.js proxy
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
     body: JSON.stringify({ action: "admin.login", username, password }),
     redirect: "follow",
   });
 
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  // GAS often returns text/plain JSON
   const data = await res.json();
 
-  const displayName =
-    pickDisplayName(data) ||
-    pickDisplayName(data?.user) ||
-    pickDisplayName(data?.result) ||
-    ""; // no username fallback (per your request)
+  if (!data?.ok) throw new Error(data?.error || "Login failed");
 
-  const role  = (data?.user?.role || data?.role || "staff");
-  const token = (data?.user?.token || data?.token || "ok");
-  const ttl   = (data?.user?.ttlSec || data?.ttlSec || 3600);
+  const displayName =
+    _pickDisplayName(data?.user) ||
+    _pickDisplayName(data?.result) ||
+    _pickDisplayName(data) ||
+    "";
+
+  const role = (data?.user?.role || data?.role || "staff");
+  const token = (data?.user?.token || data?.token || "");
+  const ttl = (data?.user?.ttlSec || data?.ttlSec || 3600);
 
   _writeSession({ username, displayName, role, token, ttlSec: ttl });
+
+  if (!displayName) {
+    await ensureAdminDisplayName();
+  }
+
   return true;
 }
 
-export function adminLogout(){ clearAdminSession(); return true; }
+export function adminLogout() {
+  clearAdminSession();
+  return true;
+}
