@@ -224,7 +224,7 @@
               <button type="button" class="btn" :disabled="busy || !apiBase" @click="loadRemote(detailKey)">
                 Load Chalk (Remote)
               </button>
-              <span v-if="remoteMeta[detailKey]?.savedBy" class="muted small">Last saved by {{ remoteMeta[detailKey].savedBy }}</span>
+                <span v-if="remoteMeta[detailKey]?.savedBy" class="muted small">Last saved by {{ remoteMeta[detailKey].savedBy }}</span>
             </div>
           </div>
         </div>
@@ -311,6 +311,7 @@
                   <div class="title">{{ u.title }}</div>
                   <div class="meta">
                     <template v-if="ovItem(u.key)">
+
                       <span v-if="ovItem(u.key).savedBy">by {{ ovItem(u.key).savedBy }}</span>
                       <span v-if="ovItem(u.key).savedAt">at {{ formatDate(ovItem(u.key).savedAt) }}</span>
                       <span v-if="ovItem(u.key).points !== undefined">· {{ ovItem(u.key).points }} pts</span>
@@ -356,6 +357,7 @@
 </template>
 
 <script>
+import { adminUser, adminRole, adminToken } from "@/utils/adminAuth";
 /* cookie reader */
 function readCookie(name) {
   try {
@@ -695,7 +697,7 @@ export default {
             if (!slots.length) slots = this.extractSlotsFromAny(it);
             map[unitKey] = {
               version: Number(it.version || 0),
-              savedBy: it.savedBy || it.user || "",
+              savedBy: it.user || it.savedBy || "",
               savedAt: it.savedAt || it.updatedAt || it.timestamp || "",
               slots,
               points: this.slotsPoints(slots)
@@ -876,54 +878,15 @@ export default {
       return Array.from(r).map(b => b.toString(16).padStart(2,'0')).join('');
     },
 
-
-    currentDisplayName() {
-      try {
-        const niUser = window?.netlifyIdentity?.currentUser?.() || null;
-        const n =
-          (niUser?.user_metadata?.full_name ||
-           niUser?.user_metadata?.name ||
-           niUser?.user_metadata?.display_name ||
-           niUser?.user_metadata?.nickname ||
-           niUser?.user_metadata?.callsign ||
-           niUser?.email ||
-           "").trim();
-        if (n) return n;
-      } catch {}
-      try {
-        const ls = typeof localStorage !== "undefined" ? localStorage : null;
-        const ss = typeof sessionStorage !== "undefined" ? sessionStorage : null;
-        const userObj = JSON.parse(ls?.getItem("user") || ss?.getItem("user") || "null");
-        const n =
-          (userObj?.displayName ||
-           userObj?.display_name ||
-           userObj?.full_name ||
-           userObj?.username ||
-           userObj?.login ||
-           userObj?.name ||
-           userObj?.email ||
-           "").trim();
-        if (n) return n;
-      } catch {}
-      return "";
-    },
-
     async fetchRemoteMeta(unitKey) {
-      if (!this.apiBase || !unitKey) return;
+      if (!unitKey || !this.apiBase) return;
       try {
         const resp = await this.apiPost("config:get", { unitId: unitKey });
-        const { ok, data } = resp || {};
-        if (!ok || !data) return;
-        this.remoteMeta = {
-          ...this.remoteMeta,
-          [unitKey]: {
-            savedBy: data.savedBy || data.user || "",
-            savedAt: data.savedAt || data.updatedAt || data.timestamp || "",
-          },
-        };
-        this.versions = { ...this.versions, [unitKey]: Number(data.version || 0) };
-        this.remoteMeta = { ...this.remoteMeta, [unitKey]: { savedBy: data.savedBy || data.user || "", savedAt: data.savedAt || data.updatedAt || data.timestamp || "" } };
-      } catch {}
+        if (!resp || resp.ok !== true || !resp.data) return;
+        const it = resp.data || {};
+        const who = (it.user || it.savedBy || "").trim();
+        this.remoteMeta = { ...this.remoteMeta, [unitKey]: { savedBy: who, savedAt: it.savedAt || "" } };
+      } catch { /* ignore */ }
     },
 
     async apiPost(action, body, raw = false) {
@@ -932,38 +895,43 @@ export default {
       const ls = typeof localStorage !== "undefined" ? localStorage : null;
       const ss = typeof sessionStorage !== "undefined" ? sessionStorage : null;
 
-      let userObj = null;
-      try { userObj = JSON.parse(ls?.getItem("user") || ss?.getItem("user") || "null"); } catch {}
+      const aUser = (typeof adminUser === "function" ? adminUser() : null) || null;
+      const aDisplay = String(aUser?.displayName || "").trim();
+      const aUsername = String(aUser?.username || "").trim();
+      const aRole = String((typeof adminRole === "function" ? adminRole() : "") || "").trim();
+      const aToken = String((typeof adminToken === "function" ? adminToken() : "") || "").trim();
+
+      let legacyUser = null;
+      try { legacyUser = JSON.parse(ls?.getItem("user") || ss?.getItem("user") || "null"); } catch {}
+      const legacyName = String(
+        legacyUser?.displayName ||
+        legacyUser?.username ||
+        legacyUser?.login ||
+        legacyUser?.name ||
+        legacyUser?.email ||
+        ""
+      ).trim();
+      const legacyRole = String(legacyUser?.role || "").trim();
 
       let niUser = null;
       try { niUser = window?.netlifyIdentity?.currentUser?.() || null; } catch {}
+      const niName = String(
+        niUser?.user_metadata?.full_name ||
+        niUser?.user_metadata?.name ||
+        niUser?.user_metadata?.display_name ||
+        niUser?.user_metadata?.nickname ||
+        niUser?.email ||
+        ""
+      ).trim();
 
-      const niName =
-        (niUser?.user_metadata?.full_name ||
-         niUser?.user_metadata?.name ||
-         niUser?.user_metadata?.display_name ||
-         niUser?.user_metadata?.nickname ||
-         niUser?.user_metadata?.callsign ||
-         niUser?.email ||
-         "").trim();
+      const candidateUser = (aDisplay || niName || legacyName || aUsername).trim();
+      const candidateRole = (aRole || legacyRole).trim();
 
-      const lsName =
-        (userObj?.displayName ||
-         userObj?.display_name ||
-         userObj?.full_name ||
-         userObj?.username ||
-         userObj?.login ||
-         userObj?.name ||
-         userObj?.email ||
-         "").trim();
-
-      const candidateUser = (niName || lsName).trim();
-      const candidateRole = (userObj?.role || "").trim();
-
-      const authHeaderStored =
-        (ls?.getItem("Authorization") || ss?.getItem("Authorization") || "").trim();
-      const authHeader =
-        (authHeaderStored || (this.authToken ? `Bearer ${this.authToken}` : "")).trim();
+      const niJwt = String(this.identityToken || "").trim();
+      const storedAuth = String(ls?.getItem("Authorization") || ss?.getItem("Authorization") || "").trim();
+      const tokenAuth = niJwt ? `Bearer ${niJwt}` : "";
+      const adminAuth = aToken ? (aToken.toLowerCase().startsWith("bearer ") ? aToken : `Bearer ${aToken}`) : "";
+      const authHeader = (storedAuth || tokenAuth || adminAuth).trim();
 
       const payload = {
         secret: this.secret || "PLEX",
@@ -986,7 +954,16 @@ export default {
     },
 
     unitPayload(unit) {
-      return { title: unit.title, slots: unit.slots.map(s => ({ id: s.id, name: s.name, role: s.role, cert: s.cert, disposable: !!s.disposable })) };
+      return {
+        title: unit.title,
+        slots: (unit.slots || []).map(s => ({
+          id: s?.id ?? null,
+          name: s?.name ?? null,
+          role: s?.role || "",
+          cert: s?.cert || "",
+          disposable: !!s?.disposable,
+        })),
+      };
     },
 
     async loadRemote(unitKey) {
@@ -1007,7 +984,6 @@ export default {
         const nextUnit = { ...curr, slots: this.sortSlotsByRole(padded) };
         this.plan.units = this.plan.units.map((u, i) => (i === idx ? nextUnit : u));
         this.versions = { ...this.versions, [unitKey]: Number(data.version || 0) };
-        this.remoteMeta = { ...this.remoteMeta, [unitKey]: { savedBy: data.savedBy || data.user || "", savedAt: data.savedAt || data.updatedAt || data.timestamp || "" } };
         this.triggerFlicker(0);
       } catch (e) {
         this.apiError = String(e.message || e);
@@ -1024,13 +1000,12 @@ export default {
         const payload = this.unitPayload(unit);
         const res = await this.apiPost("config:save", { unitId: unitKey, config: payload, expectedVersion });
         if (res.conflict && res.current) {
-          this.apiError = `Remote conflict detected. Press Save again to overwrite.`;
+          this.apiError = `Remote conflict (v${res.current.version}). Press Save again to overwrite.`;
           this.versions = { ...this.versions, [unitKey]: Number(res.current.version || 0) };
           return;
         }
         if (!res.ok) throw new Error(res.error || "Save failed");
         this.versions = { ...this.versions, [unitKey]: Number(res.data?.version || 0) };
-        this.remoteMeta = { ...this.remoteMeta, [unitKey]: { savedBy: res.data?.savedBy || this.currentDisplayName() || "", savedAt: res.data?.savedAt || "" } };
       } catch (e) {
         const msg = String(e.message || e);
         if (/UNAUTHORIZED/i.test(msg)) this.apiError = "Please log in to save.";
@@ -1359,10 +1334,6 @@ export default {
         this.detailKey = this.plan.units[0].key;
       }
     }},
-    detailKey(newKey) {
-      if (!newKey) return;
-      this.fetchRemoteMeta(newKey);
-    },
   },
 };
 </script>
