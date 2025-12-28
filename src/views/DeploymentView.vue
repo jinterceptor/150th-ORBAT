@@ -74,143 +74,143 @@
             </div>
 
             <div class="squad-members-grid">
+              <!-- IMPORTANT: key must be on the <template> when using v-for on <template> -->
               <template v-for="(slot, sIdx) in currentUnit.slots" :key="`wrap-${detailKey}-${sIdx}`">
-              <div v-if="isFireteamHeader(slot, sIdx, currentUnit.slots)" :key="`ft-${detailKey}-${sIdx}`" class="fireteam-row">
-                <span class="fireteam-title">{{ fireteamLabel(slot) }}</span>
-              </div>
-              <div
-                :key="`slot-${detailKey}-${sIdx}`"
-                class="member-card"
-                :class="{ vacant: slot.origStatus === 'VACANT' && !slot.id, closed: slot.origStatus === 'CLOSED' }"
-              >
-                <!-- VACANT / CLOSED -->
-                <template v-if="slot.origStatus === 'VACANT' && !slot.id || slot.origStatus === 'CLOSED'">
-                  <div class="member-header">
-                    <div class="member-header-text">
-                      <h3>{{ (slot.origStatus || 'VACANT').toUpperCase() }}</h3>
-                      <p class="rank-line">
-                        <span class="rank">{{ slot.role || 'Slot' }}</span>
-                        <span class="id">UNFILLED SLOT</span>
-                      </p>
-                    </div>
-                    <div style="display:flex; gap:.35rem; margin-left:auto;">
-                      <button
-                        type="button"
-                        class="btn ghost xsmall"
-                        :disabled="slot.origStatus === 'CLOSED'"
-                        @click.stop="openPicker(detailKey, sIdx)"
-                      >
-                        {{ slot.origStatus === 'CLOSED' ? 'Closed' : 'Assign' }}
-                      </button>
-                      <button type="button" class="btn ghost xsmall" @click.stop="removeSlot(detailKey, sIdx)">–</button>
-                    </div>
-                  </div>
-
-                  <div class="member-body">
-                    <div class="member-column left">
-                      <p class="detail-line">
-                        <strong>Role:</strong>
-                        <span class="role-accent">{{ slot.role || 'Slot' }}</span>
-                      </p>
-                    </div>
-                    <div class="member-column right">
-                      <p><strong>Certifications:</strong></p>
-                      <span class="cert-none">N/A</span>
-                    </div>
-                  </div>
-
-                  <div class="member-footer">
-                    <span>SLOT STATUS: {{ slot.origStatus || 'VACANT' }}</span>
-                    <span>UNSC SYSTEMS DATABASE</span>
-                  </div>
-                </template>
-
-                <!-- FILLED -->
-                <template v-else>
-                  <div class="member-header">
-                    <div class="member-header-text">
-                      <div class="name-line">
-                        <img
-                          v-if="rankFor(slot.id)"
-                          class="rank-icon"
-                          :src="rankIcon(rankFor(slot.id))"
-                          :alt="rankFor(slot.id)"
-                          :title="rankFor(slot.id)"
-                          @error="onRankImgError($event)"
-                        />
-                        <h3>{{ (slot.name || 'UNKNOWN').toUpperCase() }}</h3>
+                <div v-if="isFireteamHeader(slot, sIdx, currentUnit.slots)" class="fireteam-row">
+                  <span class="fireteam-title">{{ fireteamLabel(slot) }}</span>
+                </div>
+                <div
+                  class="member-card"
+                  :class="{ vacant: slot.origStatus === 'VACANT' && !slot.id, closed: slot.origStatus === 'CLOSED' }"
+                >
+                  <!-- VACANT / CLOSED -->
+                  <template v-if="slot.origStatus === 'VACANT' && !slot.id || slot.origStatus === 'CLOSED'">
+                    <div class="member-header">
+                      <div class="member-header-text">
+                        <h3>{{ (slot.origStatus || 'VACANT').toUpperCase() }}</h3>
+                        <p class="rank-line">
+                          <span class="rank">{{ slot.role || 'Slot' }}</span>
+                          <span class="id">UNFILLED SLOT</span>
+                        </p>
                       </div>
-                      <p class="rank-line">
-                        <span class="rank">{{ slot.role || 'N/A' }}</span>
-                        <span class="id">ID: {{ slot.id || 'N/A' }}</span>
-                      </p>
-                    </div>
-                    <div style="display:flex; gap:.35rem; margin-left:auto;">
-                      <button v-if="slot.id" type="button" class="btn ghost xsmall" @click.stop="clearSlot(detailKey, sIdx)">Clear</button>
-                      <button type="button" class="btn ghost xsmall" @click.stop="removeSlot(detailKey, sIdx)">–</button>
-                    </div>
-                  </div>
-
-                  <div class="member-body">
-                    <div class="member-column left">
-                      <p class="detail-line">
-                        <strong>Role:</strong>
-                        <span class="role-accent">{{ slot.role || 'Unassigned' }}</span>
-                      </p>
-
-                      <div class="loadout-row">
-                        <label class="disposable">
-                          <input
-                            type="checkbox"
-                            :checked="!!slot.disposable"
-                            @change="onToggleDisposable(detailKey, sIdx, $event.target.checked)"
-                          />
-                          Disposable Rocket ({{ DISPOSABLE_COST }}pt)
-                        </label>
-                      </div>
-
-                      <div class="loadout-row">
-                        <label class="primary-label">Assigned Certification</label>
-                        <select
-                          class="loadout-select"
-                          :value="slot.cert || ''"
-                          @change="onChangeCert(detailKey, sIdx, $event.target.value)"
+                      <div style="display:flex; gap:.35rem; margin-left:auto;">
+                        <button
+                          type="button"
+                          class="btn ghost xsmall"
+                          :disabled="slot.origStatus === 'CLOSED'"
+                          @click.stop="openPicker(detailKey, sIdx)"
                         >
-                          <option value="">None / Standard</option>
-                          <option v-for="c in getCertsForPersonId(slot.id)" :key="c" :value="c">
-                            {{ c }}{{ certPointSuffix(c) }}
-                          </option>
-                        </select>
+                          {{ slot.origStatus === 'CLOSED' ? 'Closed' : 'Assign' }}
+                        </button>
+                        <button type="button" class="btn ghost xsmall" @click.stop="removeSlot(detailKey, sIdx)">–</button>
                       </div>
                     </div>
 
-                    <div class="member-column right">
-                      <p><strong>Certifications:</strong></p>
-                      <div class="cert-list">
-                        <div v-for="(label, cidx) in certLabels" :key="label" class="cert-row">
-                          <span class="cert-checkbox" :class="{ checked: (slot.cert || '') === label || hasCertId(slot.id, cidx) }">
-                            <span v-if="(slot.cert || '') === label || hasCertId(slot.id, cidx)" class="checkbox-dot"></span>
-                          </span>
-                          <span class="cert-label">{{ label }}</span>
+                    <div class="member-body">
+                      <div class="member-column left">
+                        <p class="detail-line">
+                          <strong>Role:</strong>
+                          <span class="role-accent">{{ slot.role || 'Slot' }}</span>
+                        </p>
+                      </div>
+                      <div class="member-column right">
+                        <p><strong>Certifications:</strong></p>
+                        <span class="cert-none">N/A</span>
+                      </div>
+                    </div>
+
+                    <div class="member-footer">
+                      <span>SLOT STATUS: {{ slot.origStatus || 'VACANT' }}</span>
+                      <span>UNSC SYSTEMS DATABASE</span>
+                    </div>
+                  </template>
+
+                  <!-- FILLED -->
+                  <template v-else>
+                    <div class="member-header">
+                      <div class="member-header-text">
+                        <div class="name-line">
+                          <img
+                            v-if="rankFor(slot.id)"
+                            class="rank-icon"
+                            :src="rankIcon(rankFor(slot.id))"
+                            :alt="rankFor(slot.id)"
+                            :title="rankFor(slot.id)"
+                            @error="onRankImgError($event)"
+                          />
+                          <h3>{{ (slot.name || 'UNKNOWN').toUpperCase() }}</h3>
+                        </div>
+                        <p class="rank-line">
+                          <span class="rank">{{ slot.role || 'N/A' }}</span>
+                          <span class="id">ID: {{ slot.id || 'N/A' }}</span>
+                        </p>
+                      </div>
+                      <div style="display:flex; gap:.35rem; margin-left:auto;">
+                        <button v-if="slot.id" type="button" class="btn ghost xsmall" @click.stop="clearSlot(detailKey, sIdx)">Clear</button>
+                        <button type="button" class="btn ghost xsmall" @click.stop="removeSlot(detailKey, sIdx)">–</button>
+                      </div>
+                    </div>
+
+                    <div class="member-body">
+                      <div class="member-column left">
+                        <p class="detail-line">
+                          <strong>Role:</strong>
+                          <span class="role-accent">{{ slot.role || 'Unassigned' }}</span>
+                        </p>
+
+                        <div class="loadout-row">
+                          <label class="disposable">
+                            <input
+                              type="checkbox"
+                              :checked="!!slot.disposable"
+                              @change="onToggleDisposable(detailKey, sIdx, $event.target.checked)"
+                            />
+                            Disposable Rocket ({{ DISPOSABLE_COST }}pt)
+                          </label>
+                        </div>
+
+                        <div class="loadout-row">
+                          <label class="primary-label">Assigned Certification</label>
+                          <select
+                            class="loadout-select"
+                            :value="slot.cert || ''"
+                            @change="onChangeCert(detailKey, sIdx, $event.target.value)"
+                          >
+                            <option value="">None / Standard</option>
+                            <option v-for="c in getCertsForPersonId(slot.id)" :key="c" :value="c">
+                              {{ c }}{{ certPointSuffix(c) }}
+                            </option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div class="member-column right">
+                        <p><strong>Certifications:</strong></p>
+                        <div class="cert-list">
+                          <div v-for="(label, cidx) in certLabels" :key="label" class="cert-row">
+                            <span class="cert-checkbox" :class="{ checked: (slot.cert || '') === label || hasCertId(slot.id, cidx) }">
+                              <span v-if="(slot.cert || '') === label || hasCertId(slot.id, cidx)" class="checkbox-dot"></span>
+                            </span>
+                            <span class="cert-label">{{ label }}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div class="member-footer">
-                    <button
-                      type="button"
-                      class="btn primary small"
-                      :disabled="slot.origStatus === 'CLOSED'"
-                      @click.stop="openPicker(detailKey, sIdx)"
-                    >
-                      {{ slot.id ? 'Swap' : (slot.origStatus === 'CLOSED' ? 'Closed' : 'Assign') }}
-                    </button>
-                    <span>UNSC SYSTEMS DATABASE</span>
-                  </div>
-                </template>
-              </div>
-            </template>
+                    <div class="member-footer">
+                      <button
+                        type="button"
+                        class="btn primary small"
+                        :disabled="slot.origStatus === 'CLOSED'"
+                        @click.stop="openPicker(detailKey, sIdx)"
+                      >
+                        {{ slot.id ? 'Swap' : (slot.origStatus === 'CLOSED' ? 'Closed' : 'Assign') }}
+                      </button>
+                      <span>UNSC SYSTEMS DATABASE</span>
+                    </div>
+                  </template>
+                </div>
+              </template>
             </div>
 
             <div class="actions-row">
@@ -888,123 +888,123 @@ export default {
     },
 
     async apiPost(action, body, raw = false) {
-  if (!this.apiBase) throw new Error("execUrl missing");
+      if (!this.apiBase) throw new Error("execUrl missing");
 
-  const ls = typeof localStorage !== "undefined" ? localStorage : null;
-  const ss = typeof sessionStorage !== "undefined" ? sessionStorage : null;
+      const ls = typeof localStorage !== "undefined" ? localStorage : null;
+      const ss = typeof sessionStorage !== "undefined" ? sessionStorage : null;
 
-  const readJson = (s) => { try { return s ? JSON.parse(s) : null; } catch { return null; } };
-  const readStr = (k) => String(ss?.getItem(k) || ls?.getItem(k) || "").trim();
+      const readJson = (s) => { try { return s ? JSON.parse(s) : null; } catch { return null; } };
+      const readStr = (k) => String(ss?.getItem(k) || ls?.getItem(k) || "").trim();
 
-  const decodeJwtPayload = (token) => {
-    try {
-      const rawTok = String(token || "").replace(/^Bearer\s+/i, "").trim();
-      const parts = rawTok.split(".");
-      if (parts.length < 2) return null;
-      const b64url = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-      const pad = "=".repeat((4 - (b64url.length % 4)) % 4);
-      const json = atob(b64url + pad);
-      return JSON.parse(json);
-    } catch { return null; }
-  };
+      const decodeJwtPayload = (token) => {
+        try {
+          const rawTok = String(token || "").replace(/^Bearer\s+/i, "").trim();
+          const parts = rawTok.split(".");
+          if (parts.length < 2) return null;
+          const b64url = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+          const pad = "=".repeat((4 - (b64url.length % 4)) % 4);
+          const json = atob(b64url + pad);
+          return JSON.parse(json);
+        } catch { return null; }
+      };
 
-  // Preferred: staff/admin session created by src/utils/adminAuth.js
-  const adminUser = readJson(ss?.getItem("admin:user") || "");
-  const adminRole = (readStr("admin:role") || readStr("authRole") || String(adminUser?.role || "")).trim();
-  const adminTokenRaw = (readStr("admin:token") || readStr("authToken") || "").trim();
-  const adminAuth = adminTokenRaw
-    ? (adminTokenRaw.toLowerCase().startsWith("bearer ") ? adminTokenRaw : `Bearer ${adminTokenRaw}`)
-    : "";
+      // Preferred: staff/admin session created by src/utils/adminAuth.js
+      const adminUser = readJson(ss?.getItem("admin:user") || "");
+      const adminRole = (readStr("admin:role") || readStr("authRole") || String(adminUser?.role || "")).trim();
+      const adminTokenRaw = (readStr("admin:token") || readStr("authToken") || "").trim();
+      const adminAuth = adminTokenRaw
+        ? (adminTokenRaw.toLowerCase().startsWith("bearer ") ? adminTokenRaw : `Bearer ${adminTokenRaw}`)
+        : "";
 
-  const jwtPayload = decodeJwtPayload(adminAuth || adminTokenRaw);
-  const jwtUserMeta = jwtPayload?.user_metadata || jwtPayload?.user_metadata || {};
-  const jwtAppMeta = jwtPayload?.app_metadata || {};
+      const jwtPayload = decodeJwtPayload(adminAuth || adminTokenRaw);
+      const jwtUserMeta = jwtPayload?.user_metadata || jwtPayload?.user_metadata || {};
+      const jwtAppMeta = jwtPayload?.app_metadata || {};
 
-  const adminDisplay =
-    String(
-      adminUser?.displayName ||
-      adminUser?.display_name ||
-      adminUser?.full_name ||
-      adminUser?.fullName ||
-      adminUser?.name ||
-      adminUser?.username ||
-      adminUser?.user ||
-      adminUser?.email ||
-      jwtUserMeta?.full_name ||
-      jwtUserMeta?.name ||
-      jwtUserMeta?.display_name ||
-      jwtUserMeta?.user_name ||
-      jwtPayload?.name ||
-      jwtPayload?.email ||
-      ""
-    ).trim();
+      const adminDisplay =
+        String(
+          adminUser?.displayName ||
+          adminUser?.display_name ||
+          adminUser?.full_name ||
+          adminUser?.fullName ||
+          adminUser?.name ||
+          adminUser?.username ||
+          adminUser?.user ||
+          adminUser?.email ||
+          jwtUserMeta?.full_name ||
+          jwtUserMeta?.name ||
+          jwtUserMeta?.display_name ||
+          jwtUserMeta?.user_name ||
+          jwtPayload?.name ||
+          jwtPayload?.email ||
+          ""
+        ).trim();
 
-  const jwtRoles = Array.isArray(jwtAppMeta?.roles) ? jwtAppMeta.roles : [];
-  const jwtRole = String(jwtRoles[0] || "").trim();
+      const jwtRoles = Array.isArray(jwtAppMeta?.roles) ? jwtAppMeta.roles : [];
+      const jwtRole = String(jwtRoles[0] || "").trim();
 
-  // Optional: Netlify Identity widget (if present on site)
-  let niUser = null;
-  try { niUser = window?.netlifyIdentity?.currentUser?.() || null; } catch {}
-  const niDisplay = String(
-    niUser?.user_metadata?.full_name ||
-    niUser?.user_metadata?.name ||
-    niUser?.user_metadata?.display_name ||
-    niUser?.email ||
-    ""
-  ).trim();
-  const niAuth = niUser?.token?.access_token ? `Bearer ${niUser.token.access_token}` : "";
+      // Optional: Netlify Identity widget (if present on site)
+      let niUser = null;
+      try { niUser = window?.netlifyIdentity?.currentUser?.() || null; } catch {}
+      const niDisplay = String(
+        niUser?.user_metadata?.full_name ||
+        niUser?.user_metadata?.name ||
+        niUser?.user_metadata?.display_name ||
+        niUser?.email ||
+        ""
+      ).trim();
+      const niAuth = niUser?.token?.access_token ? `Bearer ${niUser.token.access_token}` : "";
 
-  // Legacy fallback
-  const legacyUser = readJson(readStr("user"));
-  const legacyDisplay = String(
-    legacyUser?.displayName ||
-    legacyUser?.fullName ||
-    legacyUser?.name ||
-    legacyUser?.username ||
-    legacyUser?.login ||
-    legacyUser?.email ||
-    ""
-  ).trim();
-  const legacyRole = String(legacyUser?.role || "").trim();
-  const legacyAuth = readStr("Authorization");
+      // Legacy fallback
+      const legacyUser = readJson(readStr("user"));
+      const legacyDisplay = String(
+        legacyUser?.displayName ||
+        legacyUser?.fullName ||
+        legacyUser?.name ||
+        legacyUser?.username ||
+        legacyUser?.login ||
+        legacyUser?.email ||
+        ""
+      ).trim();
+      const legacyRole = String(legacyUser?.role || "").trim();
+      const legacyAuth = readStr("Authorization");
 
-  const candidateUser = adminDisplay || niDisplay || legacyDisplay;
-  const candidateRole = (adminRole || jwtRole || legacyRole).trim();
-  const authHeader = adminAuth || legacyAuth || niAuth;
+      const candidateUser = adminDisplay || niDisplay || legacyDisplay;
+      const candidateRole = (adminRole || jwtRole || legacyRole).trim();
+      const authHeader = adminAuth || legacyAuth || niAuth;
 
-  const payload = {
-    secret: this.secret || "PLEX",
-    action,
-    deviceId: this.deviceId,
-    ...body,
-  };
+      const payload = {
+        secret: this.secret || "PLEX",
+        action,
+        deviceId: this.deviceId,
+        ...body,
+      };
 
-  const urlObj = new URL(this.apiBase, typeof window !== "undefined" ? window.location.origin : "http://localhost");
-  const isDirectGAS = /script\.google\.com|googleusercontent\.com/.test(urlObj.hostname);
-  if (isDirectGAS) {
-    // Apps Script web apps often do not expose request headers; pass role/user via query for compatibility.
-    if (candidateRole) urlObj.searchParams.set("X-Role", candidateRole);
-    if (candidateUser) urlObj.searchParams.set("X-User", candidateUser);
-    if (authHeader && !candidateRole) urlObj.searchParams.set("Authorization", authHeader);
-  }
-  const url = urlObj.toString();
+      const urlObj = new URL(this.apiBase, typeof window !== "undefined" ? window.location.origin : "http://localhost");
+      const isDirectGAS = /script\.google\.com|googleusercontent\.com/.test(urlObj.hostname);
+      if (isDirectGAS) {
+        // Apps Script web apps often do not expose request headers; pass role/user via query for compatibility.
+        if (candidateRole) urlObj.searchParams.set("X-Role", candidateRole);
+        if (candidateUser) urlObj.searchParams.set("X-User", candidateUser);
+        if (authHeader && !candidateRole) urlObj.searchParams.set("Authorization", authHeader);
+      }
+      const url = urlObj.toString();
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(authHeader ? { Authorization: authHeader } : {}),
-      ...(candidateUser ? { "X-User": candidateUser } : {}),
-      ...(candidateRole ? { "X-Role": candidateRole } : {}),
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(authHeader ? { Authorization: authHeader } : {}),
+          ...(candidateUser ? { "X-User": candidateUser } : {}),
+          ...(candidateRole ? { "X-Role": candidateRole } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res) throw new Error("No response from API");
+      if (raw) return res;
+      const json = await res.text();
+      try { return JSON.parse(json || "{}"); } catch { return { ok: false, raw: json }; }
     },
-    body: JSON.stringify(payload),
-  });
-
-  if (!res) throw new Error("No response from API");
-  if (raw) return res;
-  const json = await res.text();
-  try { return JSON.parse(json || "{}"); } catch { return { ok: false, raw: json }; }
-},
 
     fillFromRoster(unitKey) {
       const idx = this.plan.units.findIndex(u => u.key === unitKey);
@@ -1104,8 +1104,9 @@ export default {
       this.persistPlan();
     },
 
-    /* the rest of the original methods follow unchanged (omitted here only for brevity),
-       but in your local file they should remain exactly as in the original repository. */
+    /* Remaining methods (loadRemote, saveRemote, persistPlan, sortSlotsByRole, sortSlotsByFireteam, etc.)
+       should remain exactly as in your original file. They were not changed here except to remove the
+       previously stray duplicate block and to ensure template keys are on the <template> tag. */
   }
 };
 </script>
