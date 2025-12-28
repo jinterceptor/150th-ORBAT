@@ -75,11 +75,10 @@
 
             <div class="squad-members-grid">
               <template v-for="(slot, sIdx) in currentUnit.slots" :key="`wrap-${detailKey}-${sIdx}`">
-              <div v-if="isFireteamHeader(slot, sIdx, currentUnit.slots)" :key="`ft-${detailKey}-${sIdx}`" class="fireteam-row">
+              <div v-if="isFireteamHeader(slot, sIdx, currentUnit.slots)" class="fireteam-row">
                 <span class="fireteam-title">{{ fireteamLabel(slot) }}</span>
               </div>
               <div
-                :key="`slot-${detailKey}-${sIdx}`"
                 class="member-card"
                 :class="{ vacant: slot.origStatus === 'VACANT' && !slot.id, closed: slot.origStatus === 'CLOSED' }"
               >
