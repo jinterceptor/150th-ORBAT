@@ -47,10 +47,14 @@ exports.handler = async (event, context) => {
     const passRole = event.headers?.["x-role"] || "";              // optional (officer/staff/etc.)
     const cookie = event.headers?.cookie || "";                    // forward session cookies if any
 
-    // Proxy URL
-    const url =
-      GAS_ENDPOINT +
-      (method === "GET" && event.rawQueryString ? `?${event.rawQueryString}` : "");
+    // Proxy URL (forward query string for ALL methods)
+    const qs = event.rawQueryString ? `?${event.rawQueryString}` : "";
+    const urlObj = new URL(String(GAS_ENDPOINT) + qs);
+    // Apps Script web apps may not expose request headers; mirror auth context into query params.
+    if (passUser && !urlObj.searchParams.has("X-User")) urlObj.searchParams.set("X-User", passUser);
+    if (passRole && !urlObj.searchParams.has("X-Role")) urlObj.searchParams.set("X-Role", passRole);
+    if (!passRole && passAuth && !urlObj.searchParams.has("Authorization")) urlObj.searchParams.set("Authorization", passAuth);
+    const url = urlObj.toString();
 
     // Body (text/plain to keep Apps Script happy with redirects)
     const body = isBodyMethod ? event.body : undefined;
