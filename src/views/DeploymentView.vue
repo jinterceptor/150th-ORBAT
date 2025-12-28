@@ -1426,7 +1426,7 @@ async loadRemote(unitKey) {
 #deploymentView { color: #e6f3ff; }
 
 /* Shell / toolbar */
-#deploymentView{display:grid;grid-template-columns:1fr;gap:1.2rem;align-items:start;width:calc(100dvw - 90px);height:calc(100dvh - 95px);min-height:0;overflow:hidden;padding:18px 18px calc(18px + env(safe-area-inset-bottom, 0px)) 18px;box-sizing:border-box}
+#deploymentView{display:grid;grid-template-columns:1fr;gap:1.2rem;align-items:start;width:calc(100dvw - 90px);height:calc(100dvh - 95px - 5vh);min-height:0;overflow:hidden;padding:18px 18px calc(18px + env(safe-area-inset-bottom, 0px)) 18px;box-sizing:border-box}
 .deployment-window.section-container{max-width:none!important;width:auto;height:100%;display:flex;flex-direction:column;overflow:hidden}
 .header-shell{height:52px;overflow:hidden}.section-header,.section-content-container{width:100%}
 .deploy-scroll{flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto;scrollbar-gutter:stable both-edges;padding-bottom:calc(12px + env(safe-area-inset-bottom, 0px))}
