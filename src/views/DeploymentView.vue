@@ -1293,10 +1293,26 @@ async loadRemote(unitKey) {
     clearSlot(unitKey, slotIdx) {
       const idx = this.plan.units.findIndex(u => u.key === unitKey);
       if (idx < 0) return;
+
       const g = this.plan.units[idx];
-      const newSlots = g.slots.slice();
-      newSlots[slotIdx] = { ...newSlots[slotIdx], id: null, name: null, cert: "", disposable: false };
-      const newG = { ...g, slots: this.sortSlotsByRole(newSlots) };
+      const slots = g.slots.slice();
+      const prev = slots[slotIdx];
+      if (!prev) return;
+
+      const cleared = { ...prev, id: null, name: null, cert: "", disposable: false, origStatus: "VACANT" };
+
+      // Keep the UI tidy: cleared tiles go to the end (after all assigned members).
+      slots.splice(slotIdx, 1);
+      slots.push(cleared);
+
+      const sorted = this.sortSlotsByRole(slots);
+      const cIdx = sorted.indexOf(cleared);
+      if (cIdx >= 0) {
+        sorted.splice(cIdx, 1);
+        sorted.push(cleared);
+      }
+
+      const newG = { ...g, slots: sorted };
       this.plan.units = this.plan.units.map((u, i) => (i === idx ? newG : u));
       this.persistPlan();
       this.detailError = "";
@@ -1305,8 +1321,17 @@ async loadRemote(unitKey) {
     clearGroup(unitKey) {
       const idx = this.plan.units.findIndex(u => u.key === unitKey);
       if (idx < 0) return;
+
       const g = this.plan.units[idx];
-      const emptied = g.slots.map(s => ({ ...s, id: null, name: null, cert: "", disposable: false }));
+      const emptied = g.slots.map(s => ({
+        ...s,
+        id: null,
+        name: null,
+        cert: "",
+        disposable: false,
+        origStatus: s.origStatus === "CLOSED" ? "CLOSED" : "VACANT",
+      }));
+
       const newG = { ...g, slots: this.sortSlotsByRole(emptied) };
       this.plan.units = this.plan.units.map((u, i) => (i === idx ? newG : u));
       this.persistPlan();
@@ -1401,10 +1426,10 @@ async loadRemote(unitKey) {
 #deploymentView { color: #e6f3ff; }
 
 /* Shell / toolbar */
-#deploymentView{display:grid;grid-template-columns:1fr;gap:1.2rem;align-items:start;height:calc(94vh - 100px);overflow:hidden;padding:28px 18px 32px}
-.deployment-window.section-container{max-width:none!important;width:auto}
+#deploymentView{display:grid;grid-template-columns:1fr;gap:1.2rem;align-items:start;width:calc(100dvw - 90px);height:calc(100dvh - 95px);min-height:0;overflow:hidden;padding:18px 18px calc(18px + env(safe-area-inset-bottom, 0px)) 18px;box-sizing:border-box}
+.deployment-window.section-container{max-width:none!important;width:auto;height:100%;display:flex;flex-direction:column;overflow:hidden}
 .header-shell{height:52px;overflow:hidden}.section-header,.section-content-container{width:100%}
-.deploy-scroll{max-height:calc(94vh - 100px - 52px - 36px);overflow-y:auto;scrollbar-gutter:stable both-edges;padding-bottom:36px}
+.deploy-scroll{flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto;scrollbar-gutter:stable both-edges;padding-bottom:calc(12px + env(safe-area-inset-bottom, 0px))}
 
 .panel{border:1px dashed rgba(30,144,255,0.35);background:rgba(0,10,30,0.18);border-radius:.6rem;padding:.8rem .9rem;overflow:visible}
 .top-actions{display:flex;justify-content:flex-end;margin-bottom:.5rem}
