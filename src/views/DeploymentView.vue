@@ -74,8 +74,11 @@
             </div>
 
             <div class="squad-members-grid">
+              <template v-for="(slot, sIdx) in currentUnit.slots" :key="`wrap-${detailKey}-${sIdx}`">
+              <div v-if="isFireteamHeader(slot, sIdx, currentUnit.slots)" :key="`ft-${detailKey}-${sIdx}`" class="fireteam-row">
+                <span class="fireteam-title">{{ fireteamLabel(slot) }}</span>
+              </div>
               <div
-                v-for="(slot, sIdx) in currentUnit.slots"
                 :key="`slot-${detailKey}-${sIdx}`"
                 class="member-card"
                 :class="{ vacant: slot.origStatus === 'VACANT' && !slot.id, closed: slot.origStatus === 'CLOSED' }"
@@ -207,6 +210,7 @@
                   </div>
                 </template>
               </div>
+            </template>
             </div>
 
             <div class="actions-row">
@@ -1145,6 +1149,20 @@ async loadRemote(unitKey) {
       return certs[0] || this.titleCase(String(fallbackRole || slot.role || ""));
     },
     titleCase(s) { const t = String(s || "").replace(/[_-]+/g, " ").trim(); if (!t) return ""; return t.replace(/\s+/g," ").toLowerCase().replace(/\b\w/g,m=>m.toUpperCase()); },
+
+    fireteamLabel(slot) {
+      const ft = String(slot?.fireteam || "").trim();
+      return ft ? `FIRETEAM ${ft}` : "UNASSIGNED";
+    },
+
+    isFireteamHeader(slot, idx, slots) {
+      const list = slots || this.currentUnit?.slots || [];
+      if (idx === 0) return true;
+      const prev = list[idx - 1];
+      const a = String(prev?.fireteam || "").trim();
+      const b = String(slot?.fireteam || "").trim();
+      return a !== b;
+    },
     buildPersonnelPool(orbat) {
       const pool = [];
       (orbat || []).forEach(sq => {
@@ -1174,20 +1192,21 @@ async loadRemote(unitKey) {
       const units = [];
       (orbat || []).forEach(sq => {
         const key = this.keyFromName(sq.squad);
+        const fireteams = (sq.fireteams || []).map(ft => String(ft.name || "").trim()).filter(Boolean);
         const slots = [];
         (sq.fireteams || []).forEach(ft => {
           (ft.slots || []).forEach(s => {
             const status = String(s?.status || (s?.member ? "FILLED" : "VACANT")).toUpperCase();
             const origStatus = ["VACANT", "CLOSED"].includes(status) ? status : "FILLED";
             const member = s?.member || null;
-            const slot = { id: member?.id ? String(member.id) : null, name: member?.name || null, role: s?.role || member?.slot || "", origStatus, cert: "", disposable: false };
+            const slot = { id: member?.id ? String(member.id) : null, name: member?.name || null, role: s?.role || member?.slot || "", fireteam: String(ft.name || "").trim(), origStatus, cert: "", disposable: false };
             if (slot.id) slot.cert = this.ensureSlotCert(slot, slot.role);
             slots.push(slot);
           });
         });
-        let finalSlots = this.sortSlotsByRole(slots);
+        let finalSlots = this.sortSlotsByFireteam(slots, fireteams);
         if (this.isChalk(sq.squad)) finalSlots = this.padSlots(finalSlots, this.MIN_CHALK_SLOTS);
-        if (this.isPointsUnit(sq.squad)) units.push({ key, title: sq.squad, slots: finalSlots });
+        if (this.isPointsUnit(sq.squad)) units.push({ key, title: sq.squad, slots: finalSlots, fireteams });
       });
       return units;
     },
@@ -1201,7 +1220,7 @@ async loadRemote(unitKey) {
           const status = String(s?.status || (s?.member ? "FILLED" : "VACANT")).toUpperCase();
           const origStatus = ["VACANT", "CLOSED"].includes(status) ? status : "FILLED";
           const member = s?.member || null;
-          const slot = { id: member?.id ? String(member.id) : null, name: member?.name || null, role: s?.role || member?.slot || "", origStatus, cert: "", disposable: false };
+          const slot = { id: member?.id ? String(member.id) : null, name: member?.name || null, role: s?.role || member?.slot || "", fireteam: String(ft.name || "").trim(), origStatus, cert: "", disposable: false };
           if (slot.id) slot.cert = this.ensureSlotCert(slot, slot.role);
           slots.push(slot);
         });
@@ -1300,17 +1319,43 @@ async loadRemote(unitKey) {
       if (!prev) return;
 
       const cleared = { ...prev, id: null, name: null, cert: "", disposable: false, origStatus: "VACANT" };
+      const ft = String(prev?.fireteam || "").trim();
 
-      // Keep the UI tidy: cleared tiles go to the end (after all assigned members).
+      // Remove from current position.
       slots.splice(slotIdx, 1);
-      slots.push(cleared);
 
-      const sorted = this.sortSlotsByRole(slots);
-      const cIdx = sorted.indexOf(cleared);
-      if (cIdx >= 0) {
-        sorted.splice(cIdx, 1);
-        sorted.push(cleared);
+      // Re-insert at the end of its fireteam group (or absolute end if unassigned).
+      let insertAt = slots.length;
+      if (ft) {
+        for (let i = slots.length - 1; i >= 0; i--) {
+          if (String(slots[i]?.fireteam || "").trim() === ft) { insertAt = i + 1; break; }
+        }
       }
+      slots.splice(insertAt, 0, cleared);
+
+      // Keep ordering tidy inside fireteams.
+      let ordered = this.sortSlotsByFireteam(slots, g.fireteams || []);
+
+      // Ensure the cleared slot is at the very back of its fireteam.
+      const cIdx = ordered.indexOf(cleared);
+      if (cIdx >= 0) {
+        ordered.splice(cIdx, 1);
+        if (ft) {
+          let after = ordered.length;
+          for (let i = ordered.length - 1; i >= 0; i--) {
+            if (String(ordered[i]?.fireteam || "").trim() === ft) { after = i + 1; break; }
+          }
+          ordered.splice(after, 0, cleared);
+        } else {
+          ordered.push(cleared);
+        }
+      }
+
+      const newG = { ...g, slots: ordered };
+      this.plan.units = this.plan.units.map((u, i) => (i === idx ? newG : u));
+      this.persistPlan();
+      this.detailError = "";
+    }
 
       const newG = { ...g, slots: sorted };
       this.plan.units = this.plan.units.map((u, i) => (i === idx ? newG : u));
@@ -1332,7 +1377,7 @@ async loadRemote(unitKey) {
         origStatus: s.origStatus === "CLOSED" ? "CLOSED" : "VACANT",
       }));
 
-      const newG = { ...g, slots: this.sortSlotsByRole(emptied) };
+      const newG = { ...g, slots: this.sortSlotsByFireteam(emptied, g.fireteams || []) };
       this.plan.units = this.plan.units.map((u, i) => (i === idx ? newG : u));
       this.persistPlan();
       this.detailError = "";
@@ -1426,10 +1471,10 @@ async loadRemote(unitKey) {
 #deploymentView { color: #e6f3ff; }
 
 /* Shell / toolbar */
-#deploymentView{display:grid;grid-template-columns:1fr;gap:1.2rem;align-items:start;width:calc(100dvw - 90px);height:calc(100dvh - 95px - 5vh);min-height:0;overflow:hidden;padding:18px 18px calc(18px + env(safe-area-inset-bottom, 0px)) 18px;box-sizing:border-box}
-.deployment-window.section-container{max-width:none!important;width:100%!important;height:100%!important;margin:0!important;display:flex;flex-direction:column;overflow:hidden;min-height:0;box-sizing:border-box}
+#deploymentView{display:grid;grid-template-columns:1fr;gap:1.2rem;align-items:start;width:calc(100dvw - 90px);height:calc(100dvh - 95px);min-height:0;overflow:hidden;padding:18px 18px calc(18px + env(safe-area-inset-bottom, 0px)) 18px;box-sizing:border-box}
+.deployment-window.section-container{max-width:none!important;width:auto;height:100%;display:flex;flex-direction:column;overflow:hidden}
 .header-shell{height:52px;overflow:hidden}.section-header,.section-content-container{width:100%}
-.deploy-scroll{flex:1 1 auto;min-height:0;height:auto!important;max-height:none;overflow:auto;scrollbar-gutter:stable both-edges;padding-bottom:calc(12px + env(safe-area-inset-bottom, 0px))}
+.deploy-scroll{flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto;scrollbar-gutter:stable both-edges;padding-bottom:calc(12px + env(safe-area-inset-bottom, 0px))}
 
 .panel{border:1px dashed rgba(30,144,255,0.35);background:rgba(0,10,30,0.18);border-radius:.6rem;padding:.8rem .9rem;overflow:visible}
 .top-actions{display:flex;justify-content:flex-end;margin-bottom:.5rem}
@@ -1546,4 +1591,15 @@ async loadRemote(unitKey) {
 .slot-cert{color:#9ec5e6}
 .slot-disp{border:1px solid rgba(120,255,170,.45);color:#caffe9;border-radius:.3rem;padding:.05rem .35rem;font-size:.8rem}
 .overview-empty{text-align:center;color:#9ec5e6;padding:.5rem 0}
+
+
+/* Picker list: show a real scrollbar */
+.squad-modal-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;scrollbar-gutter:stable both-edges;padding-right:.35rem}
+.squad-modal-scroll::-webkit-scrollbar{width:10px}
+.squad-modal-scroll::-webkit-scrollbar-thumb{background:rgba(158,197,230,0.35);border-radius:999px}
+.squad-modal-scroll::-webkit-scrollbar-track{background:rgba(0,0,0,0.22)}
+
+/* Fireteam separators inside the grid */
+.fireteam-row{grid-column:1 / -1;display:flex;align-items:center;gap:.6rem;padding:.35rem .55rem;border:1px solid rgba(158,197,230,0.22);border-radius:.55rem;background:rgba(3,8,16,0.55)}
+.fireteam-title{font-weight:700;letter-spacing:.08em;font-size:.9rem;color:#bfe3ff}
 </style>
