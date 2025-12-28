@@ -543,13 +543,12 @@ export default {
     pointsUsed() { return this.calcUnitPoints(this.currentUnit); },
   },
   methods: {
-    /* ORBAT normalization (supports both array + object fireteams) */
-    toFireteamsArray(fireteams) {
+    /* ORBAT normalization: supports fireteams as Array or Object map */
+    fireteamsArray(fireteams) {
       if (Array.isArray(fireteams)) return fireteams;
       if (fireteams && typeof fireteams === "object") return Object.values(fireteams);
       return [];
     },
-
 
     /* rank helpers */
     rankLabel(raw) {
@@ -1174,7 +1173,7 @@ async loadRemote(unitKey) {
     buildPersonnelPool(orbat) {
       const pool = [];
       (orbat || []).forEach(sq => {
-        this.toFireteamsArray(sq.fireteams).forEach(ft => {
+        this.fireteamsArray(sq.fireteams).forEach(ft => {
           (ft.slots || []).forEach((s, idx) => {
             if (s?.member) {
               const id = String(s.member.id ?? `${sq.squad}-${ft.name}-${idx}`);
@@ -1200,7 +1199,7 @@ async loadRemote(unitKey) {
       const units = [];
       (orbat || []).forEach(sq => {
         const key = this.keyFromName(sq.squad);
-        const ftArr = this.toFireteamsArray(sq.fireteams);
+        const ftArr = this.fireteamsArray(sq.fireteams);
         const fireteams = ftArr.map(ft => String(ft.name || "").trim()).filter(Boolean);
         const slots = [];
         ftArr.forEach(ft => {
@@ -1224,7 +1223,7 @@ async loadRemote(unitKey) {
       const unit = (orbat || []).find(sq => this.keyFromName(sq.squad) === unitKey);
       if (!unit) return null;
       const slots = [];
-      this.toFireteamsArray(unit.fireteams).forEach(ft => {
+      this.fireteamsArray(unit.fireteams).forEach(ft => {
         (ft.slots || []).forEach(s => {
           const status = String(s?.status || (s?.member ? "FILLED" : "VACANT")).toUpperCase();
           const origStatus = ["VACANT", "CLOSED"].includes(status) ? status : "FILLED";
