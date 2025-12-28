@@ -74,143 +74,143 @@
             </div>
 
             <div class="squad-members-grid">
-              <!-- IMPORTANT: key must be on the <template> when using v-for on <template> -->
               <template v-for="(slot, sIdx) in currentUnit.slots" :key="`wrap-${detailKey}-${sIdx}`">
-                <div v-if="isFireteamHeader(slot, sIdx, currentUnit.slots)" class="fireteam-row">
-                  <span class="fireteam-title">{{ fireteamLabel(slot) }}</span>
-                </div>
-                <div
-                  class="member-card"
-                  :class="{ vacant: slot.origStatus === 'VACANT' && !slot.id, closed: slot.origStatus === 'CLOSED' }"
-                >
-                  <!-- VACANT / CLOSED -->
-                  <template v-if="slot.origStatus === 'VACANT' && !slot.id || slot.origStatus === 'CLOSED'">
-                    <div class="member-header">
-                      <div class="member-header-text">
-                        <h3>{{ (slot.origStatus || 'VACANT').toUpperCase() }}</h3>
-                        <p class="rank-line">
-                          <span class="rank">{{ slot.role || 'Slot' }}</span>
-                          <span class="id">UNFILLED SLOT</span>
-                        </p>
-                      </div>
-                      <div style="display:flex; gap:.35rem; margin-left:auto;">
-                        <button
-                          type="button"
-                          class="btn ghost xsmall"
-                          :disabled="slot.origStatus === 'CLOSED'"
-                          @click.stop="openPicker(detailKey, sIdx)"
-                        >
-                          {{ slot.origStatus === 'CLOSED' ? 'Closed' : 'Assign' }}
-                        </button>
-                        <button type="button" class="btn ghost xsmall" @click.stop="removeSlot(detailKey, sIdx)">–</button>
-                      </div>
+              <div v-if="isFireteamHeader(slot, sIdx, currentUnit.slots)" :key="`ft-${detailKey}-${sIdx}`" class="fireteam-row">
+                <span class="fireteam-title">{{ fireteamLabel(slot) }}</span>
+              </div>
+              <div
+                :key="`slot-${detailKey}-${sIdx}`"
+                class="member-card"
+                :class="{ vacant: slot.origStatus === 'VACANT' && !slot.id, closed: slot.origStatus === 'CLOSED' }"
+              >
+                <!-- VACANT / CLOSED -->
+                <template v-if="slot.origStatus === 'VACANT' && !slot.id || slot.origStatus === 'CLOSED'">
+                  <div class="member-header">
+                    <div class="member-header-text">
+                      <h3>{{ (slot.origStatus || 'VACANT').toUpperCase() }}</h3>
+                      <p class="rank-line">
+                        <span class="rank">{{ slot.role || 'Slot' }}</span>
+                        <span class="id">UNFILLED SLOT</span>
+                      </p>
                     </div>
-
-                    <div class="member-body">
-                      <div class="member-column left">
-                        <p class="detail-line">
-                          <strong>Role:</strong>
-                          <span class="role-accent">{{ slot.role || 'Slot' }}</span>
-                        </p>
-                      </div>
-                      <div class="member-column right">
-                        <p><strong>Certifications:</strong></p>
-                        <span class="cert-none">N/A</span>
-                      </div>
-                    </div>
-
-                    <div class="member-footer">
-                      <span>SLOT STATUS: {{ slot.origStatus || 'VACANT' }}</span>
-                      <span>UNSC SYSTEMS DATABASE</span>
-                    </div>
-                  </template>
-
-                  <!-- FILLED -->
-                  <template v-else>
-                    <div class="member-header">
-                      <div class="member-header-text">
-                        <div class="name-line">
-                          <img
-                            v-if="rankFor(slot.id)"
-                            class="rank-icon"
-                            :src="rankIcon(rankFor(slot.id))"
-                            :alt="rankFor(slot.id)"
-                            :title="rankFor(slot.id)"
-                            @error="onRankImgError($event)"
-                          />
-                          <h3>{{ (slot.name || 'UNKNOWN').toUpperCase() }}</h3>
-                        </div>
-                        <p class="rank-line">
-                          <span class="rank">{{ slot.role || 'N/A' }}</span>
-                          <span class="id">ID: {{ slot.id || 'N/A' }}</span>
-                        </p>
-                      </div>
-                      <div style="display:flex; gap:.35rem; margin-left:auto;">
-                        <button v-if="slot.id" type="button" class="btn ghost xsmall" @click.stop="clearSlot(detailKey, sIdx)">Clear</button>
-                        <button type="button" class="btn ghost xsmall" @click.stop="removeSlot(detailKey, sIdx)">–</button>
-                      </div>
-                    </div>
-
-                    <div class="member-body">
-                      <div class="member-column left">
-                        <p class="detail-line">
-                          <strong>Role:</strong>
-                          <span class="role-accent">{{ slot.role || 'Unassigned' }}</span>
-                        </p>
-
-                        <div class="loadout-row">
-                          <label class="disposable">
-                            <input
-                              type="checkbox"
-                              :checked="!!slot.disposable"
-                              @change="onToggleDisposable(detailKey, sIdx, $event.target.checked)"
-                            />
-                            Disposable Rocket ({{ DISPOSABLE_COST }}pt)
-                          </label>
-                        </div>
-
-                        <div class="loadout-row">
-                          <label class="primary-label">Assigned Certification</label>
-                          <select
-                            class="loadout-select"
-                            :value="slot.cert || ''"
-                            @change="onChangeCert(detailKey, sIdx, $event.target.value)"
-                          >
-                            <option value="">None / Standard</option>
-                            <option v-for="c in getCertsForPersonId(slot.id)" :key="c" :value="c">
-                              {{ c }}{{ certPointSuffix(c) }}
-                            </option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div class="member-column right">
-                        <p><strong>Certifications:</strong></p>
-                        <div class="cert-list">
-                          <div v-for="(label, cidx) in certLabels" :key="label" class="cert-row">
-                            <span class="cert-checkbox" :class="{ checked: (slot.cert || '') === label || hasCertId(slot.id, cidx) }">
-                              <span v-if="(slot.cert || '') === label || hasCertId(slot.id, cidx)" class="checkbox-dot"></span>
-                            </span>
-                            <span class="cert-label">{{ label }}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div class="member-footer">
+                    <div style="display:flex; gap:.35rem; margin-left:auto;">
                       <button
                         type="button"
-                        class="btn primary small"
+                        class="btn ghost xsmall"
                         :disabled="slot.origStatus === 'CLOSED'"
                         @click.stop="openPicker(detailKey, sIdx)"
                       >
-                        {{ slot.id ? 'Swap' : (slot.origStatus === 'CLOSED' ? 'Closed' : 'Assign') }}
+                        {{ slot.origStatus === 'CLOSED' ? 'Closed' : 'Assign' }}
                       </button>
-                      <span>UNSC SYSTEMS DATABASE</span>
+                      <button type="button" class="btn ghost xsmall" @click.stop="removeSlot(detailKey, sIdx)">–</button>
                     </div>
-                  </template>
-                </div>
-              </template>
+                  </div>
+
+                  <div class="member-body">
+                    <div class="member-column left">
+                      <p class="detail-line">
+                        <strong>Role:</strong>
+                        <span class="role-accent">{{ slot.role || 'Slot' }}</span>
+                      </p>
+                    </div>
+                    <div class="member-column right">
+                      <p><strong>Certifications:</strong></p>
+                      <span class="cert-none">N/A</span>
+                    </div>
+                  </div>
+
+                  <div class="member-footer">
+                    <span>SLOT STATUS: {{ slot.origStatus || 'VACANT' }}</span>
+                    <span>UNSC SYSTEMS DATABASE</span>
+                  </div>
+                </template>
+
+                <!-- FILLED -->
+                <template v-else>
+                  <div class="member-header">
+                    <div class="member-header-text">
+                      <div class="name-line">
+                        <img
+                          v-if="rankFor(slot.id)"
+                          class="rank-icon"
+                          :src="rankIcon(rankFor(slot.id))"
+                          :alt="rankFor(slot.id)"
+                          :title="rankFor(slot.id)"
+                          @error="onRankImgError($event)"
+                        />
+                        <h3>{{ (slot.name || 'UNKNOWN').toUpperCase() }}</h3>
+                      </div>
+                      <p class="rank-line">
+                        <span class="rank">{{ slot.role || 'N/A' }}</span>
+                        <span class="id">ID: {{ slot.id || 'N/A' }}</span>
+                      </p>
+                    </div>
+                    <div style="display:flex; gap:.35rem; margin-left:auto;">
+                      <button v-if="slot.id" type="button" class="btn ghost xsmall" @click.stop="clearSlot(detailKey, sIdx)">Clear</button>
+                      <button type="button" class="btn ghost xsmall" @click.stop="removeSlot(detailKey, sIdx)">–</button>
+                    </div>
+                  </div>
+
+                  <div class="member-body">
+                    <div class="member-column left">
+                      <p class="detail-line">
+                        <strong>Role:</strong>
+                        <span class="role-accent">{{ slot.role || 'Unassigned' }}</span>
+                      </p>
+
+                      <div class="loadout-row">
+                        <label class="disposable">
+                          <input
+                            type="checkbox"
+                            :checked="!!slot.disposable"
+                            @change="onToggleDisposable(detailKey, sIdx, $event.target.checked)"
+                          />
+                          Disposable Rocket ({{ DISPOSABLE_COST }}pt)
+                        </label>
+                      </div>
+
+                      <div class="loadout-row">
+                        <label class="primary-label">Assigned Certification</label>
+                        <select
+                          class="loadout-select"
+                          :value="slot.cert || ''"
+                          @change="onChangeCert(detailKey, sIdx, $event.target.value)"
+                        >
+                          <option value="">None / Standard</option>
+                          <option v-for="c in getCertsForPersonId(slot.id)" :key="c" :value="c">
+                            {{ c }}{{ certPointSuffix(c) }}
+                          </option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div class="member-column right">
+                      <p><strong>Certifications:</strong></p>
+                      <div class="cert-list">
+                        <div v-for="(label, cidx) in certLabels" :key="label" class="cert-row">
+                          <span class="cert-checkbox" :class="{ checked: (slot.cert || '') === label || hasCertId(slot.id, cidx) }">
+                            <span v-if="(slot.cert || '') === label || hasCertId(slot.id, cidx)" class="checkbox-dot"></span>
+                          </span>
+                          <span class="cert-label">{{ label }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="member-footer">
+                    <button
+                      type="button"
+                      class="btn primary small"
+                      :disabled="slot.origStatus === 'CLOSED'"
+                      @click.stop="openPicker(detailKey, sIdx)"
+                    >
+                      {{ slot.id ? 'Swap' : (slot.origStatus === 'CLOSED' ? 'Closed' : 'Assign') }}
+                    </button>
+                    <span>UNSC SYSTEMS DATABASE</span>
+                  </div>
+                </template>
+              </div>
+            </template>
             </div>
 
             <div class="actions-row">
@@ -1104,9 +1104,16 @@ export default {
       this.persistPlan();
     },
 
-    /* Remaining methods (loadRemote, saveRemote, persistPlan, sortSlotsByRole, sortSlotsByFireteam, etc.)
-       should remain exactly as in your original file. They were not changed here except to remove the
-       previously stray duplicate block and to ensure template keys are on the <template> tag. */
+    /* --- Remaining methods from original file --- */
+
+    // The following methods (findAssignment, selectPersonnel, openPicker, closePicker,
+    // selectPersonnel, saveRemote, loadRemote, persistPlan, wouldExceedCap, calcUnitPoints,
+    // findPersonById, getCertsForPersonId, certPointSuffix, hasCertId, titleCase, padSlots,
+    // isChalk, isPointsUnit, keyFromName, buildUnitsFromOrbat, buildPersonnelPool,
+    // sortSlotsByRole, sortSlotsByFireteam, triggerFlicker, formatAssignment, loadMembersCSV, etc.)
+    // are unchanged from the original repository. Make sure your local copy contains the full
+    // original implementations for those methods. If any runtime error persists (e.g. "X is not a function"),
+    // it means some of those methods are missing or were accidentally removed when you updated the file.
   }
 };
 </script>
