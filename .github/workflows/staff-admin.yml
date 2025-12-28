@@ -1,4 +1,3 @@
-# .github/workflows/staff-admin.yml
 name: Staff Admin
 
 on:
@@ -32,11 +31,23 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Validate required secrets
+        env:
+          GAS_ENDPOINT: ${{ secrets.GAS_ENDPOINT }}
+          GAS_SECRET: ${{ secrets.GAS_SECRET }}
+          GAS_ADMIN_KEY: ${{ secrets.GAS_ADMIN_KEY }}
         run: |
           set -euo pipefail
-          test -n "${{ secrets.GAS_ENDPOINT }}"   || (echo "GAS_ENDPOINT missing" && exit 1)
-          test -n "${{ secrets.GAS_SECRET }}"     || (echo "GAS_SECRET missing" && exit 1)
-          test -n "${{ secrets.GAS_ADMIN_KEY }}"  || (echo "GAS_ADMIN_KEY missing" && exit 1)
+          test -n "$GAS_ENDPOINT"  || (echo "GAS_ENDPOINT missing" && exit 1)
+          test -n "$GAS_SECRET"    || (echo "GAS_SECRET missing" && exit 1)
+          test -n "$GAS_ADMIN_KEY" || (echo "GAS_ADMIN_KEY missing" && exit 1)
+
+          # Must be a Web App exec URL, not a Drive/script editor URL.
+          if ! echo "$GAS_ENDPOINT" | grep -Eq '^https://script\.google\.com/macros/s/[^/]+/exec$'; then
+            echo "ERROR: GAS_ENDPOINT must be the Apps Script Web App exec URL."
+            echo "Expected: https://script.google.com/macros/s/<DEPLOYMENT_ID>/exec"
+            echo "Got:      $GAS_ENDPOINT"
+            exit 1
+          fi
 
       - name: Validate inputs
         env:
@@ -47,7 +58,6 @@ jobs:
           ROLE:     ${{ github.event.inputs.role }}
         run: |
           set -euo pipefail
-
           require() { local v="$1"; local name="$2"; test -n "$v" || (echo "$name is required for action=$ACTION" && exit 1); }
 
           case "$ACTION" in
@@ -80,7 +90,6 @@ jobs:
           esac
 
       - name: Build request body
-        id: build
         env:
           SECRET:   ${{ secrets.GAS_SECRET }}
           ADMINKEY: ${{ secrets.GAS_ADMIN_KEY }}
@@ -93,42 +102,56 @@ jobs:
           set -euo pipefail
           case "$ACTION" in
             list)
-              BODY=$(jq -n --arg s "$SECRET" --arg k "$ADMINKEY" \
-                '{secret:$s, action:"admin.staff:list", adminKey:$k}')
+              jq -n --arg s "$SECRET" --arg k "$ADMINKEY" \
+                '{secret:$s, action:"admin.staff:list", adminKey:$k}' > body.json
               ;;
             create)
-              BODY=$(jq -n --arg s "$SECRET" --arg k "$ADMINKEY" --arg u "$USERNAME" --arg p "$PASSWORD" --arg d "$DISPLAY" --arg r "$ROLE" \
-                '{secret:$s, action:"admin.staff:create", adminKey:$k, username:$u, password:$p, displayName:$d, role:$r}')
+              jq -n --arg s "$SECRET" --arg k "$ADMINKEY" --arg u "$USERNAME" --arg p "$PASSWORD" --arg d "$DISPLAY" --arg r "$ROLE" \
+                '{secret:$s, action:"admin.staff:create", adminKey:$k, username:$u, password:$p, displayName:$d, role:$r}' > body.json
               ;;
             update)
-              BODY=$(jq -n --arg s "$SECRET" --arg k "$ADMINKEY" --arg u "$USERNAME" --arg p "$PASSWORD" --arg d "$DISPLAY" --arg r "$ROLE" \
-                '{secret:$s, action:"admin.staff:update", adminKey:$k, username:$u, displayName:$d, role:$r, newPassword:$p}')
+              jq -n --arg s "$SECRET" --arg k "$ADMINKEY" --arg u "$USERNAME" --arg p "$PASSWORD" --arg d "$DISPLAY" --arg r "$ROLE" \
+                '{secret:$s, action:"admin.staff:update", adminKey:$k, username:$u, displayName:$d, role:$r, newPassword:$p}' > body.json
               ;;
             delete)
-              BODY=$(jq -n --arg s "$SECRET" --arg k "$ADMINKEY" --arg u "$USERNAME" \
-                '{secret:$s, action:"admin.staff:delete", adminKey:$k, username:$u}')
+              jq -n --arg s "$SECRET" --arg k "$ADMINKEY" --arg u "$USERNAME" \
+                '{secret:$s, action:"admin.staff:delete", adminKey:$k, username:$u}' > body.json
               ;;
           esac
-          echo "$BODY" > body.json
 
-      - name: Call Apps Script (follow redirects)
+      - name: Call Apps Script
         id: call
         env:
           ENDPOINT: ${{ secrets.GAS_ENDPOINT }}
         run: |
           set -euo pipefail
+          echo "jq version: $(jq --version)"
+          echo "Calling: $ENDPOINT"
+
           CODE=$(curl -sS -L -o resp.txt -w "%{http_code}" \
             -H 'Content-Type: text/plain;charset=utf-8' \
             --data @body.json \
             "$ENDPOINT")
-          echo "HTTP $CODE"
-          echo "Response:"; cat resp.txt; echo
+
+          CT=$(file -b --mime-type resp.txt || true)
+          echo "HTTP $CODE (mime: $CT)"
+          echo "Response (first 40 lines):"
+          sed -n '1,40p' resp.txt || true
+          echo
+
           test "$CODE" = "200"
+
+          # If we got HTML, it's usually the wrong endpoint or a redirect to Drive.
+          if grep -qi '<!DOCTYPE html' resp.txt; then
+            echo "ERROR: Response is HTML. GAS_ENDPOINT is likely not the Web App /exec URL."
+            exit 1
+          fi
+
           jq -e '.ok == true' resp.txt > /dev/null
-          jq . resp.txt || true
+          jq . resp.txt
 
       - name: Fetch staff list for public/staff.json
-        if: always()
+        id: staff
         env:
           ENDPOINT: ${{ secrets.GAS_ENDPOINT }}
           SECRET:   ${{ secrets.GAS_SECRET }}
@@ -144,31 +167,38 @@ jobs:
             "$ENDPOINT")
 
           echo "HTTP $CODE (staff list)"
-          cat staff_resp.txt; echo
+          sed -n '1,40p' staff_resp.txt || true
+          echo
           test "$CODE" = "200"
           jq -e '.ok == true' staff_resp.txt > /dev/null
 
       - name: Generate public/staff.json
-        if: always()
         run: |
           set -euo pipefail
           mkdir -p public
 
+          # Portable lower() for jq versions without ascii_downcase.
           jq '
+            def lower:
+              tostring
+              | explode
+              | map(if . >= 65 and . <= 90 then . + 32 else . end)
+              | implode;
+
             ( .data.staff // .staff // .data // [] )
             | map(
                 if type == "object" then
                   {
-                    username: ( .username // .login // .user // "" | ascii_downcase ),
-                    email: ( .email // "" | ascii_downcase ),
+                    username: ( .username // .login // .user // "" | lower ),
+                    email: ( .email // "" | lower ),
                     role: ( .role // "" ),
                     displayName: ( .displayName // .display_name // .fullName // .full_name // .name // "" )
                   }
                 elif type == "string" then
                   if test("@") then
-                    { email: ascii_downcase(.), displayName: . }
+                    { email: ( . | lower ), displayName: . }
                   else
-                    { username: ascii_downcase(.), displayName: . }
+                    { username: ( . | lower ), displayName: . }
                   end
                 else empty end
               )
@@ -196,6 +226,3 @@ jobs:
           git add public/staff.json
           git commit -m "chore(staff): update staff.json from '${{ github.event.inputs.action }}'"
           git push
-
-      - name: Done
-        run: echo "Success."
