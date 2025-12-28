@@ -224,7 +224,7 @@
               <button type="button" class="btn" :disabled="busy || !apiBase" @click="loadRemote(detailKey)">
                 Load Chalk (Remote)
               </button>
-                <span v-if="remoteMeta[detailKey]?.savedBy" class="muted small">Last saved by {{ remoteMeta[detailKey].savedBy }}</span>
+              <span v-if="remoteMeta[detailKey]?.savedBy" class="muted small">Last saved by {{ remoteMeta[detailKey].savedBy }}</span>
             </div>
           </div>
         </div>
@@ -311,7 +311,6 @@
                   <div class="title">{{ u.title }}</div>
                   <div class="meta">
                     <template v-if="ovItem(u.key)">
-
                       <span v-if="ovItem(u.key).savedBy">by {{ ovItem(u.key).savedBy }}</span>
                       <span v-if="ovItem(u.key).savedAt">at {{ formatDate(ovItem(u.key).savedAt) }}</span>
                       <span v-if="ovItem(u.key).points !== undefined">· {{ ovItem(u.key).points }} pts</span>
@@ -357,7 +356,6 @@
 </template>
 
 <script>
-import { adminUser, adminRole, adminToken } from "@/utils/adminAuth";
 /* cookie reader */
 function readCookie(name) {
   try {
@@ -878,95 +876,145 @@ export default {
       return Array.from(r).map(b => b.toString(16).padStart(2,'0')).join('');
     },
 
-    async fetchRemoteMeta(unitKey) {
-      if (!unitKey || !this.apiBase) return;
-      try {
-        const resp = await this.apiPost("config:get", { unitId: unitKey });
-        if (!resp || resp.ok !== true || !resp.data) return;
-        const it = resp.data || {};
-        const who = (it.user || it.savedBy || "").trim();
-        this.remoteMeta = { ...this.remoteMeta, [unitKey]: { savedBy: who, savedAt: it.savedAt || "" } };
-      } catch { /* ignore */ }
-    },
-
     async apiPost(action, body, raw = false) {
-      if (!this.apiBase) throw new Error("execUrl missing");
+  if (!this.apiBase) throw new Error("execUrl missing");
 
-      const ls = typeof localStorage !== "undefined" ? localStorage : null;
-      const ss = typeof sessionStorage !== "undefined" ? sessionStorage : null;
+  const ls = typeof localStorage !== "undefined" ? localStorage : null;
+  const ss = typeof sessionStorage !== "undefined" ? sessionStorage : null;
 
-      const aUser = (typeof adminUser === "function" ? adminUser() : null) || null;
-      const aDisplay = String(aUser?.displayName || "").trim();
-      const aUsername = String(aUser?.username || "").trim();
-      const aRole = String((typeof adminRole === "function" ? adminRole() : "") || "").trim();
-      const aToken = String((typeof adminToken === "function" ? adminToken() : "") || "").trim();
+  const readJson = (s) => { try { return s ? JSON.parse(s) : null; } catch { return null; } };
+  const readStr = (k) => String(ss?.getItem(k) || ls?.getItem(k) || "").trim();
 
-      let legacyUser = null;
-      try { legacyUser = JSON.parse(ls?.getItem("user") || ss?.getItem("user") || "null"); } catch {}
-      const legacyName = String(
-        legacyUser?.displayName ||
-        legacyUser?.username ||
-        legacyUser?.login ||
-        legacyUser?.name ||
-        legacyUser?.email ||
-        ""
-      ).trim();
-      const legacyRole = String(legacyUser?.role || "").trim();
+  const decodeJwtPayload = (token) => {
+    try {
+      const rawTok = String(token || "").replace(/^Bearer\s+/i, "").trim();
+      const parts = rawTok.split(".");
+      if (parts.length < 2) return null;
+      const b64url = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+      const pad = "=".repeat((4 - (b64url.length % 4)) % 4);
+      const json = atob(b64url + pad);
+      return JSON.parse(json);
+    } catch { return null; }
+  };
 
-      let niUser = null;
-      try { niUser = window?.netlifyIdentity?.currentUser?.() || null; } catch {}
-      const niName = String(
-        niUser?.user_metadata?.full_name ||
-        niUser?.user_metadata?.name ||
-        niUser?.user_metadata?.display_name ||
-        niUser?.user_metadata?.nickname ||
-        niUser?.email ||
-        ""
-      ).trim();
+  // Preferred: staff/admin session created by src/utils/adminAuth.js
+  const adminUser = readJson(ss?.getItem("admin:user") || "");
+  const adminRole = (readStr("admin:role") || readStr("authRole") || String(adminUser?.role || "")).trim();
+  const adminTokenRaw = (readStr("admin:token") || readStr("authToken") || "").trim();
+  const adminAuth = adminTokenRaw
+    ? (adminTokenRaw.toLowerCase().startsWith("bearer ") ? adminTokenRaw : `Bearer ${adminTokenRaw}`)
+    : "";
 
-      const candidateUser = (aDisplay || niName || legacyName || aUsername).trim();
-      const candidateRole = (aRole || legacyRole).trim();
+  const jwtPayload = decodeJwtPayload(adminAuth || adminTokenRaw);
+  const jwtUserMeta = jwtPayload?.user_metadata || jwtPayload?.user_metadata || {};
+  const jwtAppMeta = jwtPayload?.app_metadata || {};
 
-      const niJwt = String(this.identityToken || "").trim();
-      const storedAuth = String(ls?.getItem("Authorization") || ss?.getItem("Authorization") || "").trim();
-      const tokenAuth = niJwt ? `Bearer ${niJwt}` : "";
-      const adminAuth = aToken ? (aToken.toLowerCase().startsWith("bearer ") ? aToken : `Bearer ${aToken}`) : "";
-      const authHeader = (storedAuth || tokenAuth || adminAuth).trim();
+  const adminDisplay =
+    String(
+      adminUser?.displayName ||
+      adminUser?.display_name ||
+      adminUser?.full_name ||
+      adminUser?.fullName ||
+      adminUser?.name ||
+      adminUser?.username ||
+      adminUser?.user ||
+      adminUser?.email ||
+      jwtUserMeta?.full_name ||
+      jwtUserMeta?.name ||
+      jwtUserMeta?.display_name ||
+      jwtUserMeta?.user_name ||
+      jwtPayload?.name ||
+      jwtPayload?.email ||
+      ""
+    ).trim();
 
-      const payload = {
-        secret: this.secret || "PLEX",
-        action,
-        deviceId: this.deviceId,
-        ...body,
-      };
+  const jwtRoles = Array.isArray(jwtAppMeta?.roles) ? jwtAppMeta.roles : [];
+  const jwtRole = String(jwtRoles[0] || "").trim();
 
-      const res = await fetch(this.apiBase, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(authHeader ? { Authorization: authHeader } : {}),
-          ...(candidateUser ? { "X-User": candidateUser } : {}),
-          ...(candidateRole ? { "X-Role": candidateRole } : {}),
-        },
-        body: JSON.stringify(payload),
-      });
-      return raw ? res : res.json();
+  // Optional: Netlify Identity widget (if present on site)
+  let niUser = null;
+  try { niUser = window?.netlifyIdentity?.currentUser?.() || null; } catch {}
+  const niDisplay = String(
+    niUser?.user_metadata?.full_name ||
+    niUser?.user_metadata?.name ||
+    niUser?.user_metadata?.display_name ||
+    niUser?.email ||
+    ""
+  ).trim();
+  const niAuth = niUser?.token?.access_token ? `Bearer ${niUser.token.access_token}` : "";
+
+  // Legacy fallback
+  const legacyUser = readJson(readStr("user"));
+  const legacyDisplay = String(
+    legacyUser?.displayName ||
+    legacyUser?.fullName ||
+    legacyUser?.name ||
+    legacyUser?.username ||
+    legacyUser?.login ||
+    legacyUser?.email ||
+    ""
+  ).trim();
+  const legacyRole = String(legacyUser?.role || "").trim();
+  const legacyAuth = readStr("Authorization");
+
+  const candidateUser = adminDisplay || niDisplay || legacyDisplay;
+  const candidateRole = (adminRole || jwtRole || legacyRole).trim();
+  const authHeader = adminAuth || legacyAuth || niAuth;
+
+  const payload = {
+    secret: this.secret || "PLEX",
+    action,
+    deviceId: this.deviceId,
+    ...body,
+  };
+
+  const res = await fetch(this.apiBase, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(authHeader ? { Authorization: authHeader } : {}),
+      ...(candidateUser ? { "X-User": candidateUser } : {}),
+      ...(candidateRole ? { "X-Role": candidateRole } : {}),
     },
+    body: JSON.stringify(payload),
+  });
+
+  return raw ? res : res.json();
+},
+
 
     unitPayload(unit) {
-      return {
-        title: unit.title,
-        slots: (unit.slots || []).map(s => ({
-          id: s?.id ?? null,
-          name: s?.name ?? null,
-          role: s?.role || "",
-          cert: s?.cert || "",
-          disposable: !!s?.disposable,
-        })),
-      };
-    },
+  return {
+    title: unit.title,
+    slots: (unit.slots || []).map(s => ({
+      id: s?.id ?? null,
+      name: s?.name ?? null,
+      role: s?.role || "",
+      cert: s?.cert || "",
+      disposable: !!s?.disposable,
+    })),
+  };
+},
 
-    async loadRemote(unitKey) {
+
+    async fetchRemoteMeta(unitKey) {
+  if (!this.apiBase || !unitKey) return;
+  try {
+    const resp = await this.apiPost("config:get", { unitId: unitKey });
+    const { ok, data } = resp || {};
+    if (!ok || !data) return;
+    this.remoteMeta = {
+      ...this.remoteMeta,
+      [unitKey]: {
+        savedBy: (data.user || data.savedBy || "").trim(),
+        savedAt: data.savedAt || data.updatedAt || data.timestamp || "",
+      },
+    };
+    this.versions = { ...this.versions, [unitKey]: Number(data.version || 0) };
+  } catch {}
+},
+
+async loadRemote(unitKey) {
       if (!unitKey) return;
       this.apiError = ""; this.busy = true;
       try {
@@ -1008,8 +1056,8 @@ export default {
         this.versions = { ...this.versions, [unitKey]: Number(res.data?.version || 0) };
       } catch (e) {
         const msg = String(e.message || e);
-        if (/UNAUTHORIZED/i.test(msg)) this.apiError = "Please log in to save.";
-        else if (/FORBIDDEN/i.test(msg)) this.apiError = "You are not authorized to save.";
+        if (/FORBIDDEN/i.test(msg)) this.apiError = "You are not authorized to save.";
+        else if (/UNAUTHORIZED/i.test(msg)) this.apiError = "Save rejected (unauthorized). Check your deployment secret and staff login token.";
         else this.apiError = msg;
       } finally { this.busy = false; }
     },
@@ -1334,6 +1382,7 @@ export default {
         this.detailKey = this.plan.units[0].key;
       }
     }},
+    detailKey: { immediate: true, handler(k) { if (k) this.fetchRemoteMeta(k); } },
   },
 };
 </script>
