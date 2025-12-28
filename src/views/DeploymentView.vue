@@ -543,6 +543,14 @@ export default {
     pointsUsed() { return this.calcUnitPoints(this.currentUnit); },
   },
   methods: {
+    /* ORBAT normalization (supports both array + object fireteams) */
+    toFireteamsArray(fireteams) {
+      if (Array.isArray(fireteams)) return fireteams;
+      if (fireteams && typeof fireteams === "object") return Object.values(fireteams);
+      return [];
+    },
+
+
     /* rank helpers */
     rankLabel(raw) {
       const t = String(raw || "").trim();
@@ -1166,7 +1174,7 @@ async loadRemote(unitKey) {
     buildPersonnelPool(orbat) {
       const pool = [];
       (orbat || []).forEach(sq => {
-        (sq.fireteams || []).forEach(ft => {
+        this.toFireteamsArray(sq.fireteams).forEach(ft => {
           (ft.slots || []).forEach((s, idx) => {
             if (s?.member) {
               const id = String(s.member.id ?? `${sq.squad}-${ft.name}-${idx}`);
@@ -1192,9 +1200,10 @@ async loadRemote(unitKey) {
       const units = [];
       (orbat || []).forEach(sq => {
         const key = this.keyFromName(sq.squad);
-        const fireteams = (sq.fireteams || []).map(ft => String(ft.name || "").trim()).filter(Boolean);
+        const ftArr = this.toFireteamsArray(sq.fireteams);
+        const fireteams = ftArr.map(ft => String(ft.name || "").trim()).filter(Boolean);
         const slots = [];
-        (sq.fireteams || []).forEach(ft => {
+        ftArr.forEach(ft => {
           (ft.slots || []).forEach(s => {
             const status = String(s?.status || (s?.member ? "FILLED" : "VACANT")).toUpperCase();
             const origStatus = ["VACANT", "CLOSED"].includes(status) ? status : "FILLED";
@@ -1215,7 +1224,7 @@ async loadRemote(unitKey) {
       const unit = (orbat || []).find(sq => this.keyFromName(sq.squad) === unitKey);
       if (!unit) return null;
       const slots = [];
-      (unit.fireteams || []).forEach(ft => {
+      this.toFireteamsArray(unit.fireteams).forEach(ft => {
         (ft.slots || []).forEach(s => {
           const status = String(s?.status || (s?.member ? "FILLED" : "VACANT")).toUpperCase();
           const origStatus = ["VACANT", "CLOSED"].includes(status) ? status : "FILLED";
