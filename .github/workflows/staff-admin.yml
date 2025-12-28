@@ -1,3 +1,4 @@
+# .github/workflows/staff-admin.yml
 name: Staff Admin
 
 on:
@@ -22,20 +23,61 @@ on:
         required: false
 
 permissions:
-  contents: write   # needed to commit staff.json back to repo
+  contents: write
 
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Validate secrets
+      - name: Validate required secrets
         run: |
+          set -euo pipefail
           test -n "${{ secrets.GAS_ENDPOINT }}"   || (echo "GAS_ENDPOINT missing" && exit 1)
           test -n "${{ secrets.GAS_SECRET }}"     || (echo "GAS_SECRET missing" && exit 1)
           test -n "${{ secrets.GAS_ADMIN_KEY }}"  || (echo "GAS_ADMIN_KEY missing" && exit 1)
+
+      - name: Validate inputs
+        env:
+          ACTION:   ${{ github.event.inputs.action }}
+          USERNAME: ${{ github.event.inputs.username }}
+          PASSWORD: ${{ github.event.inputs.password }}
+          DISPLAY:  ${{ github.event.inputs.displayName }}
+          ROLE:     ${{ github.event.inputs.role }}
+        run: |
+          set -euo pipefail
+
+          require() { local v="$1"; local name="$2"; test -n "$v" || (echo "$name is required for action=$ACTION" && exit 1); }
+
+          case "$ACTION" in
+            list)
+              ;;
+            create)
+              require "$USERNAME" "username"
+              require "$PASSWORD" "password"
+              require "$DISPLAY"  "displayName"
+              require "$ROLE"     "role"
+              if [[ "$ROLE" != "staff" && "$ROLE" != "officer" ]]; then
+                echo "role must be 'staff' or 'officer'"; exit 1
+              fi
+              ;;
+            update)
+              require "$USERNAME" "username"
+              if [[ -z "$PASSWORD" && -z "$DISPLAY" && -z "$ROLE" ]]; then
+                echo "update requires at least one of: password, displayName, role"; exit 1
+              fi
+              if [[ -n "$ROLE" && "$ROLE" != "staff" && "$ROLE" != "officer" ]]; then
+                echo "role must be 'staff' or 'officer'"; exit 1
+              fi
+              ;;
+            delete)
+              require "$USERNAME" "username"
+              ;;
+            *)
+              echo "Unknown action: $ACTION"; exit 1
+              ;;
+          esac
 
       - name: Build request body
         id: build
@@ -66,12 +108,8 @@ jobs:
               BODY=$(jq -n --arg s "$SECRET" --arg k "$ADMINKEY" --arg u "$USERNAME" \
                 '{secret:$s, action:"admin.staff:delete", adminKey:$k, username:$u}')
               ;;
-            *)
-              echo "Unknown action: $ACTION"; exit 1;;
           esac
-
           echo "$BODY" > body.json
-          echo "Request: $(sed -E 's/"secret":"[^"]+"/"secret":"***"/; s/"adminKey":"[^"]+"/"adminKey":"***"/; s/"password":"[^"]+"/"password":"***"/; s/"newPassword":"[^"]+"/"newPassword":"***"/' body.json)"
 
       - name: Call Apps Script (follow redirects)
         id: call
@@ -83,40 +121,64 @@ jobs:
             -H 'Content-Type: text/plain;charset=utf-8' \
             --data @body.json \
             "$ENDPOINT")
-
           echo "HTTP $CODE"
           echo "Response:"; cat resp.txt; echo
-
           test "$CODE" = "200"
           jq -e '.ok == true' resp.txt > /dev/null
           jq . resp.txt || true
 
-      # --- NEW: Generate staff.json (works best when action==list; safe otherwise) ---
+      - name: Fetch staff list for public/staff.json
+        if: always()
+        env:
+          ENDPOINT: ${{ secrets.GAS_ENDPOINT }}
+          SECRET:   ${{ secrets.GAS_SECRET }}
+          ADMINKEY: ${{ secrets.GAS_ADMIN_KEY }}
+        run: |
+          set -euo pipefail
+          jq -n --arg s "$SECRET" --arg k "$ADMINKEY" \
+            '{secret:$s, action:"admin.staff:list", adminKey:$k}' > staff_body.json
+
+          CODE=$(curl -sS -L -o staff_resp.txt -w "%{http_code}" \
+            -H 'Content-Type: text/plain;charset=utf-8' \
+            --data @staff_body.json \
+            "$ENDPOINT")
+
+          echo "HTTP $CODE (staff list)"
+          cat staff_resp.txt; echo
+          test "$CODE" = "200"
+          jq -e '.ok == true' staff_resp.txt > /dev/null
+
       - name: Generate public/staff.json
-        if: always()  # will no-op if response doesn't contain staff data
+        if: always()
         run: |
           set -euo pipefail
           mkdir -p public
 
-          # Try to find staff array in common places:
-          #  - { ok:true, data:{ staff:[...] } }
-          #  - { ok:true, staff:[...] }
-          #  - { ok:true, data:[...] }
-          # Fallback to empty array if not found.
           jq '
             ( .data.staff // .staff // .data // [] )
             | map(
-                if type == "string" then
-                  if test("@") then {email: ascii_downcase(.)} else {login: ascii_downcase(.)} end
-                elif type == "object" then
+                if type == "object" then
                   {
-                    login: ( .login // .github // .user // .username // .name // "" | ascii_downcase ),
-                    email: ( .email // .mail // "" | ascii_downcase )
+                    username: ( .username // .login // .user // "" | ascii_downcase ),
+                    email: ( .email // "" | ascii_downcase ),
+                    role: ( .role // "" ),
+                    displayName: ( .displayName // .display_name // .fullName // .full_name // .name // "" )
                   }
+                elif type == "string" then
+                  if test("@") then
+                    { email: ascii_downcase(.), displayName: . }
+                  else
+                    { username: ascii_downcase(.), displayName: . }
+                  end
                 else empty end
               )
-            | map( with_entries( select(.value != "") ) )
-          ' resp.txt > public/staff.json || echo '[]' > public/staff.json
+            | map(
+                if ((.displayName // "") | tostring | length) == 0 then
+                  .displayName = ( .username // .email // "" )
+                else . end
+              )
+            | map( with_entries( select(.value != "" and .value != null) ) )
+          ' staff_resp.txt > public/staff.json
 
           echo "Generated public/staff.json:"
           cat public/staff.json
