@@ -968,7 +968,17 @@ export default {
     ...body,
   };
 
-  const res = await fetch(this.apiBase, {
+  const urlObj = new URL(this.apiBase, typeof window !== "undefined" ? window.location.origin : "http://localhost");
+  const isDirectGAS = /script\.google\.com|googleusercontent\.com/.test(urlObj.hostname);
+  if (isDirectGAS) {
+    // Apps Script web apps often do not expose request headers; pass role/user via query for compatibility.
+    if (candidateRole) urlObj.searchParams.set("X-Role", candidateRole);
+    if (candidateUser) urlObj.searchParams.set("X-User", candidateUser);
+    if (authHeader && !candidateRole) urlObj.searchParams.set("Authorization", authHeader);
+  }
+  const url = urlObj.toString();
+
+  const res = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -1048,7 +1058,7 @@ async loadRemote(unitKey) {
         const payload = this.unitPayload(unit);
         const res = await this.apiPost("config:save", { unitId: unitKey, config: payload, expectedVersion });
         if (res.conflict && res.current) {
-          this.apiError = `Remote conflict (v${res.current.version}). Press Save again to overwrite.`;
+          this.apiError = "Remote conflict. Reload the remote chalk, then Save again to overwrite.";
           this.versions = { ...this.versions, [unitKey]: Number(res.current.version || 0) };
           return;
         }
@@ -1057,7 +1067,7 @@ async loadRemote(unitKey) {
       } catch (e) {
         const msg = String(e.message || e);
         if (/FORBIDDEN/i.test(msg)) this.apiError = "You are not authorized to save.";
-        else if (/UNAUTHORIZED/i.test(msg)) this.apiError = "Save rejected (unauthorized). Check your deployment secret and staff login token.";
+        else if (/UNAUTHORIZED/i.test(msg)) this.apiError = "Save rejected (unauthorized). If your execUrl points directly to Apps Script, use /.netlify/functions/gas (proxy) so staff headers reach the backend.";
         else this.apiError = msg;
       } finally { this.busy = false; }
     },
