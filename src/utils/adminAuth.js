@@ -1,16 +1,25 @@
 // src/utils/adminAuth.js
 // Staff session + displayName hydration (from /staff.json)
+// IMPORTANT: Apps Script requires `secret` on ALL actions, including admin.login.
 
 const SS_USER = "admin:user";
 const SS_ROLE = "admin:role";
 const SS_TOKEN = "admin:token";
 const SS_EXP = "admin:exp";
 
+// Match your Apps Script SECRET default. You can override by setting
+// sessionStorage/localStorage key "deploymentSecret".
+const FALLBACK_DEPLOYMENT_SECRET = "PLEX";
+
 const _subs = new Set();
 
 function _notify() {
   for (const cb of Array.from(_subs)) {
-    try { cb(); } catch { /* ignore */ }
+    try {
+      cb();
+    } catch {
+      // ignore
+    }
   }
 }
 
@@ -23,16 +32,24 @@ export function adminEndpoint() {
   return "/.netlify/functions/gas";
 }
 
-export function adminSecret() {
-  return ""; // legacy compatibility
+function _ssSet(k, v) {
+  window.sessionStorage.setItem(k, String(v));
 }
 
-function _ssSet(k, v) { window.sessionStorage.setItem(k, String(v)); }
-function _ssGet(k) { return window.sessionStorage.getItem(k); }
-function _ssDel(k) { window.sessionStorage.removeItem(k); }
+function _ssGet(k) {
+  return window.sessionStorage.getItem(k);
+}
+
+function _ssDel(k) {
+  window.sessionStorage.removeItem(k);
+}
 
 function _safeJsonParse(s) {
-  try { return JSON.parse(s); } catch { return null; }
+  try {
+    return JSON.parse(s);
+  } catch {
+    return null;
+  }
 }
 
 function _pickDisplayName(obj) {
@@ -46,6 +63,26 @@ function _pickDisplayName(obj) {
     obj.username ||
     "";
   return typeof v === "string" ? v.trim() : "";
+}
+
+function _getDeploymentSecret() {
+  try {
+    const ss = typeof sessionStorage !== "undefined" ? sessionStorage : null;
+    const ls = typeof localStorage !== "undefined" ? localStorage : null;
+
+    // You can set this anywhere in the app if you want:
+    // localStorage.setItem("deploymentSecret", "PLEX")
+    const s =
+      ss?.getItem("deploymentSecret") ||
+      ls?.getItem("deploymentSecret") ||
+      ss?.getItem("secret") ||
+      ls?.getItem("secret") ||
+      "";
+
+    return (s && s.trim()) ? s.trim() : FALLBACK_DEPLOYMENT_SECRET;
+  } catch {
+    return FALLBACK_DEPLOYMENT_SECRET;
+  }
 }
 
 function _writeSession({ username, displayName, role, token, ttlSec }) {
@@ -150,7 +187,6 @@ export async function ensureAdminDisplayName() {
   return displayName || "";
 }
 
-// Optional helper if you later add a UI field for users to set it themselves.
 export function setAdminDisplayName(displayName) {
   const u = adminUser();
   if (!u?.username) return false;
@@ -179,10 +215,12 @@ export async function adminLogin(arg1, arg2) {
 
   if (!username || !password) throw new Error("Missing credentials");
 
+  const secret = _getDeploymentSecret();
+
   const res = await fetch(adminEndpoint(), {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({ action: "admin.login", username, password }),
+    body: JSON.stringify({ secret, action: "admin.login", username, password }),
     redirect: "follow",
   });
 
@@ -197,9 +235,9 @@ export async function adminLogin(arg1, arg2) {
     _pickDisplayName(data) ||
     "";
 
-  const role = (data?.user?.role || data?.role || "staff");
-  const token = (data?.user?.token || data?.token || "");
-  const ttl = (data?.user?.ttlSec || data?.ttlSec || 3600);
+  const role = data?.user?.role || data?.role || "staff";
+  const token = data?.user?.token || data?.token || "";
+  const ttl = data?.user?.ttlSec || data?.ttlSec || 3600;
 
   _writeSession({ username, displayName, role, token, ttlSec: ttl });
 
