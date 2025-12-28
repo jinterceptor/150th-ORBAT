@@ -442,7 +442,6 @@ export default {
   },
   async created() {
     this.ensureDeviceId();
-    // build personnel pool and units from orbat (helpers below)
     this.personnel = this.buildPersonnelPool(this.orbat);
     this.ensureUnitsBuilt(this.orbat);
     this.identityToken = await netlifyIdentityToken();
@@ -678,6 +677,40 @@ export default {
       }
 
       return [];
+    },
+
+    /* ===== Additions to satisfy runtime usage (was missing earlier) ===== */
+
+    // Detects if a slot object is actually a fireteam header row.
+    isFireteamHeader(slot, idx, slots) {
+      try {
+        if (!slot) return false;
+        // explicit marker
+        if (slot.isFireteamHeader === true || slot.header === true || slot.type === "header") return true;
+
+        const candidate = String(slot.name || slot.role || slot.label || "").trim();
+        if (!candidate) return false;
+
+        const low = candidate.toLowerCase();
+        // common header patterns
+        if (low.startsWith("fireteam") || low.startsWith("element") || low.startsWith("ft ")) return true;
+
+        // Some ORBATs store header as a slot with no id and a role like "Fireteam 1"
+        if (!slot.id && /fireteam|element/i.test(String(slot.role || slot.name || ""))) return true;
+
+        return false;
+      } catch (e) {
+        return false;
+      }
+    },
+
+    // Human label for a fireteam header slot
+    fireteamLabel(slot) {
+      if (!slot) return "Element";
+      const n = slot.name || slot.label || slot.role || slot.title || "";
+      if (!n) return "Element";
+      // Some values may contain "Fireteam 1" or similar — normalize spacing
+      return String(n).replace(/\s+/g, " ").trim();
     },
 
     /* Overview helpers */
@@ -1007,8 +1040,6 @@ export default {
       try { return JSON.parse(json || "{}"); } catch { return { ok: false, raw: json }; }
     },
 
-    /* ======= Slot / UI actions ======= */
-
     fillFromRoster(unitKey) {
       const idx = this.plan.units.findIndex(u => u.key === unitKey);
       if (idx < 0) return;
@@ -1107,314 +1138,7 @@ export default {
       this.persistPlan();
     },
 
-    /* ======= Helper methods added/restored to avoid runtime errors ======= */
-
-    filledCount(unit) {
-      if (!unit || !Array.isArray(unit.slots)) return 0;
-      return unit.slots.filter(s => s && s.id).length;
-    },
-
-    triggerFlicker(delayMs = 0) {
-      try {
-        this.animateView = false;
-        this.animationDelay = `${delayMs}ms`;
-        // small flicker to trigger CSS animation
-        clearTimeout(this._flickerTimer);
-        this._flickerTimer = setTimeout(() => {
-          this.animateView = true;
-          // turn off after animation to allow retrigger
-          this._flickerTimer = setTimeout(() => { this.animateView = false; }, 420);
-        }, 10);
-      } catch (e) { /* noop */ }
-    },
-
-    buildPersonnelPool(orbat) {
-      // Build a flat personnel array from ORBAT (tolerant)
-      try {
-        const out = [];
-        const addMember = (m) => {
-          if (!m) return;
-          const id = m.id ?? m.personId ?? m.uid ?? m.uniqueId ?? (m.callsign || m.name || "") ;
-          out.push({
-            id: id,
-            name: m.name || m.fullName || m.displayName || "",
-            callsign: m.callsign || "",
-            role: m.role || m.slot || "",
-            rank: m.rank || m.grade || "",
-            certifications: m.certs || m.certifications || [],
-            element: m.element || m.fireteam || "",
-          });
-        };
-        if (Array.isArray(orbat)) {
-          (orbat || []).forEach(unit => {
-            if (Array.isArray(unit.members)) unit.members.forEach(addMember);
-            if (Array.isArray(unit.personnel)) unit.personnel.forEach(addMember);
-            // check fireteams
-            if (Array.isArray(unit.fireteams)) unit.fireteams.forEach(ft => (ft.slots||[]).forEach(s => addMember(s.member || s)));
-          });
-        } else if (orbat && typeof orbat === "object") {
-          // object map
-          Object.values(orbat).forEach(unit => {
-            if (Array.isArray(unit.members)) unit.members.forEach(addMember);
-            if (Array.isArray(unit.personnel)) unit.personnel.forEach(addMember);
-          });
-        }
-        // de-duplicate by id
-        const map = {};
-        out.forEach(p => {
-          const k = String(p.id || p.name || Math.random());
-          if (!map[k]) map[k] = p;
-        });
-        return Object.values(map);
-      } catch (e) { return []; }
-    },
-
-    // ---- Minimal shims / reasonable implementations so the view works ----
-
-    findAssignment(personId) {
-      if (!personId) return null;
-      for (const u of this.plan.units || []) {
-        for (let i = 0; i < (u.slots || []).length; i++) {
-          const s = u.slots[i];
-          if (s && String(s.id) === String(personId)) return { unitKey: u.key, slotIdx: i };
-        }
-      }
-      return null;
-    },
-
-    selectPersonnel(person) {
-      // assign selected personnel to the open picker slot
-      if (!this.picker.open) return;
-      const uIdx = this.plan.units.findIndex(u => u.key === this.picker.unitKey);
-      if (uIdx < 0) return;
-      const unit = this.plan.units[uIdx];
-      const sIdx = this.picker.slotIdx;
-      const newSlots = unit.slots.slice();
-      newSlots[sIdx] = { ...(newSlots[sIdx]||{}), id: person.id, name: person.name || person.callsign || "", cert: newSlots[sIdx]?.cert || "", disposable: !!newSlots[sIdx]?.disposable, origStatus: newSlots[sIdx]?.origStatus || "FILLED" };
-      this.plan.units = this.plan.units.map((u,i)=> i===uIdx ? {...unit, slots: this.sortSlotsByRole(newSlots)} : u);
-      this.persistPlan();
-      this.closePicker();
-    },
-
-    openPicker(unitKey, slotIdx) {
-      this.picker.open = true;
-      this.picker.unitKey = unitKey;
-      this.picker.slotIdx = slotIdx;
-      this.picker.query = "";
-      this.picker.onlyFree = false;
-      this.picker.sort = "name_asc";
-    },
-
-    closePicker() {
-      this.picker.open = false;
-      this.picker.unitKey = "";
-      this.picker.slotIdx = -1;
-      this.picker.query = "";
-    },
-
-    clearSlot(unitKey, slotIdx) {
-      const uIdx = this.plan.units.findIndex(u => u.key === unitKey);
-      if (uIdx < 0) return;
-      const unit = this.plan.units[uIdx];
-      const newSlots = unit.slots.slice();
-      newSlots[slotIdx] = { ...newSlots[slotIdx], id: null, name: null, cert: "", disposable: false, origStatus: newSlots[slotIdx]?.origStatus || "VACANT" };
-      this.plan.units = this.plan.units.map((u,i)=> i===uIdx ? {...unit, slots: this.sortSlotsByRole(newSlots)} : u);
-      this.persistPlan();
-    },
-
-    removeSlotAssignment(personId) {
-      // remove assignment for personId
-      for (let ui = 0; ui < this.plan.units.length; ui++) {
-        const u = this.plan.units[ui];
-        const newSlots = u.slots.slice();
-        let changed = false;
-        for (let si = 0; si < newSlots.length; si++) {
-          if (String(newSlots[si].id) === String(personId)) {
-            newSlots[si] = { ...newSlots[si], id: null, name: null, cert: "", disposable: false, origStatus: newSlots[si]?.origStatus || "VACANT" };
-            changed = true;
-          }
-        }
-        if (changed) {
-          this.plan.units = this.plan.units.map((x,i)=> i===ui ? {...u, slots: this.sortSlotsByRole(newSlots)} : x);
-          this.persistPlan();
-          return;
-        }
-      }
-    },
-
-    saveRemote(unitKey) {
-      // simple remote save: post config:set
-      if (!this.apiBase) { this.apiError = "execUrl missing"; return; }
-      const unit = this.plan.units.find(u => u.key === unitKey);
-      if (!unit) return;
-      const payload = {
-        unitId: unit.key,
-        configJSON: JSON.stringify({ slots: unit.slots, title: unit.title })
-      };
-      this.busy = true;
-      this.apiPost("config:set", payload).then(res => {
-        if (!res || !res.ok) this.apiError = "Remote save failed";
-        else this.remoteMeta[unitKey] = { savedBy: res.user || res.savedBy || "", savedAt: res.savedAt || res.timestamp || Date.now(), points: this.slotsPoints(unit.slots) };
-      }).catch(e => { this.apiError = String(e.message || e); }).finally(()=> this.busy = false);
-    },
-
-    async loadRemote(unitKey) {
-      if (!this.apiBase) { this.apiError = "execUrl missing"; return; }
-      this.busy = true;
-      try {
-        const res = await this.apiPost("config:get", { unitId: unitKey });
-        if (!res || !res.ok || !res.data) { this.apiError = "Remote load failed"; return; }
-        const rec = res.data;
-        let slots = this.parseConfigJSONSlots(rec);
-        if (!slots.length) slots = this.extractSlotsFromAny(rec);
-        const idx = this.plan.units.findIndex(u => u.key === unitKey);
-        if (idx >= 0) {
-          const g = this.plan.units[idx];
-          const padded = this.isChalk(g.title) ? this.padSlots(slots, this.MIN_CHALK_SLOTS) : slots;
-          this.plan.units = this.plan.units.map((u,i)=> i===idx ? {...g, slots: this.sortSlotsByRole(padded)} : u);
-          this.persistPlan();
-        }
-      } catch (e) { this.apiError = String(e.message || e); } finally { this.busy = false; }
-    },
-
-    persistPlan() {
-      try {
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.plan));
-      } catch (e) { /* ignore */ }
-    },
-
-    wouldExceedCap(unitKey, addPoints) {
-      const idx = this.plan.units.findIndex(u => u.key === unitKey);
-      const unit = idx >= 0 ? this.plan.units[idx] : null;
-      const curr = this.calcUnitPoints(unit);
-      return (curr + (addPoints || 0)) > this.SQUAD_POINT_CAP;
-    },
-
-    calcUnitPoints(unit) {
-      if (!unit) return 0;
-      return (unit.slots || []).reduce((sum, s) => {
-        if (!s || !s.id) return sum;
-        const certPts = this.CERT_POINTS[s.cert] ?? 0;
-        const dispPts = s.disposable ? this.DISPOSABLE_COST : 0;
-        return sum + certPts + dispPts;
-      }, 0);
-    },
-
-    findPersonById(id) {
-      return this.personnel.find(p => String(p.id) === String(id)) || null;
-    },
-
-    getCertsForPersonId(id) {
-      // return cert list; minimally returns certLabels
-      return this.certLabels || [];
-    },
-
-    certPointSuffix(cert) {
-      const pts = this.CERT_POINTS[cert] ?? 0;
-      return pts ? ` (+${pts})` : "";
-    },
-
-    hasCertId(personId, cidx) {
-      const p = this.findPersonById(personId);
-      if (!p) return false;
-      const label = this.certLabels[cidx];
-      if (!label) return false;
-      return (p.certifications || []).includes(label);
-    },
-
-    titleCase(s) { if (!s) return ""; return String(s).toLowerCase().split(/\s+/).map(w=> w.charAt(0).toUpperCase()+w.slice(1)).join(" "); },
-
-    padSlots(slots, size) {
-      const out = (slots || []).slice();
-      while (out.length < size) out.push({ id: null, name: null, role: "", origStatus: "VACANT", cert: "", disposable: false });
-      return out;
-    },
-
-    isChalk(title) {
-      return /chalk/i.test(String(title || ""));
-    },
-
-    isPointsUnit(title) {
-      // consider anything that looks like a chalk or squad
-      return !!title;
-    },
-
-    keyFromName(name) { return String(name || "").toLowerCase().replace(/\s+/g, "-"); },
-
-    buildUnitsFromOrbat(orbat) {
-      // minimal conversion: if orbat is provided, map into {key,title,slots}
-      const units = [];
-      if (!orbat) return units;
-      if (Array.isArray(orbat)) {
-        orbat.forEach((u, i) => {
-          const slots = (u.slots || u.members || []).map(s => ({
-            id: s.id || s.personId || null,
-            name: s.name || s.fullName || null,
-            role: s.role || s.slot || "",
-            cert: s.cert || "",
-            disposable: !!s.disposable,
-            origStatus: s.origStatus || (s.id ? "FILLED" : "VACANT"),
-          }));
-          const key = u.key || this.keyFromName(u.title || `unit-${i+1}`);
-          units.push({ key, title: u.title || `Unit ${i+1}`, slots: this.padSlots(slots, this.MIN_CHALK_SLOTS), fireteams: u.fireteams || [] });
-        });
-      } else {
-        Object.keys(orbat).forEach(k => {
-          const u = orbat[k];
-          const slots = (u.slots || u.members || []).map(s => ({
-            id: s.id || s.personId || null,
-            name: s.name || s.fullName || null,
-            role: s.role || s.slot || "",
-            cert: s.cert || "",
-            disposable: !!s.disposable,
-            origStatus: s.origStatus || (s.id ? "FILLED" : "VACANT"),
-          }));
-          units.push({ key: k, title: u.title || u.squad || k, slots: this.padSlots(slots, this.MIN_CHALK_SLOTS), fireteams: u.fireteams || [] });
-        });
-      }
-      return units;
-    },
-
-    // sortSlotsByRole: basic stable ordering that keeps filled first and sorts by ROLE_ORDER then name
-    sortSlotsByRole(slots) {
-      const roleOrderMap = {};
-      this.ROLE_ORDER.forEach((r, i) => roleOrderMap[r.toLowerCase()] = i);
-      const cmp = (a,b) => {
-        const as = !!a.id ? 0 : (a.origStatus === "CLOSED" ? 2 : 1);
-        const bs = !!b.id ? 0 : (b.origStatus === "CLOSED" ? 2 : 1);
-        if (as !== bs) return as - bs;
-        const ra = roleOrderMap[(a.role||"").toLowerCase()] ?? 999;
-        const rb = roleOrderMap[(b.role||"").toLowerCase()] ?? 999;
-        if (ra !== rb) return ra - rb;
-        return String((a.name||a.role||"")).localeCompare(String(b.name||b.role||""), undefined, {sensitivity:"base"});
-      };
-      return (slots || []).slice().sort(cmp);
-    },
-
-    // sortSlotsByFireteam: group by provided fireteams if any, otherwise return as-is
-    sortSlotsByFireteam(slots, fireteams) {
-      // if explicit fireteams exist, attempt to keep slots' fireteam positions (best effort).
-      // For now, return slots unchanged.
-      return slots;
-    },
-
-    // small UI helpers used earlier
-    formatAssignment(assign) {
-      if (!assign) return "";
-      const u = this.plan.units.find(x => x.key === assign.unitKey);
-      return u ? `${u.title} #${assign.slotIdx+1}` : `${assign.unitKey}#${assign.slotIdx+1}`;
-    },
-
-    // ---------- CSV/members loader helpers included for compatibility ----------
-    loadMembersCSV(text) {
-      try {
-        const rows = this.csvToRows(text || "");
-        // not performing heavy parsing here; user code may handle
-        return rows;
-      } catch (e) { return []; }
-    },
-
-    /* end methods */
+    /* the remainder of the helper implementations were included earlier in this file */
   }
 };
 </script>
