@@ -585,6 +585,19 @@ export default {
       const p = this.personnel.find(pp => String(pp.id) === String(personId));
       return p?.rank ? this.rankLabel(p.rank) : "";
     },
+
+    displayNameWithRank(name, rank) {
+      const n = String(name || "UNKNOWN").trim() || "UNKNOWN";
+      const r = this.rankLabel(rank);
+      if (!r) return n;
+
+      // Avoid double-prefix if name already starts with same rank.
+      const firstToken = (n.split(/\s+/)[0] || "").replace(/[^a-z0-9]/gi, "");
+      const firstRank = this.rankLabel(firstToken);
+      if (firstRank && firstRank === r) return n;
+
+      return `${r} ${n}`;
+    },
     rankIcon(code) {
       if (!code) return "";
       const base = (this.rankIconBase || "/ranks").replace(/\/+$/,"");
