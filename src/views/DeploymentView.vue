@@ -137,7 +137,7 @@
                           :title="rankFor(slot.id)"
                           @error="onRankImgError($event)"
                         />
-                        <h3>{{ (slot.name || 'UNKNOWN').toUpperCase() }}</h3>
+                        <h3>{{ displayNameWithRank(slot.name || 'UNKNOWN', rankFor(slot.id)).toUpperCase() }}</h3>
                       </div>
                       <p class="rank-line">
                         <span class="rank">{{ slot.role || 'N/A' }}</span>
@@ -275,7 +275,7 @@
                 :title="rankLabel(p.rank)"
                 @error="onRankImgError($event)"
               />
-              <span class="name">{{ (p.name || 'UNKNOWN').toUpperCase() }}</span>
+              <span class="name">{{ displayNameWithRank(p.name || 'UNKNOWN', rankLabel(p.rank)).toUpperCase() }}</span>
             </div>
             <div class="row-mid">
               <span class="role">{{ p.role || '—' }}</span>
@@ -1556,10 +1556,30 @@ async loadRemote(unitKey) {
 
     sortSlotsByFireteam(slots, fireteams) {
       const list = Array.isArray(slots) ? slots.slice() : [];
-      const order = (Array.isArray(fireteams) ? fireteams : []).map(x => String(x || "").trim()).filter(Boolean);
-      const orderSet = new Set(order);
-      const groups = new Map();
       const unassignedKey = "__unassigned__";
+
+      const normalize = (v) => this.normalizeFireteamKey(v);
+      const orderRaw = (Array.isArray(fireteams) ? fireteams : []).map(x => String(x || "").trim()).filter(Boolean);
+      const orderNorm = [];
+      const seenOrder = new Set();
+      orderRaw.forEach(ft => {
+        const k = normalize(ft);
+        if (!k) return;
+        if (seenOrder.has(k)) return;
+        seenOrder.add(k);
+        orderNorm.push(k);
+      });
+
+      // Force Alpha (1) then Bravo (2) at the top if present anywhere.
+      const preferred = [];
+      const has1 = orderNorm.includes("1") || list.some(s => normalize(s?.fireteam) === "1");
+      const has2 = orderNorm.includes("2") || list.some(s => normalize(s?.fireteam) === "2");
+      if (has1) preferred.push("1");
+      if (has2) preferred.push("2");
+      orderNorm.forEach(k => { if (!preferred.includes(k)) preferred.push(k); });
+
+      const orderSet = new Set(preferred);
+      const groups = new Map();
 
       const push = (k, s) => {
         if (!groups.has(k)) groups.set(k, []);
@@ -1567,8 +1587,8 @@ async loadRemote(unitKey) {
       };
 
       list.forEach(s => {
-        const ft = String(s?.fireteam || "").trim();
-        push(ft || unassignedKey, s);
+        const ftKey = normalize(String(s?.fireteam || "").trim());
+        push(ftKey || unassignedKey, s);
       });
 
       const unknown = [];
@@ -1586,7 +1606,7 @@ async loadRemote(unitKey) {
         return String(a).localeCompare(String(b));
       });
 
-      const finalOrder = [...order, ...unknown, unassignedKey];
+      const finalOrder = [...preferred, ...unknown, unassignedKey];
       const out = [];
       finalOrder.forEach(k => {
         const g = groups.get(k);
@@ -1654,8 +1674,11 @@ async loadRemote(unitKey) {
     titleCase(s) { const t = String(s || "").replace(/[_-]+/g, " ").trim(); if (!t) return ""; return t.replace(/\s+/g," ").toLowerCase().replace(/\b\w/g,m=>m.toUpperCase()); },
 
     fireteamLabel(slot) {
-      const ft = String(slot?.fireteam || "").trim();
-      return ft ? `FIRETEAM ${ft}` : "UNASSIGNED";
+      const ftRaw = String(slot?.fireteam || "").trim();
+      const key = this.normalizeFireteamKey(ftRaw);
+      if (key === "1") return "FIRETEAM ALPHA";
+      if (key === "2") return "FIRETEAM BRAVO";
+      return ftRaw ? `FIRETEAM ${ftRaw}` : "UNASSIGNED";
     },
 
     isFireteamHeader(slot, idx, slots) {
