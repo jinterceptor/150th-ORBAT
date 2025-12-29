@@ -959,7 +959,6 @@ export default {
       }
       return false;
     },
-,
 
     parseCsvDefaults(csvText) {
       const rows = this.csvToRows(csvText);
