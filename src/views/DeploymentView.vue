@@ -1868,11 +1868,13 @@ async loadRemote(unitKey) {
       if (!unit || !unit.slots) return 0;
       return unit.slots.reduce((sum, s) => {
         if (!s.id) return sum;
-        const certPts = this.CERT_POINTS[s.cert] ?? 0;
-        const dispPts = s.disposable ? this.DISPOSABLE_COST : 0; /* fixed */
+        const certKey = String(s.cert || "").trim();
+        const certPts = this.CERT_POINTS[certKey] ?? 0;
+        const dispPts = s.disposable ? this.DISPOSABLE_COST : 0;
         return sum + certPts + dispPts;
       }, 0);
     },
+
 
     wouldExceedCap(unitKey, delta) {
       const unit = this.plan.units.find(u => u.key === unitKey);
@@ -2054,19 +2056,32 @@ async loadRemote(unitKey) {
     onChangeCert(unitKey, slotIdx, nextCert) {
       const uIdx = this.plan.units.findIndex(u => u.key === unitKey);
       if (uIdx < 0) return;
+
       const unit = this.plan.units[uIdx];
       const slot = unit.slots[slotIdx];
-      const prevPts = (this.CERT_POINTS[slot.cert] ?? 0) + (slot.disposable ? this.DISPOSABLE_COST : 0);
-      const nextPts = (this.CERT_POINTS[nextCert] ?? 0) + (slot.disposable ? this.DISPOSABLE_COST : 0);
+
+      const prevKey = String(slot?.cert || "").trim();
+      const nextKey = String(nextCert || "").trim();
+
+      const prevPts = (this.CERT_POINTS[prevKey] ?? 0) + (slot.disposable ? this.DISPOSABLE_COST : 0);
+      const nextPts = (this.CERT_POINTS[nextKey] ?? 0) + (slot.disposable ? this.DISPOSABLE_COST : 0);
+
       const delta = nextPts - prevPts;
-      if (this.wouldExceedCap(unitKey, Math.max(0, delta))) { this.detailError = `Point cap ( ${this.SQUAD_POINT_CAP} ) would be exceeded.`; return; }
+      if (this.wouldExceedCap(unitKey, Math.max(0, delta))) {
+        this.detailError = `Point cap ( ${this.SQUAD_POINT_CAP} ) would be exceeded.`;
+        return;
+      }
+
       this.detailError = "";
       const newSlots = unit.slots.slice();
-      newSlots[slotIdx] = { ...slot, cert: nextCert };
-      const newU = { ...unit, slots: this.sortSlotsForUnit(g, newSlots) };
+      newSlots[slotIdx] = { ...slot, cert: nextKey };
+
+      const newU = { ...unit, slots: this.sortSlotsForUnit(unit, newSlots) };
       this.plan.units = this.plan.units.map((u, i) => (i === uIdx ? newU : u));
       this.persistPlan();
+      this.triggerFlicker(uIdx);
     },
+
 
     onToggleDisposable(unitKey, slotIdx, checked) {
       const uIdx = this.plan.units.findIndex(u => u.key === unitKey);
