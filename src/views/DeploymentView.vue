@@ -25,9 +25,7 @@
               <label class="muted small">Chalk</label>
               <select class="select chalk-picker" v-model="detailKey">
                 <option v-for="u in chalkUnits" :key="u.key" :value="u.key">{{ u.title }}</option>
-              </select>
-              <button class="btn ghost small" @click="fillFromRoster(detailKey)">Reset</button>
-              <button class="btn ghost small" @click="clearGroup(detailKey)">Clear</button>
+              </select>              <button class="btn ghost small" @click="clearGroup(detailKey)">Clear</button>
             </div>
 
             <div class="toolbar-right">
