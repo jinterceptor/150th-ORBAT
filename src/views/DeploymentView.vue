@@ -412,6 +412,10 @@ export default {
       plan: { units: [] },
       picker: { open: false, unitKey: "", slotIdx: -1, query: "", onlyFree: false, sort: "name_asc" },
       personnel: [],
+      troopRoster: [],
+      troopRosterRows: [],
+      rankByTroopKey: {},
+      troopStatusByKey: {},
       STORAGE_KEY: "deploymentPlan2",
       versions: {},
       remoteMeta: {},
@@ -462,7 +466,8 @@ export default {
     },
     filteredPersonnel() {
       const q = this.picker.query.trim().toLowerCase();
-      const active = this.personnel.filter(p => String(p.status || "").trim().toLowerCase() !== "discharged");
+      const pool = (Array.isArray(this.troopRoster) && this.troopRoster.length) ? this.troopRoster : this.personnel;
+      const active = (pool || []).filter(p => String(p.status || "").trim().toLowerCase() !== "discharged");
       const base = active.filter(
         p => !q ||
           (p.name || "").toLowerCase().includes(q) ||
@@ -755,10 +760,20 @@ export default {
           if (!res.ok) throw new Error(`CSV HTTP ${res.status}`);
           const text = await res.text();
           const troopRows = this.parseRefDataTroopRows(text);
-          if (troopRows && troopRows.length) this.mergeTroopListIntoPersonnel(troopRows);
-          await this.hydrateRanksFromMembersMaster();
+          if (troopRows && troopRows.length) {
+            this.troopRosterRows = troopRows.slice();
+            this.troopRoster = this.buildTroopRoster(troopRows);
+          }
           const troopMeta = this.parseRefDataTroopMeta(text);
-          if (troopMeta && Object.keys(troopMeta).length) this.applyRefDataTroopMeta(troopMeta);
+          if (troopMeta && Object.keys(troopMeta).length) {
+            this.troopStatusByKey = troopMeta;
+            this.applyRefDataTroopMeta(troopMeta);
+          }
+          await this.hydrateRanksFromMembersMaster();
+          if (this.troopRosterRows && this.troopRosterRows.length) {
+            this.troopRoster = this.buildTroopRoster(this.troopRosterRows);
+            if (this.rankByTroopKey && Object.keys(this.rankByTroopKey).length) this.applyRankMapToTroopRoster(this.rankByTroopKey);
+          }
           const refDefaults = this.parseRefDataDefaults(text);
           if (Object.keys(refDefaults || {}).length) {
             const updatedRef = this.applyRefDataDefaults(refDefaults);
@@ -786,10 +801,20 @@ export default {
         if (!res.ok) throw new Error(`CSV HTTP ${res.status}`);
         const text = await res.text();
         const troopRows = this.parseRefDataTroopRows(text);
-        if (troopRows && troopRows.length) this.mergeTroopListIntoPersonnel(troopRows);
-        await this.hydrateRanksFromMembersMaster();
+        if (troopRows && troopRows.length) {
+          this.troopRosterRows = troopRows.slice();
+          this.troopRoster = this.buildTroopRoster(troopRows);
+        }
         const troopMeta = this.parseRefDataTroopMeta(text);
-        if (troopMeta && Object.keys(troopMeta).length) this.applyRefDataTroopMeta(troopMeta);
+        if (troopMeta && Object.keys(troopMeta).length) {
+          this.troopStatusByKey = troopMeta;
+          this.applyRefDataTroopMeta(troopMeta);
+        }
+        await this.hydrateRanksFromMembersMaster();
+        if (this.troopRosterRows && this.troopRosterRows.length) {
+          this.troopRoster = this.buildTroopRoster(this.troopRosterRows);
+          if (this.rankByTroopKey && Object.keys(this.rankByTroopKey).length) this.applyRankMapToTroopRoster(this.rankByTroopKey);
+        }
         const defaults = this.parseRefDataDefaults(text);
         const updated = this.applyRefDataDefaults(defaults);
         if (!updated) throw new Error("No matching chalks in RefData CSV.");
@@ -856,6 +881,59 @@ export default {
       return out;
     },
 
+    buildTroopRoster(troopRows) {
+      const rows = Array.isArray(troopRows) ? troopRows : [];
+      const existing = Array.isArray(this.personnel) ? this.personnel : [];
+      const byKey = new Map();
+      for (const p of existing) {
+        const k = this.normalizeTroopKey(p?.name || "");
+        if (k) byKey.set(k, p);
+      }
+
+      const rankMap = this.rankByTroopKey || {};
+      const out = [];
+      const seen = new Set();
+
+      for (const t of rows) {
+        const nameRaw = String(t?.name || "").trim();
+        if (!nameRaw) continue;
+        const status = String(t?.status || "").trim() || "Active";
+        if (String(status).trim().toLowerCase() === "discharged") continue;
+
+        const key = this.normalizeTroopKey(nameRaw);
+        const found = key ? byKey.get(key) : null;
+        const id = found?.id ? String(found.id) : `troop:${key || this.keyFromName(nameRaw)}`;
+        const uniq = key || id;
+        if (seen.has(uniq)) continue;
+        seen.add(uniq);
+
+        const rank = (key && rankMap[key]) ? String(rankMap[key]) : (found?.rank ? String(found.rank) : "");
+
+        out.push({
+          id,
+          name: found?.name ? String(found.name) : nameRaw,
+          rank,
+          status,
+          statusNorm: String(status || "").trim().toLowerCase(),
+          callsign: found?.callsign ? String(found.callsign) : "",
+          role: found?.role ? String(found.role) : "",
+        });
+      }
+
+      return out;
+    },
+
+    applyRankMapToTroopRoster(rankMap) {
+      const map = rankMap || {};
+      if (!Array.isArray(this.troopRoster)) return false;
+      this.troopRoster = this.troopRoster.map(p => {
+        const key = this.normalizeTroopKey(p?.name || "");
+        const r = key ? map[key] : "";
+        return r ? { ...p, rank: String(r) } : p;
+      });
+      return true;
+    },
+
     mergeTroopListIntoPersonnel(troopRows) {
       const rows = Array.isArray(troopRows) ? troopRows : [];
       if (!rows.length) return false;
@@ -897,7 +975,11 @@ export default {
         if (!res.ok) throw new Error(`MembersMaster HTTP ${res.status}`);
         const text = await res.text();
         const rankMap = this.parseMembersMasterRankMap(text);
-        if (rankMap && Object.keys(rankMap).length) this.applyRankMapToPersonnel(rankMap);
+        if (rankMap && Object.keys(rankMap).length) {
+          this.rankByTroopKey = rankMap;
+          this.applyRankMapToPersonnel(rankMap);
+          this.applyRankMapToTroopRoster(rankMap);
+        }
       } catch (e) {
         // Non-fatal: presets + picker should still work without ranks.
         if (!this.apiError) this.apiError = `MembersMaster ranks: ${String(e.message || e)}`;
@@ -1871,6 +1953,12 @@ async loadRemote(unitKey) {
   watch: {
     orbat: { deep: true, handler(newV) {
       this.personnel = this.buildPersonnelPool(newV || []);
+      if (this.troopStatusByKey && Object.keys(this.troopStatusByKey).length) this.applyRefDataTroopMeta(this.troopStatusByKey);
+      if (this.rankByTroopKey && Object.keys(this.rankByTroopKey).length) this.applyRankMapToPersonnel(this.rankByTroopKey);
+      if (Array.isArray(this.troopRosterRows) && this.troopRosterRows.length) {
+        this.troopRoster = this.buildTroopRoster(this.troopRosterRows);
+        if (this.rankByTroopKey && Object.keys(this.rankByTroopKey).length) this.applyRankMapToTroopRoster(this.rankByTroopKey);
+      }
       const oldKey = this.detailKey;
       this.ensureUnitsBuilt(newV || []);
       if (!this.plan.units.find(u => u.key === oldKey) && this.plan.units.length) {
