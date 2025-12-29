@@ -460,7 +460,8 @@ export default {
     },
     filteredPersonnel() {
       const q = this.picker.query.trim().toLowerCase();
-      const base = this.personnel.filter(
+      const active = this.personnel.filter(p => String(p.status || "").trim().toLowerCase() !== "discharged");
+      const base = active.filter(
         p => !q ||
           (p.name || "").toLowerCase().includes(q) ||
           (p.callsign || "").toLowerCase().includes(q) ||
@@ -751,6 +752,8 @@ export default {
           const res = await fetch(url, { cache: "no-store" });
           if (!res.ok) throw new Error(`CSV HTTP ${res.status}`);
           const text = await res.text();
+          const troopMeta = this.parseRefDataTroopMeta(text);
+          if (troopMeta && Object.keys(troopMeta).length) this.applyRefDataTroopMeta(troopMeta);
           const refDefaults = this.parseRefDataDefaults(text);
           if (Object.keys(refDefaults || {}).length) {
             const updatedRef = this.applyRefDataDefaults(refDefaults);
@@ -777,6 +780,8 @@ export default {
         const res = await fetch(url, { cache: "no-store" });
         if (!res.ok) throw new Error(`CSV HTTP ${res.status}`);
         const text = await res.text();
+        const troopMeta = this.parseRefDataTroopMeta(text);
+        if (troopMeta && Object.keys(troopMeta).length) this.applyRefDataTroopMeta(troopMeta);
         const defaults = this.parseRefDataDefaults(text);
         const updated = this.applyRefDataDefaults(defaults);
         if (!updated) throw new Error("No matching chalks in RefData CSV.");
@@ -819,6 +824,58 @@ export default {
         .trim();
     },
 
+
+    normalizeTroopKey(raw) {
+      return this.normalizeNameForMatch(this.stripLeadingRank(raw)).replace(/"/g, "").trim();
+    },
+
+    parseRefDataTroopMeta(csvText) {
+      const rows = this.csvToRows(csvText);
+      if (rows.length < 2) return {};
+      const headers = rows[0].map(h => String(h || "").trim());
+      const troopIdx = this.findHeader(headers, /^\s*troop\s*list\s*$/i);
+      const statusIdx = this.findHeader(headers, /^\s*troop\s*status\s*$/i);
+      if (troopIdx < 0) return {};
+
+      const out = {};
+      for (let i = 1; i < rows.length; i++) {
+        const n = String(rows[i]?.[troopIdx] || "").trim();
+        if (!n) continue;
+        const s = statusIdx >= 0 ? String(rows[i]?.[statusIdx] || "").trim() : "";
+        out[this.normalizeTroopKey(n)] = s;
+      }
+      return out;
+    },
+
+    purgeDischargedAssignments(dischargedIds) {
+      if (!dischargedIds || dischargedIds.size === 0) return;
+      this.plan.units = (this.plan.units || []).map(u => {
+        const slots = (u.slots || []).map(s => {
+          const id = s?.id != null ? String(s.id) : "";
+          if (!id || !dischargedIds.has(id)) return s;
+          return { ...s, id: null, name: null, cert: "", disposable: false, origStatus: "VACANT" };
+        });
+        return { ...u, slots };
+      });
+    },
+
+    applyRefDataTroopMeta(metaByTroopKey) {
+      const meta = metaByTroopKey || {};
+      this.personnel = (this.personnel || []).map(p => {
+        const key = this.normalizeTroopKey(p?.name || "");
+        const status = meta[key] != null && String(meta[key]).trim() ? String(meta[key]).trim() : (p.status || "");
+        return { ...p, status, statusNorm: String(status || "").trim().toLowerCase() };
+      });
+
+      const discharged = new Set();
+      for (const p of (this.personnel || [])) {
+        if (String(p.statusNorm || "").trim().toLowerCase() === "discharged" && p.id != null) {
+          discharged.add(String(p.id));
+        }
+      }
+      this.purgeDischargedAssignments(discharged);
+      return discharged;
+    },
     stripLeadingRank(raw) {
       const s = String(raw || "").trim();
       const parts = s.split(/\s+/).filter(Boolean);
@@ -853,15 +910,13 @@ export default {
 
         if (!nameCell && !roleCell) continue;
 
-        // Section header rows like: "Chalk 1 Fireteam 2"
-        if (nameCell && /chalk\s*\d+/i.test(nameCell) && !roleCell) {
-          const ctx = this.parseChalkFireteamCtx(nameCell);
-          if (ctx.chalk != null) curChalk = ctx.chalk;
-          if (ctx.fireteam != null) curFireteam = ctx.fireteam;
-          continue;
-        }
-        if (roleCell && /chalk\s*\d+/i.test(roleCell) && !nameCell) {
-          const ctx = this.parseChalkFireteamCtx(roleCell);
+        // Section header rows like: "Chalk 1 Fireteam 2" (never a trooper)
+        const nameHdr = this.parseChalkFireteamCtx(nameCell);
+        const roleHdr = this.parseChalkFireteamCtx(roleCell);
+        const isNameHeader = nameHdr.chalk != null && !String(nameHdr.rest || "").trim();
+        const isRoleHeader = roleHdr.chalk != null && !String(roleHdr.rest || "").trim();
+        if (isNameHeader || isRoleHeader) {
+          const ctx = isNameHeader ? nameHdr : roleHdr;
           if (ctx.chalk != null) curChalk = ctx.chalk;
           if (ctx.fireteam != null) curFireteam = ctx.fireteam;
           continue;
@@ -894,12 +949,14 @@ export default {
       const people = this.personnel || [];
       const exact = new Map();
       const norank = new Map();
-
+      const shortMap = new Map();
       for (const p of people) {
         const k1 = this.normalizeNameForMatch(p.name);
         if (k1) exact.set(k1, p);
         const k2 = this.normalizeNameForMatch(this.stripLeadingRank(p.name));
         if (k2) norank.set(k2, p);
+        const k3 = this.normalizeTroopKey(p.name);
+        if (k3) shortMap.set(k3, p);
       }
 
       const findPerson = (sheetName) => {
@@ -914,7 +971,9 @@ export default {
         if (exact.has(kNoRank)) return exact.get(kNoRank);
         if (norank.has(kNoRank)) return norank.get(kNoRank);
 
-        // Small, forgiving fallback for minor formatting mismatches.
+        const kShort = this.normalizeTroopKey(raw);
+        if (shortMap.has(kShort)) return shortMap.get(kShort);
+
         for (const [kk, pp] of exact.entries()) {
           if (kk.includes(k) || k.includes(kk) || kk.includes(kNoRank) || kNoRank.includes(kk)) return pp;
         }
@@ -928,7 +987,8 @@ export default {
         if (!rows) return u;
 
         const slots = rows.map(r => {
-          const person = findPerson(r.name);
+          const found = findPerson(r.name);
+          const person = found && String(found.statusNorm || "").trim().toLowerCase() === "discharged" ? null : found;
           const slot = {
             id: person?.id ? String(person.id) : null,
             name: person?.name ? String(person.name) : String(r.name || "").trim(),
