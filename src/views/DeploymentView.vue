@@ -1785,10 +1785,13 @@ async loadRemote(unitKey) {
       const list = slots || this.currentUnit?.slots || [];
       if (idx === 0) return true;
       const prev = list[idx - 1];
-      const a = String(prev?.fireteam || "").trim();
-      const b = String(slot?.fireteam || "").trim();
+
+      const a = this.normalizeFireteamKey(prev?.fireteam);
+      const b = this.normalizeFireteamKey(slot?.fireteam);
+
       return a !== b;
     },
+
     buildPersonnelPool(orbat) {
       const pool = [];
       (orbat || []).forEach(sq => {
