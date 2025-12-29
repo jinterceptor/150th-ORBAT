@@ -794,18 +794,18 @@ export default {
           if (Object.keys(refDefaults || {}).length) {
             const updatedRef = this.applyRefDataDefaults(refDefaults);
             if (updatedRef) {
-              this.persistPlan(); this.triggerFlicker(0);
+              this.sanitizeAllChalkFireteams(); this.persistPlan(); this.triggerFlicker(0);
               this.debugInfo = "Reset from RefData sheet defaults."; return;
             }
           }
           const defaults = this.parseCsvDefaults(text);
           const updated = this.applyCsvDefaults(defaults);
           if (!updated) throw new Error("No matching chalks in CSV.");
-          this.persistPlan(); this.triggerFlicker(0);
+          this.sanitizeAllChalkFireteams(); this.persistPlan(); this.triggerFlicker(0);
           this.debugInfo = "Reset from latest CSV defaults."; return;
         } catch (e) { this.apiError = `CSV fallback: ${String(e.message || e)}`; }
       }
-      this.ensureUnitsBuilt(this.orbat); this.persistPlan(); this.triggerFlicker(0);
+      this.ensureUnitsBuilt(this.orbat); this.sanitizeAllChalkFireteams(); this.persistPlan(); this.triggerFlicker(0);
       if (!this.debugInfo) this.debugInfo = "Fallback defaults applied (ORBAT/template).";
     },
 
@@ -1651,6 +1651,26 @@ async loadRemote(unitKey) {
       return this.sortSlotsByRole(list);
     },
 
+    sanitizeUnitFireteams(unit) {
+      const u = unit || {};
+      const title = String(u.title || u.squad || "").trim();
+      if (!this.isChalk(title)) return u;
+
+      const fireteams = Array.isArray(u.fireteams) ? u.fireteams : [];
+      const normalizedSlots = (Array.isArray(u.slots) ? u.slots : []).map(s => ({
+        ...s,
+        fireteam: this.normalizeFireteamKey(s?.fireteam || s?.fireTeam || s?.ft || ""),
+        origStatus: s?.id ? "FILLED" : (String(s?.origStatus || "").toUpperCase() === "CLOSED" ? "CLOSED" : "VACANT"),
+      }));
+
+      return { ...u, slots: this.sortSlotsByFireteam(normalizedSlots, fireteams) };
+    },
+
+    sanitizeAllChalkFireteams() {
+      this.plan.units = (this.plan.units || []).map(u => this.sanitizeUnitFireteams(u));
+    },
+
+
     extractCertsFromMember(member) {
       const arr = member?.certifications;
       if (Array.isArray(arr) && arr.length) {
@@ -1779,12 +1799,29 @@ async loadRemote(unitKey) {
       const s = String(raw || "").trim();
       if (!s) return "";
       const k = s.toLowerCase();
-      if (k === "1" || k === "alpha" || /\bfire\s*team\s*1\b/.test(k) || /\bft\s*1\b/.test(k)) return "1";
-      if (k === "2" || k === "bravo" || /\bfire\s*team\s*2\b/.test(k) || /\bft\s*2\b/.test(k)) return "2";
+
+      // Canonicalize all Alpha/Bravo variants to 1/2 so UI never creates duplicate subsets.
+      if (
+        k === "1" ||
+        /\balpha\b/.test(k) ||
+        /\bfire\s*team\s*1\b/.test(k) ||
+        /\bfireteam\s*1\b/.test(k) ||
+        /\bft\s*1\b/.test(k)
+      ) return "1";
+
+      if (
+        k === "2" ||
+        /\bbravo\b/.test(k) ||
+        /\bfire\s*team\s*2\b/.test(k) ||
+        /\bfireteam\s*2\b/.test(k) ||
+        /\bft\s*2\b/.test(k)
+      ) return "2";
+
       const n = k.match(/^\s*(\d+)\s*$/);
       if (n && n[1]) return String(n[1]);
       return s;
     },
+
 
     fireteamLabel(slot) {
       const ftRaw = String(slot?.fireteam || "").trim();
