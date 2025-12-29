@@ -768,46 +768,24 @@ export default {
     },
 
     async resetPlan() {
-      this.detailError = ""; this.apiError = ""; this.debugInfo = "";
-      const url = this.defaultsCsvUrl || (typeof window !== "undefined" ? window.DEFAULTS_CSV_URL : "");
-      if (url) {
-        try {
-          const res = await fetch(url, { cache: "no-store" });
-          if (!res.ok) throw new Error(`CSV HTTP ${res.status}`);
-          const text = await res.text();
-          const troopRows = this.parseRefDataTroopRows(text);
-          if (troopRows && troopRows.length) {
-            this.troopRosterRows = troopRows.slice();
-            this.troopRoster = this.buildTroopRoster(troopRows);
-          }
-          const troopMeta = this.parseRefDataTroopMeta(text);
-          if (troopMeta && Object.keys(troopMeta).length) {
-            this.troopStatusByKey = troopMeta;
-            this.applyRefDataTroopMeta(troopMeta);
-          }
-          await this.hydrateRanksFromMembersMaster();
-          if (this.troopRosterRows && this.troopRosterRows.length) {
-            this.troopRoster = this.buildTroopRoster(this.troopRosterRows);
-            if (this.rankByTroopKey && Object.keys(this.rankByTroopKey).length) this.applyRankMapToTroopRoster(this.rankByTroopKey);
-          }
-          const refDefaults = this.parseRefDataDefaults(text);
-          if (Object.keys(refDefaults || {}).length) {
-            const updatedRef = this.applyRefDataDefaults(refDefaults);
-            if (updatedRef) {
-              this.sanitizeAllChalkFireteams(); this.persistPlan(); this.triggerFlicker(0);
-              this.debugInfo = "Reset from RefData sheet defaults."; return;
-            }
-          }
-          const defaults = this.parseCsvDefaults(text);
-          const updated = this.applyCsvDefaults(defaults);
-          if (!updated) throw new Error("No matching chalks in CSV.");
-          this.sanitizeAllChalkFireteams(); this.persistPlan(); this.triggerFlicker(0);
-          this.debugInfo = "Reset from latest CSV defaults."; return;
-        } catch (e) { this.apiError = `CSV fallback: ${String(e.message || e)}`; }
+      // Match first-load behavior exactly: rebuild from ORBAT, then hydrate RefData presets.
+      this.detailError = "";
+      this.apiError = "";
+      this.debugInfo = "";
+
+      this.personnel = this.buildPersonnelPool(this.orbat);
+      this.ensureUnitsBuilt(this.orbat);
+
+      try {
+        await this.hydrateDefaultsFromRefData();
+      } finally {
+        // Even if RefData fetch fails, ensure ORBAT baseline is persisted.
+        this.persistPlan();
+        this.triggerFlicker(0);
+        if (!this.debugInfo) this.debugInfo = "Reset to ORBAT defaults.";
       }
-      this.ensureUnitsBuilt(this.orbat); this.sanitizeAllChalkFireteams(); this.persistPlan(); this.triggerFlicker(0);
-      if (!this.debugInfo) this.debugInfo = "Fallback defaults applied (ORBAT/template).";
     },
+
 
     async hydrateDefaultsFromRefData() {
       try {
