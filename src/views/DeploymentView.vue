@@ -1273,7 +1273,7 @@ export default {
         }));
         const padded = this.isChalk(u.title) ? slots : slots;
         touched++;
-        return { ...u, slots: this.sortSlotsByRole(padded) };
+        return { ...u, slots: this.sortSlotsForUnit(u, padded) };
       });
       if (touched > 0) {
         this.plan.units = nextUnits;
@@ -1516,7 +1516,7 @@ async loadRemote(unitKey) {
         const curr = this.plan.units[idx];
         const toApply = (nextSlots.length ? nextSlots : curr.slots).map(s => ({...s, origStatus: s.id ? "FILLED" : "VACANT"}));
         const padded = this.isChalk(curr.title) ? toApply : toApply;
-        const nextUnit = { ...curr, slots: this.sortSlotsByRole(padded) };
+        const nextUnit = { ...curr, slots: this.sortSlotsForUnit(curr, padded) };
         this.plan.units = this.plan.units.map((u, i) => (i === idx ? nextUnit : u));
         this.versions = { ...this.versions, [unitKey]: Number(data.version || 0) };
         this.triggerFlicker(0);
@@ -1630,6 +1630,15 @@ async loadRemote(unitKey) {
       });
 
       return out;
+    },
+
+    sortSlotsForUnit(unit, slots) {
+      const list = Array.isArray(slots) ? slots.slice() : [];
+      if (unit && this.isChalk(unit.title || unit.squad || "")) {
+        const fireteams = Array.isArray(unit.fireteams) ? unit.fireteams : [];
+        return this.sortSlotsByFireteam(list, fireteams);
+      }
+      return this.sortSlotsByRole(list);
     },
     extractCertsFromMember(member) {
       const arr = member?.certifications;
@@ -1776,9 +1785,8 @@ async loadRemote(unitKey) {
           slots.push(slot);
         });
       });
-      let finalSlots = this.sortSlotsByRole(slots);
-      if (this.isChalk(unit.squad)) finalSlots = finalSlots;
-      return { key: unitKey, title: unit.squad, slots: finalSlots };
+      let finalSlots = this.sortSlotsForUnit(unit, slots);
+return { key: unitKey, title: unit.squad, slots: finalSlots };
     },
 
     calcUnitPoints(unit) {
@@ -1840,17 +1848,17 @@ async loadRemote(unitKey) {
 
         const newSrcSlots = srcGroup.slots.slice();
         newSrcSlots[from.slotIdx] = { ...newSrcSlots[from.slotIdx], id: tmp.id, name: tmp.name, cert: tmp.cert || this.ensureSlotCert(tmp, tmp.role), disposable: !!tmp.disposable };
-        const newSrc = { ...srcGroup, slots: this.sortSlotsByRole(newSrcSlots) };
+        const newSrc = { ...srcGroup, slots: this.sortSlotsForUnit(srcGroup, newSrcSlots) };
 
         const newGSlots = g.slots.slice();
         newGSlots[this.picker.slotIdx] = newTarget;
-        const newG = { ...g, slots: this.sortSlotsByRole(newGSlots) };
+        const newG = { ...g, slots: this.sortSlotsForUnit(g, newGSlots) };
 
         this.plan.units = this.plan.units.map((u, i) => (i === gIdx ? newG : i === srcIdx ? newSrc : u));
       } else {
         const newSlots = g.slots.slice();
         newSlots[this.picker.slotIdx] = { ...target, id: p.id, name: p.name, role: target.role || p.role || "", cert: chosenCertDefault, disposable: false };
-        const newG = { ...g, slots: this.sortSlotsByRole(newSlots) };
+        const newG = { ...g, slots: this.sortSlotsForUnit(g, newSlots) };
         this.plan.units = this.plan.units.map((u, i) => (i === gIdx ? newG : u));
       }
 
@@ -1962,7 +1970,7 @@ async loadRemote(unitKey) {
       const g = this.plan.units[idx];
       const newSlots = g.slots.slice();
       newSlots.splice(slotIdx, 1);
-      const newG = { ...g, slots: this.sortSlotsByRole(newSlots) };
+      const newG = { ...g, slots: this.sortSlotsForUnit(g, newSlots) };
       this.plan.units = this.plan.units.map((u, i) => (i === idx ? newG : u));
       this.persistPlan();
       this.detailError = "";
@@ -1980,7 +1988,7 @@ async loadRemote(unitKey) {
       this.detailError = "";
       const newSlots = unit.slots.slice();
       newSlots[slotIdx] = { ...slot, cert: nextCert };
-      const newU = { ...unit, slots: this.sortSlotsByRole(newSlots) };
+      const newU = { ...unit, slots: this.sortSlotsForUnit(unit, newSlots) };
       this.plan.units = this.plan.units.map((u, i) => (i === uIdx ? newU : u));
       this.persistPlan();
     },
