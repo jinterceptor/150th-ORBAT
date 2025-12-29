@@ -75,11 +75,11 @@
 
             <div class="squad-members-grid">
               <template v-for="(slot, sIdx) in currentUnit.slots" :key="`wrap-${detailKey}-${sIdx}`">
-       <div v-if="isFireteamHeader(slot, sIdx, currentUnit.slots)" class="fireteam-row">
+              <div v-if="isFireteamHeader(slot, sIdx, currentUnit.slots)" :key="`ft-${detailKey}-${sIdx}`" class="fireteam-row">
                 <span class="fireteam-title">{{ fireteamLabel(slot) }}</span>
               </div>
               <div
-                
+                :key="`slot-${detailKey}-${sIdx}`"
                 class="member-card"
                 :class="{ vacant: slot.origStatus === 'VACANT' && !slot.id, closed: slot.origStatus === 'CLOSED' }"
               >
@@ -604,7 +604,6 @@ export default {
           id: s?.id ?? null,
           name: s?.name ?? null,
           role: s?.role || "",
-          fireteam: s?.fireteam || s?.element || "",
           cert: s?.cert || "",
           disposable: !!s?.disposable,
         }));
@@ -619,7 +618,6 @@ export default {
         id: s?.id ?? null,
         name: s?.name ?? null,
         role: s?.role || "",
-        fireteam: s?.fireteam || s?.element || "",
         cert: s?.cert || "",
         disposable: !!s?.disposable
       }));
@@ -802,7 +800,7 @@ export default {
         }));
         const padded = this.isChalk(u.title) ? this.padSlots(slots, this.MIN_CHALK_SLOTS) : slots;
         touched++;
-        return { ...u, slots: this.sortSlotsByRole(padded, u.fireteams || []) };
+        return { ...u, slots: this.sortSlotsByRole(padded) };
       });
       if (touched > 0) {
         this.plan.units = nextUnits;
@@ -1006,7 +1004,6 @@ export default {
       id: s?.id ?? null,
       name: s?.name ?? null,
       role: s?.role || "",
-      fireteam: s?.fireteam || s?.element || "",
       cert: s?.cert || "",
       disposable: !!s?.disposable,
     })),
@@ -1043,32 +1040,10 @@ async loadRemote(unitKey) {
         if (!nextSlots.length) nextSlots = this.extractSlotsFromAny(data);
         const idx = this.plan.units.findIndex(u => u.key === unitKey);
         if (idx === -1) return;
-const curr = this.plan.units[idx];
-
-const maxLen = Math.max((curr.slots || []).length, (nextSlots || []).length);
-const merged = [];
-for (let i = 0; i < maxLen; i++) {
-  const base = (curr.slots || [])[i] || {};
-  const inc = (nextSlots || [])[i] || {};
-  merged.push({
-    ...base,
-    ...inc,
-    role: (inc.role || base.role || ""),
-    fireteam: (inc.fireteam || base.fireteam || base.element || ""),
-    cert: (inc.cert || base.cert || ""),
-    disposable: (typeof inc.disposable === "boolean" ? inc.disposable : !!base.disposable),
-    id: (inc.id ?? base.id ?? null),
-    name: (inc.name ?? base.name ?? null),
-    origStatus: (inc.id || base.id) ? "FILLED" : (base.origStatus || "VACANT"),
-  });
-}
-
-const toApply = (nextSlots.length ? merged : (curr.slots || [])).map(s => ({
-  ...s,
-  origStatus: s.id ? "FILLED" : (s.origStatus || "VACANT"),
-}));
-const padded = this.isChalk(curr.title) ? this.padSlots(toApply, this.MIN_CHALK_SLOTS) : toApply;
-const nextUnit = { ...curr, slots: this.sortSlotsByRole(padded, curr.fireteams || []) };
+        const curr = this.plan.units[idx];
+        const toApply = (nextSlots.length ? nextSlots : curr.slots).map(s => ({...s, origStatus: s.id ? "FILLED" : "VACANT"}));
+        const padded = this.isChalk(curr.title) ? this.padSlots(toApply, this.MIN_CHALK_SLOTS) : toApply;
+        const nextUnit = { ...curr, slots: this.sortSlotsByRole(padded) };
         this.plan.units = this.plan.units.map((u, i) => (i === idx ? nextUnit : u));
         this.versions = { ...this.versions, [unitKey]: Number(data.version || 0) };
         this.triggerFlicker(0);
@@ -1118,47 +1093,7 @@ const nextUnit = { ...curr, slots: this.sortSlotsByRole(padded, curr.fireteams |
       return t;
     },
     rolePriority(role) { const key = this.normalizeRole(role); const idx = this.ROLE_ORDER.indexOf(key); return idx === -1 ? 10000 : idx; },
-
-sortSlotsByRole(slots, fireteams = []) {
-  const list = Array.isArray(slots) ? slots.slice() : [];
-  const declared = (Array.isArray(fireteams) ? fireteams : [])
-    .map(ft => this.normalizeFireteamName(ft))
-    .filter(Boolean);
-  const declaredIdx = new Map(declared.map((l, i) => [l, i]));
-
-  const fireteamWeight = (label) => {
-    const l = this.normalizeFireteamName(label || "");
-    if (!l) return 9999;
-    if (declaredIdx.has(l)) return declaredIdx.get(l);
-    if (l === "HEADQUARTERS") return -10;
-    const m = l.match(/^FIRETEAM\s+(\d+)$/i);
-    if (m) return Number(m[1]) || 0;
-    // ALPHA/BRAVO/CHARLIE/DELTA ordering
-    const abcd = ["ALPHA","BRAVO","CHARLIE","DELTA"];
-    const idx = abcd.indexOf(l);
-    if (idx !== -1) return 20 + idx;
-    return 200 + l.charCodeAt(0);
-  };
-
-  return list
-    .map((s, i) => {
-      const statusW = s?.origStatus === "CLOSED" ? 2 : (s?.id ? 0 : 1);
-      const ftLabel = this.fireteamLabel(s, i, list) || "";
-      return { s, i, statusW, ftW: fireteamWeight(ftLabel), roleW: this.rolePriority(s?.role || "") };
-    })
-    .sort((a, b) =>
-      a.ftW - b.ftW ||
-      a.statusW - b.statusW ||
-      a.roleW - b.roleW ||
-      a.i - b.i
-    )
-    .map(x => x.s);
-},
-
-sortSlotsByFireteam(slots, fireteams = []) {
-  return this.sortSlotsByRole(slots, fireteams);
-},
-
+    sortSlotsByRole(slots) { return slots.map((s,i)=>({s,i,p:this.rolePriority(s.role)})).sort((a,b)=>a.p-b.p||a.i-b.i).map(x=>x.s); },
     extractCertsFromMember(member) {
       const arr = member?.certifications;
       if (Array.isArray(arr) && arr.length) {
@@ -1279,7 +1214,6 @@ sortSlotsByFireteam(slots, fireteams = []) {
     buildUnitFromOrbatByKey(orbat, unitKey) {
       const unit = (orbat || []).find(sq => this.keyFromName(sq.squad) === unitKey);
       if (!unit) return null;
-      const fireteams = (unit.fireteams || []).map(ft => String(ft.name || "").trim()).filter(Boolean);
       const slots = [];
       (unit.fireteams || []).forEach(ft => {
         (ft.slots || []).forEach(s => {
@@ -1291,9 +1225,9 @@ sortSlotsByFireteam(slots, fireteams = []) {
           slots.push(slot);
         });
       });
-      let finalSlots = this.sortSlotsByRole(slots, fireteams);
+      let finalSlots = this.sortSlotsByRole(slots);
       if (this.isChalk(unit.squad)) finalSlots = this.padSlots(finalSlots, this.MIN_CHALK_SLOTS);
-      return { key: unitKey, title: unit.squad, slots: finalSlots, fireteams };
+      return { key: unitKey, title: unit.squad, slots: finalSlots };
     },
 
     calcUnitPoints(unit) {
@@ -1355,17 +1289,17 @@ sortSlotsByFireteam(slots, fireteams = []) {
 
         const newSrcSlots = srcGroup.slots.slice();
         newSrcSlots[from.slotIdx] = { ...newSrcSlots[from.slotIdx], id: tmp.id, name: tmp.name, cert: tmp.cert || this.ensureSlotCert(tmp, tmp.role), disposable: !!tmp.disposable };
-        const newSrc = { ...srcGroup, slots: this.sortSlotsByRole(newSrcSlots, srcGroup.fireteams || []) };
+        const newSrc = { ...srcGroup, slots: this.sortSlotsByRole(newSrcSlots) };
 
         const newGSlots = g.slots.slice();
         newGSlots[this.picker.slotIdx] = newTarget;
-        const newG = { ...g, slots: this.sortSlotsByRole(newGSlots, g.fireteams || []) };
+        const newG = { ...g, slots: this.sortSlotsByRole(newGSlots) };
 
         this.plan.units = this.plan.units.map((u, i) => (i === gIdx ? newG : i === srcIdx ? newSrc : u));
       } else {
         const newSlots = g.slots.slice();
         newSlots[this.picker.slotIdx] = { ...target, id: p.id, name: p.name, role: target.role || p.role || "", cert: chosenCertDefault, disposable: false };
-        const newG = { ...g, slots: this.sortSlotsByRole(newSlots, g.fireteams || []) };
+        const newG = { ...g, slots: this.sortSlotsByRole(newSlots) };
         this.plan.units = this.plan.units.map((u, i) => (i === gIdx ? newG : u));
       }
 
@@ -1455,7 +1389,7 @@ sortSlotsByFireteam(slots, fireteams = []) {
       const g = this.plan.units[idx];
       const newSlots = g.slots.slice();
       newSlots.push({ id: null, name: null, role: "", origStatus: "VACANT", cert: "", disposable: false });
-      const newG = { ...g, slots: this.sortSlotsByRole(newSlots, g.fireteams || []) };
+      const newG = { ...g, slots: this.sortSlotsByRole(newSlots) };
       this.plan.units = this.plan.units.map((u, i) => (i === idx ? newG : u));
       this.persistPlan();
     },
@@ -1466,7 +1400,7 @@ sortSlotsByFireteam(slots, fireteams = []) {
       const g = this.plan.units[idx];
       const newSlots = g.slots.slice();
       newSlots.splice(slotIdx, 1);
-      const newG = { ...g, slots: this.sortSlotsByRole(newSlots, g.fireteams || []) };
+      const newG = { ...g, slots: this.sortSlotsByRole(newSlots) };
       this.plan.units = this.plan.units.map((u, i) => (i === idx ? newG : u));
       this.persistPlan();
       this.detailError = "";
@@ -1484,7 +1418,7 @@ sortSlotsByFireteam(slots, fireteams = []) {
       this.detailError = "";
       const newSlots = unit.slots.slice();
       newSlots[slotIdx] = { ...slot, cert: nextCert };
-      const newU = { ...unit, slots: this.sortSlotsByRole(newSlots, unit.fireteams || []) };
+      const newU = { ...unit, slots: this.sortSlotsByRole(newSlots) };
       this.plan.units = this.plan.units.map((u, i) => (i === uIdx ? newU : u));
       this.persistPlan();
     },
@@ -1622,12 +1556,12 @@ sortSlotsByFireteam(slots, fireteams = []) {
 /* picker */
 .squad-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center}
 .squad-modal{background-color:#050811;color:#dce6f1;width:95vw;max-width:1200px;max-height:90vh;border-radius:.8rem;box-shadow:0 0 24px rgba(0,0,0,0.9);padding:1.1rem 1.2rem 1.2rem;display:flex;flex-direction:column}
-.squad-modal.compact{max-width:1000px;width:min(1000px,96vw);max-height:86vh;min-height:0;overflow:hidden}
+.squad-modal.compact{max-width:1000px}
 .squad-modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem}
 .squad-close{background:transparent;border:1px solid rgba(220,230,241,0.4);color:#dce6f1;border-radius:999px;padding:.2rem .75rem;font-size:1rem;cursor:pointer}
 .compact-header{display:flex;justify-content:space-between;align-items:center}
-.picker-toolbar{display:flex;gap:.8rem;align-items:center;padding:.4rem 0 .2rem;flex-wrap:wrap}
-.search{flex:1;min-width:220px;padding:.4rem .6rem;border:1px solid rgba(30,144,255,.45);border-radius:.35rem;background:#040a14;color:#e6f3ff}
+.picker-toolbar{display:flex;gap:.8rem;align-items:center;padding:.4rem 0 .2rem}
+.search{flex:1;min-width:260px;padding:.4rem .6rem;border:1px solid rgba(30,144,255,.45);border-radius:.35rem;background:#040a14;color:#e6f3ff}
 .sort{min-width:180px;background:#040a14;border:1px solid rgba(30,144,255,.45);color:#e6f3ff;border-radius:.35rem;padding:.3rem .4rem}
 .check{display:flex;align-items:center;gap:.4rem}.check .check-label{opacity:.9}
 .smallish{font-size:.9rem}
