@@ -3,5 +3,10 @@
     "username": "jinter",
     "role": "staff",
     "displayName": "M. Jinter"
+  },
+  {
+    "username": "test",
+    "role": "staff",
+    "displayName": "T. Test"
   }
 ]
