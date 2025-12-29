@@ -1673,6 +1673,17 @@ async loadRemote(unitKey) {
     },
     titleCase(s) { const t = String(s || "").replace(/[_-]+/g, " ").trim(); if (!t) return ""; return t.replace(/\s+/g," ").toLowerCase().replace(/\b\w/g,m=>m.toUpperCase()); },
 
+    normalizeFireteamKey(raw) {
+      const s = String(raw || "").trim();
+      if (!s) return "";
+      const k = s.toLowerCase();
+      if (k === "1" || k === "alpha" || /\bfire\s*team\s*1\b/.test(k) || /\bft\s*1\b/.test(k)) return "1";
+      if (k === "2" || k === "bravo" || /\bfire\s*team\s*2\b/.test(k) || /\bft\s*2\b/.test(k)) return "2";
+      const n = k.match(/^\s*(\d+)\s*$/);
+      if (n && n[1]) return String(n[1]);
+      return s;
+    },
+
     fireteamLabel(slot) {
       const ftRaw = String(slot?.fireteam || "").trim();
       const key = this.normalizeFireteamKey(ftRaw);
