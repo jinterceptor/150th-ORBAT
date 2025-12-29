@@ -629,6 +629,7 @@ export default {
           id: s?.id ?? null,
           name: s?.name ?? null,
           role: s?.role || "",
+          fireteam: this.normalizeFireteamKey(s?.fireteam || s?.fireTeam || s?.ft || ""),
           cert: s?.cert || "",
           disposable: !!s?.disposable,
         }));
@@ -643,6 +644,7 @@ export default {
         id: s?.id ?? null,
         name: s?.name ?? null,
         role: s?.role || "",
+        fireteam: this.normalizeFireteamKey(s?.fireteam || s?.fireTeam || s?.ft || ""),
         cert: s?.cert || "",
         disposable: !!s?.disposable
       }));
@@ -1477,6 +1479,7 @@ export default {
       id: s?.id ?? null,
       name: s?.name ?? null,
       role: s?.role || "",
+      fireteam: this.normalizeFireteamKey(s?.fireteam || s?.fireTeam || s?.ft || ""),
       cert: s?.cert || "",
       disposable: !!s?.disposable,
     })),
@@ -1514,7 +1517,11 @@ async loadRemote(unitKey) {
         const idx = this.plan.units.findIndex(u => u.key === unitKey);
         if (idx === -1) return;
         const curr = this.plan.units[idx];
-        const toApply = (nextSlots.length ? nextSlots : curr.slots).map(s => ({...s, origStatus: s.id ? "FILLED" : "VACANT"}));
+        const toApply = (nextSlots.length ? nextSlots : curr.slots).map(s => ({
+          ...s,
+          fireteam: this.normalizeFireteamKey(s?.fireteam || s?.fireTeam || s?.ft || ""),
+          origStatus: s.id ? "FILLED" : "VACANT"
+        }));
         const padded = this.isChalk(curr.title) ? toApply : toApply;
         const nextUnit = { ...curr, slots: this.sortSlotsForUnit(curr, padded) };
         this.plan.units = this.plan.units.map((u, i) => (i === idx ? nextUnit : u));
