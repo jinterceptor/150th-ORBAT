@@ -429,7 +429,7 @@ export default {
       CERT_POINTS: {
         Rifleman: 0, Grenadier: 1, Breacher: 1, RTO: 1,
         "Machine Gunner": 2, Marksman: 2, "Combat Engineer": 2,
-        "Anti Tank": 3, Corpsmen: 3, PJ: 3, Pilot: 3, NCO: 0, Officer: 0,
+        "Anti Tank": 3, Corpsmen: 0, PJ: 3, Pilot: 3, NCO: 0, Officer: 0,
       },
       certLabels: [
         "Rifleman","Machine Gunner","Anti Tank","Corpsmen","Combat Engineer",
@@ -1273,7 +1273,7 @@ export default {
         }));
         const padded = this.isChalk(u.title) ? slots : slots;
         touched++;
-        return { ...u, slots: this.sortSlotsForUnit(u, padded) };
+        return { ...u, slots: this.sortSlotsByRole(padded) };
       });
       if (touched > 0) {
         this.plan.units = nextUnits;
@@ -1516,7 +1516,7 @@ async loadRemote(unitKey) {
         const curr = this.plan.units[idx];
         const toApply = (nextSlots.length ? nextSlots : curr.slots).map(s => ({...s, origStatus: s.id ? "FILLED" : "VACANT"}));
         const padded = this.isChalk(curr.title) ? toApply : toApply;
-        const nextUnit = { ...curr, slots: this.sortSlotsForUnit(curr, padded) };
+        const nextUnit = { ...curr, slots: this.sortSlotsByRole(padded) };
         this.plan.units = this.plan.units.map((u, i) => (i === idx ? nextUnit : u));
         this.versions = { ...this.versions, [unitKey]: Number(data.version || 0) };
         this.triggerFlicker(0);
@@ -1631,15 +1631,6 @@ async loadRemote(unitKey) {
 
       return out;
     },
-
-    sortSlotsForUnit(unit, slots) {
-      const list = Array.isArray(slots) ? slots.slice() : [];
-      if (unit && this.isChalk(unit.title || unit.squad || "")) {
-        const fireteams = Array.isArray(unit.fireteams) ? unit.fireteams : [];
-        return this.sortSlotsByFireteam(list, fireteams);
-      }
-      return this.sortSlotsByRole(list);
-    },
     extractCertsFromMember(member) {
       const arr = member?.certifications;
       if (Array.isArray(arr) && arr.length) {
@@ -1690,9 +1681,23 @@ async loadRemote(unitKey) {
     },
     certPointSuffix(label) { const pts = this.CERT_POINTS[label] ?? 0; return pts ? ` (+${pts})` : ""; },
     ensureSlotCert(slot, fallbackRole = "") {
-      if (slot.cert) return slot.cert;
-      const certs = this.getCertsForPersonId(slot.id) || [];
-      return certs[0] || this.titleCase(String(fallbackRole || slot.role || ""));
+      const existing = String(slot?.cert || "").trim();
+      const labels = Array.isArray(this.certLabels) ? this.certLabels : [];
+
+      if (existing && labels.includes(existing)) return existing;
+
+      const r = String(fallbackRole || slot?.role || "").trim().toLowerCase();
+
+      // Enforced defaults
+      if (r.includes("squad lead") || r.includes("fireteam lead") || r.includes("team leader")) return "NCO";
+      if (r.includes("corpsman")) return "Corpsmen";
+
+      const certs = this.getCertsForPersonId(slot?.id) || [];
+      if (certs[0] && labels.includes(certs[0])) return certs[0];
+
+      const title = this.titleCase(String(fallbackRole || slot?.role || ""));
+      if (title && labels.includes(title)) return title;
+      return "";
     },
     titleCase(s) { const t = String(s || "").replace(/[_-]+/g, " ").trim(); if (!t) return ""; return t.replace(/\s+/g," ").toLowerCase().replace(/\b\w/g,m=>m.toUpperCase()); },
 
@@ -1785,8 +1790,9 @@ async loadRemote(unitKey) {
           slots.push(slot);
         });
       });
-      let finalSlots = this.sortSlotsForUnit(unit, slots);
-return { key: unitKey, title: unit.squad, slots: finalSlots };
+      let finalSlots = this.sortSlotsByRole(slots);
+      if (this.isChalk(unit.squad)) finalSlots = finalSlots;
+      return { key: unitKey, title: unit.squad, slots: finalSlots };
     },
 
     calcUnitPoints(unit) {
@@ -1848,17 +1854,17 @@ return { key: unitKey, title: unit.squad, slots: finalSlots };
 
         const newSrcSlots = srcGroup.slots.slice();
         newSrcSlots[from.slotIdx] = { ...newSrcSlots[from.slotIdx], id: tmp.id, name: tmp.name, cert: tmp.cert || this.ensureSlotCert(tmp, tmp.role), disposable: !!tmp.disposable };
-        const newSrc = { ...srcGroup, slots: this.sortSlotsForUnit(srcGroup, newSrcSlots) };
+        const newSrc = { ...srcGroup, slots: this.sortSlotsByRole(newSrcSlots) };
 
         const newGSlots = g.slots.slice();
         newGSlots[this.picker.slotIdx] = newTarget;
-        const newG = { ...g, slots: this.sortSlotsForUnit(g, newGSlots) };
+        const newG = { ...g, slots: this.sortSlotsByRole(newGSlots) };
 
         this.plan.units = this.plan.units.map((u, i) => (i === gIdx ? newG : i === srcIdx ? newSrc : u));
       } else {
         const newSlots = g.slots.slice();
         newSlots[this.picker.slotIdx] = { ...target, id: p.id, name: p.name, role: target.role || p.role || "", cert: chosenCertDefault, disposable: false };
-        const newG = { ...g, slots: this.sortSlotsForUnit(g, newSlots) };
+        const newG = { ...g, slots: this.sortSlotsByRole(newSlots) };
         this.plan.units = this.plan.units.map((u, i) => (i === gIdx ? newG : u));
       }
 
@@ -1970,7 +1976,7 @@ return { key: unitKey, title: unit.squad, slots: finalSlots };
       const g = this.plan.units[idx];
       const newSlots = g.slots.slice();
       newSlots.splice(slotIdx, 1);
-      const newG = { ...g, slots: this.sortSlotsForUnit(g, newSlots) };
+      const newG = { ...g, slots: this.sortSlotsByRole(newSlots) };
       this.plan.units = this.plan.units.map((u, i) => (i === idx ? newG : u));
       this.persistPlan();
       this.detailError = "";
@@ -1988,7 +1994,7 @@ return { key: unitKey, title: unit.squad, slots: finalSlots };
       this.detailError = "";
       const newSlots = unit.slots.slice();
       newSlots[slotIdx] = { ...slot, cert: nextCert };
-      const newU = { ...unit, slots: this.sortSlotsForUnit(unit, newSlots) };
+      const newU = { ...unit, slots: this.sortSlotsByRole(newSlots) };
       this.plan.units = this.plan.units.map((u, i) => (i === uIdx ? newU : u));
       this.persistPlan();
     },
