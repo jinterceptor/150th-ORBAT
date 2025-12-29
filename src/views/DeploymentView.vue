@@ -1157,7 +1157,7 @@ sortSlotsByRole(slots, fireteams = []) {
 
 sortSlotsByFireteam(slots, fireteams = []) {
   return this.sortSlotsByRole(slots, fireteams);
-},,
+},
 
     extractCertsFromMember(member) {
       const arr = member?.certifications;
