@@ -1273,7 +1273,7 @@ export default {
         }));
         const padded = this.isChalk(u.title) ? slots : slots;
         touched++;
-        return { ...u, slots: this.sortSlotsByRole(padded) };
+        return { ...u, slots: this.sortSlotsForUnit(curr, padded) };
       });
       if (touched > 0) {
         this.plan.units = nextUnits;
@@ -1516,7 +1516,7 @@ async loadRemote(unitKey) {
         const curr = this.plan.units[idx];
         const toApply = (nextSlots.length ? nextSlots : curr.slots).map(s => ({...s, origStatus: s.id ? "FILLED" : "VACANT"}));
         const padded = this.isChalk(curr.title) ? toApply : toApply;
-        const nextUnit = { ...curr, slots: this.sortSlotsByRole(padded) };
+        const nextUnit = { ...curr, slots: this.sortSlotsForUnit(curr, padded) };
         this.plan.units = this.plan.units.map((u, i) => (i === idx ? nextUnit : u));
         this.versions = { ...this.versions, [unitKey]: Number(data.version || 0) };
         this.triggerFlicker(0);
@@ -1625,12 +1625,24 @@ async loadRemote(unitKey) {
       finalOrder.forEach(k => {
         const g = groups.get(k);
         if (!g || !g.length) return;
-        const sorted = typeof this.sortSlotsByRole === "function" ? this.sortSlotsByRole(g) : g;
+        const sorted = typeof this.sortSlotsWithinFireteam === "function" ? this.sortSlotsWithinFireteam(g) : g;
         out.push(...sorted);
       });
 
       return out;
     },
+
+    sortSlotsForUnit(unit, slots) {
+      const u = unit || {};
+      const title = String(u.title || u.squad || "").trim();
+      const list = Array.isArray(slots) ? slots : [];
+      if (this.isChalk(title)) {
+        const fireteams = Array.isArray(u.fireteams) ? u.fireteams : [];
+        return this.sortSlotsByFireteam(list, fireteams);
+      }
+      return this.sortSlotsByRole(list);
+    },
+
     extractCertsFromMember(member) {
       const arr = member?.certifications;
       if (Array.isArray(arr) && arr.length) {
@@ -1700,6 +1712,55 @@ async loadRemote(unitKey) {
       return "";
     },
     titleCase(s) { const t = String(s || "").replace(/[_-]+/g, " ").trim(); if (!t) return ""; return t.replace(/\s+/g," ").toLowerCase().replace(/\b\w/g,m=>m.toUpperCase()); },
+
+    rankWeight(rankRaw) {
+      const r = this.rankLabel(rankRaw);
+      if (!r) return 0;
+      const k = String(r).replace(/[^a-z0-9]/gi, "").toUpperCase();
+
+      // Enlisted / Marine-ish
+      const map = {
+        PVT: 1, PV2: 2, PFC: 3, LCPL: 4, CPL: 5, SGT: 6,
+        SSG: 7, SSGT: 7, GYSGT: 8, GYSG: 8,
+        SFC: 9, MSG: 10, MSgt: 10, "1SG": 10, FIRSTSGT: 10,
+        MGYSGT: 11, MGYSG: 11, SGTMAJ: 12, SGM: 12, SMA: 13
+      };
+
+      // Navy corpsman ranks commonly used in sheets
+      const navy = { HN: 3, HM3: 4, HM2: 5, HM1: 6, HMC: 7, HMCS: 8, HSC: 9, HSM: 10 };
+
+      // Officers (generic)
+      const off = { WO1: 20, CWO2: 21, CWO3: 22, CWO4: 23, CWO5: 24, "2LT": 25, "1LT": 26, LT: 26, CPT: 27, MAJ: 28, LTC: 29, COL: 30, GEN: 31 };
+
+      return map[k] || navy[k] || off[k] || 0;
+    },
+
+    slotSortPriority(roleRaw) {
+      const r = String(roleRaw || "").trim().toLowerCase();
+      if (!r) return 10;
+      if (r.includes("squad lead")) return 0;
+      if (r.includes("fireteam lead") || r.includes("team leader")) return 1;
+      if (r.includes("corpsman")) return 2;
+      return 10;
+    },
+
+    sortSlotsWithinFireteam(slots) {
+      const list = Array.isArray(slots) ? slots.slice() : [];
+      return list.sort((a, b) => {
+        const pa = this.slotSortPriority(a?.role);
+        const pb = this.slotSortPriority(b?.role);
+        if (pa !== pb) return pa - pb;
+
+        // After role-priority: higher rank first.
+        const ra = this.rankWeight(this.rankFor(a?.id));
+        const rb = this.rankWeight(this.rankFor(b?.id));
+        if (ra !== rb) return rb - ra;
+
+        const na = String(a?.name || "").toLowerCase();
+        const nb = String(b?.name || "").toLowerCase();
+        return na.localeCompare(nb);
+      });
+    },
 
     normalizeFireteamKey(raw) {
       const s = String(raw || "").trim();
@@ -1854,17 +1915,17 @@ async loadRemote(unitKey) {
 
         const newSrcSlots = srcGroup.slots.slice();
         newSrcSlots[from.slotIdx] = { ...newSrcSlots[from.slotIdx], id: tmp.id, name: tmp.name, cert: tmp.cert || this.ensureSlotCert(tmp, tmp.role), disposable: !!tmp.disposable };
-        const newSrc = { ...srcGroup, slots: this.sortSlotsByRole(newSrcSlots) };
+        const newSrc = { ...srcGroup, slots: this.sortSlotsForUnit(srcGroup, newSrcSlots) };
 
         const newGSlots = g.slots.slice();
         newGSlots[this.picker.slotIdx] = newTarget;
-        const newG = { ...g, slots: this.sortSlotsByRole(newGSlots) };
+        const newG = { ...g, slots: this.sortSlotsForUnit(g, newGSlots) };
 
         this.plan.units = this.plan.units.map((u, i) => (i === gIdx ? newG : i === srcIdx ? newSrc : u));
       } else {
         const newSlots = g.slots.slice();
         newSlots[this.picker.slotIdx] = { ...target, id: p.id, name: p.name, role: target.role || p.role || "", cert: chosenCertDefault, disposable: false };
-        const newG = { ...g, slots: this.sortSlotsByRole(newSlots) };
+        const newG = { ...g, slots: this.sortSlotsForUnit(g, newSlots) };
         this.plan.units = this.plan.units.map((u, i) => (i === gIdx ? newG : u));
       }
 
@@ -1976,7 +2037,7 @@ async loadRemote(unitKey) {
       const g = this.plan.units[idx];
       const newSlots = g.slots.slice();
       newSlots.splice(slotIdx, 1);
-      const newG = { ...g, slots: this.sortSlotsByRole(newSlots) };
+      const newG = { ...g, slots: this.sortSlotsForUnit(g, newSlots) };
       this.plan.units = this.plan.units.map((u, i) => (i === idx ? newG : u));
       this.persistPlan();
       this.detailError = "";
@@ -1994,7 +2055,7 @@ async loadRemote(unitKey) {
       this.detailError = "";
       const newSlots = unit.slots.slice();
       newSlots[slotIdx] = { ...slot, cert: nextCert };
-      const newU = { ...unit, slots: this.sortSlotsByRole(newSlots) };
+      const newU = { ...unit, slots: this.sortSlotsForUnit(g, newSlots) };
       this.plan.units = this.plan.units.map((u, i) => (i === uIdx ? newU : u));
       this.persistPlan();
     },
