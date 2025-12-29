@@ -213,7 +213,8 @@
             </div>
 
             <div class="actions-row">
-              <button type="button" class="btn ghost" @click.stop="addSlot(detailKey)">Add slot</button>
+              <button type="button" class="btn ghost" @click.stop="addSlot(detailKey, '1')">Add Alpha slot</button>
+              <button type="button" class="btn ghost" @click.stop="addSlot(detailKey, '2')">Add Bravo slot</button>
 
               <span class="divider" />
               <button
@@ -1214,7 +1215,7 @@ export default {
         });
 
         const padded = this.isChalk(u.title)
-          ? this.padSlots(slots, this.MIN_CHALK_SLOTS).map(s => ({ ...s, fireteam: String(s.fireteam || "") }))
+          ? slots.map(s => ({ ...s, fireteam: String(s.fireteam || "") }))
           : slots;
 
         touched++;
@@ -1270,7 +1271,7 @@ export default {
           id: null, name: null, role: this.titleCase(row.role || ""), origStatus: "VACANT",
           cert: row.cert || "", disposable: !!row.disposable,
         }));
-        const padded = this.isChalk(u.title) ? this.padSlots(slots, this.MIN_CHALK_SLOTS) : slots;
+        const padded = this.isChalk(u.title) ? slots : slots;
         touched++;
         return { ...u, slots: this.sortSlotsByRole(padded) };
       });
@@ -1514,7 +1515,7 @@ async loadRemote(unitKey) {
         if (idx === -1) return;
         const curr = this.plan.units[idx];
         const toApply = (nextSlots.length ? nextSlots : curr.slots).map(s => ({...s, origStatus: s.id ? "FILLED" : "VACANT"}));
-        const padded = this.isChalk(curr.title) ? this.padSlots(toApply, this.MIN_CHALK_SLOTS) : toApply;
+        const padded = this.isChalk(curr.title) ? toApply : toApply;
         const nextUnit = { ...curr, slots: this.sortSlotsByRole(padded) };
         this.plan.units = this.plan.units.map((u, i) => (i === idx ? nextUnit : u));
         this.versions = { ...this.versions, [unitKey]: Number(data.version || 0) };
@@ -1755,7 +1756,7 @@ async loadRemote(unitKey) {
           });
         });
         let finalSlots = this.sortSlotsByFireteam(slots, fireteams);
-        if (this.isChalk(sq.squad)) finalSlots = this.padSlots(finalSlots, this.MIN_CHALK_SLOTS);
+        if (this.isChalk(sq.squad)) finalSlots = finalSlots;
         if (this.isPointsUnit(sq.squad)) units.push({ key, title: sq.squad, slots: finalSlots, fireteams });
       });
       return units;
@@ -1776,7 +1777,7 @@ async loadRemote(unitKey) {
         });
       });
       let finalSlots = this.sortSlotsByRole(slots);
-      if (this.isChalk(unit.squad)) finalSlots = this.padSlots(finalSlots, this.MIN_CHALK_SLOTS);
+      if (this.isChalk(unit.squad)) finalSlots = finalSlots;
       return { key: unitKey, title: unit.squad, slots: finalSlots };
     },
 
@@ -1927,15 +1928,32 @@ async loadRemote(unitKey) {
       this.detailError = "";
     },
 
-    addSlot(unitKey) {
+    addSlot(unitKey, fireteamKey) {
       const idx = this.plan.units.findIndex(u => u.key === unitKey);
       if (idx < 0) return;
       const g = this.plan.units[idx];
       const newSlots = g.slots.slice();
-      newSlots.push({ id: null, name: null, role: "", origStatus: "VACANT", cert: "", disposable: false });
-      const newG = { ...g, slots: this.sortSlotsByRole(newSlots) };
+
+      const ft = this.normalizeFireteamKey(fireteamKey);
+      newSlots.push({
+        id: null,
+        name: null,
+        role: "",
+        fireteam: ft || "",
+        origStatus: "VACANT",
+        cert: "",
+        disposable: false
+      });
+
+      const fireteams = Array.isArray(g.fireteams) ? g.fireteams : [];
+      const sorted = this.isChalk(g.title)
+        ? this.sortSlotsByFireteam(newSlots, fireteams)
+        : this.sortSlotsByRole(newSlots);
+
+      const newG = { ...g, slots: sorted };
       this.plan.units = this.plan.units.map((u, i) => (i === idx ? newG : u));
       this.persistPlan();
+      this.triggerFlicker(idx);
     },
 
     removeSlot(unitKey, slotIdx) {
