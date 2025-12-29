@@ -1747,6 +1747,10 @@ async loadRemote(unitKey) {
     sortSlotsWithinFireteam(slots) {
       const list = Array.isArray(slots) ? slots.slice() : [];
       return list.sort((a, b) => {
+        const aVac = (!a?.id) || String(a?.origStatus || "").toUpperCase() === "VACANT";
+        const bVac = (!b?.id) || String(b?.origStatus || "").toUpperCase() === "VACANT";
+        if (aVac !== bVac) return aVac ? 1 : -1;
+
         const pa = this.slotSortPriority(a?.role);
         const pb = this.slotSortPriority(b?.role);
         if (pa !== pb) return pa - pb;
@@ -1761,6 +1765,7 @@ async loadRemote(unitKey) {
         return na.localeCompare(nb);
       });
     },
+
 
     normalizeFireteamKey(raw) {
       const s = String(raw || "").trim();
