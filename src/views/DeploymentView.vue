@@ -1216,12 +1216,13 @@ export default {
           return slot;
         });
 
-        const padded = this.isChalk(u.title)
-          ? slots.map(s => ({ ...s, fireteam: String(s.fireteam || "") }))
-          : slots;
+        const normalized = slots.map(s => ({
+          ...s,
+          fireteam: this.normalizeFireteamKey(s?.fireteam || s?.fireTeam || s?.ft || "")
+        }));
 
         touched++;
-        return { ...u, slots: padded };
+        return { ...u, slots: this.sortSlotsForUnit(u, normalized) };
       });
 
       if (touched > 0) {
@@ -1275,7 +1276,7 @@ export default {
         }));
         const padded = this.isChalk(u.title) ? slots : slots;
         touched++;
-        return { ...u, slots: this.sortSlotsForUnit(curr, padded) };
+        return { ...u, slots: this.sortSlotsForUnit(u, padded) };
       });
       if (touched > 0) {
         this.plan.units = nextUnits;
