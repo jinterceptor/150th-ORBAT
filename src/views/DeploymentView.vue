@@ -372,6 +372,9 @@ function readCookie(name) {
   } catch { return ''; }
 }
 
+const DEFAULT_REF_DATA_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=107253735&single=true&output=csv";
+
+
 /* optional Netlify Identity */
 async function netlifyIdentityToken() {
   try {
@@ -392,7 +395,7 @@ export default {
     execUrl: { type: String, default: "" },
     secret: { type: String, default: "PLEX" },
     token:  { type: String, default: "" },
-    defaultsCsvUrl: { type: String, default: "" },
+    defaultsCsvUrl: { type: String, default: () => (typeof window !== "undefined" && window.DEFAULTS_CSV_URL) ? window.DEFAULTS_CSV_URL : DEFAULT_REF_DATA_CSV_URL },
     rankIconBase: { type: String, default: () => (typeof window !== 'undefined' && window.RANK_ICON_BASE) ? window.RANK_ICON_BASE : '/ranks' },
     rankIconExt:  { type: String, default: 'png' },
   },
@@ -443,6 +446,7 @@ export default {
     this.ensureDeviceId();
     this.personnel = this.buildPersonnelPool(this.orbat);
     this.ensureUnitsBuilt(this.orbat);
+    await this.hydrateDefaultsFromRefData();
     this.identityToken = await netlifyIdentityToken();
   },
   mounted() { this.triggerFlicker(0); },
@@ -747,6 +751,14 @@ export default {
           const res = await fetch(url, { cache: "no-store" });
           if (!res.ok) throw new Error(`CSV HTTP ${res.status}`);
           const text = await res.text();
+          const refDefaults = this.parseRefDataDefaults(text);
+          if (Object.keys(refDefaults || {}).length) {
+            const updatedRef = this.applyRefDataDefaults(refDefaults);
+            if (updatedRef) {
+              this.persistPlan(); this.triggerFlicker(0);
+              this.debugInfo = "Reset from RefData sheet defaults."; return;
+            }
+          }
           const defaults = this.parseCsvDefaults(text);
           const updated = this.applyCsvDefaults(defaults);
           if (!updated) throw new Error("No matching chalks in CSV.");
@@ -757,6 +769,197 @@ export default {
       this.ensureUnitsBuilt(this.orbat); this.persistPlan(); this.triggerFlicker(0);
       if (!this.debugInfo) this.debugInfo = "Fallback defaults applied (ORBAT/template).";
     },
+
+    async hydrateDefaultsFromRefData() {
+      try {
+        const url = this.defaultsCsvUrl || DEFAULT_REF_DATA_CSV_URL;
+        if (!url) return;
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) throw new Error(`CSV HTTP ${res.status}`);
+        const text = await res.text();
+        const defaults = this.parseRefDataDefaults(text);
+        const updated = this.applyRefDataDefaults(defaults);
+        if (!updated) throw new Error("No matching chalks in RefData CSV.");
+        this.persistPlan();
+        this.triggerFlicker(0);
+        if (!this.debugInfo) this.debugInfo = "Loaded chalk presets from RefData sheet.";
+      } catch (e) {
+        if (!this.apiError) this.apiError = `RefData presets: ${String(e.message || e)}`;
+      }
+    },
+
+    parseChalkFireteamCtx(text) {
+      const raw = String(text || "");
+      let rest = raw;
+      let chalk = null;
+      let fireteam = null;
+
+      const cm = rest.match(/chalk\s*(\d+)/i);
+      if (cm) {
+        chalk = parseInt(cm[1], 10);
+        rest = rest.replace(cm[0], " ");
+      }
+      const fm = rest.match(/fire\s*team\s*(\d+)/i) || rest.match(/\bft\s*(\d+)/i);
+      if (fm) {
+        fireteam = parseInt(fm[1], 10);
+        rest = rest.replace(fm[0], " ");
+      }
+
+      rest = rest.replace(/[|\-–—:]+/g, " ").replace(/\s+/g, " ").trim();
+      return { chalk, fireteam, rest };
+    },
+
+    normalizeNameForMatch(raw) {
+      return String(raw || "")
+        .replace(/[“”]/g, '"')
+        .replace(/[’]/g, "'")
+        .toLowerCase()
+        .replace(/[^a-z0-9"'.\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    },
+
+    stripLeadingRank(raw) {
+      const s = String(raw || "").trim();
+      const parts = s.split(/\s+/).filter(Boolean);
+      if (!parts.length) return s;
+      const token = parts[0].replace(/[^a-z0-9]/gi, "").toUpperCase();
+      const known = new Set([
+        "PVT","PV2","PFC","LCPL","CPL","SGT","SSG","SSGT","GYSGT","SFC","MSG","1SG","SMA",
+        "WO1","CWO2","CWO3","CWO4","CWO5",
+        "2LT","1LT","LT","CPT","MAJ","LTC","COL","GEN",
+        "HM3","HM2","HM1","HMC","HMSC",
+        "SPC","SPC2","SPC3","SPC4","SPC5","SPC6","SPC7"
+      ]);
+      if (!known.has(token)) return s;
+      return parts.slice(1).join(" ").trim();
+    },
+
+    parseRefDataDefaults(csvText) {
+      const rows = this.csvToRows(csvText);
+      if (rows.length < 2) return {};
+      const headers = rows[0].map(h => String(h || "").trim());
+      const nameIdx = this.findHeader(headers, /^\s*squad\s*slots\s*$/i);
+      const roleIdx = this.findHeader(headers, /^\s*squad\s*roles\s*$/i);
+      if (nameIdx < 0 || roleIdx < 0) return {};
+
+      let curChalk = null;
+      let curFireteam = null;
+      const out = {};
+
+      for (let i = 1; i < rows.length; i++) {
+        const nameCell = String(rows[i]?.[nameIdx] || "").trim();
+        const roleCell = String(rows[i]?.[roleIdx] || "").trim();
+
+        if (!nameCell && !roleCell) continue;
+
+        // Section header rows like: "Chalk 1 Fireteam 2"
+        if (nameCell && /chalk\s*\d+/i.test(nameCell) && !roleCell) {
+          const ctx = this.parseChalkFireteamCtx(nameCell);
+          if (ctx.chalk != null) curChalk = ctx.chalk;
+          if (ctx.fireteam != null) curFireteam = ctx.fireteam;
+          continue;
+        }
+        if (roleCell && /chalk\s*\d+/i.test(roleCell) && !nameCell) {
+          const ctx = this.parseChalkFireteamCtx(roleCell);
+          if (ctx.chalk != null) curChalk = ctx.chalk;
+          if (ctx.fireteam != null) curFireteam = ctx.fireteam;
+          continue;
+        }
+
+        const roleCtx = this.parseChalkFireteamCtx(roleCell);
+        const nameCtx = this.parseChalkFireteamCtx(nameCell);
+
+        const chalk = roleCtx.chalk ?? nameCtx.chalk ?? curChalk;
+        const fireteam = roleCtx.fireteam ?? nameCtx.fireteam ?? curFireteam;
+        if (roleCtx.chalk != null) curChalk = roleCtx.chalk;
+        else if (nameCtx.chalk != null) curChalk = nameCtx.chalk;
+        if (roleCtx.fireteam != null) curFireteam = roleCtx.fireteam;
+        else if (nameCtx.fireteam != null) curFireteam = nameCtx.fireteam;
+
+        if (chalk == null) continue;
+
+        const key = `chalk ${chalk}`.toLowerCase();
+        const role = (roleCtx.rest || roleCell).trim();
+        if (!nameCell) continue;
+
+        if (!out[key]) out[key] = [];
+        out[key].push({ name: nameCell, role, fireteam: fireteam != null ? String(fireteam) : "" });
+      }
+
+      return out;
+    },
+
+    applyRefDataDefaults(defaultsByChalk) {
+      const people = this.personnel || [];
+      const exact = new Map();
+      const norank = new Map();
+
+      for (const p of people) {
+        const k1 = this.normalizeNameForMatch(p.name);
+        if (k1) exact.set(k1, p);
+        const k2 = this.normalizeNameForMatch(this.stripLeadingRank(p.name));
+        if (k2) norank.set(k2, p);
+      }
+
+      const findPerson = (sheetName) => {
+        const raw = String(sheetName || "").trim();
+        if (!raw) return null;
+
+        const k = this.normalizeNameForMatch(raw);
+        if (exact.has(k)) return exact.get(k);
+        if (norank.has(k)) return norank.get(k);
+
+        const kNoRank = this.normalizeNameForMatch(this.stripLeadingRank(raw));
+        if (exact.has(kNoRank)) return exact.get(kNoRank);
+        if (norank.has(kNoRank)) return norank.get(kNoRank);
+
+        // Small, forgiving fallback for minor formatting mismatches.
+        for (const [kk, pp] of exact.entries()) {
+          if (kk.includes(k) || k.includes(kk) || kk.includes(kNoRank) || kNoRank.includes(kk)) return pp;
+        }
+        return null;
+      };
+
+      let touched = 0;
+      const nextUnits = (this.plan.units || []).map(u => {
+        const key = String(u.title || "").trim().toLowerCase();
+        const rows = defaultsByChalk[key];
+        if (!rows) return u;
+
+        const slots = rows.map(r => {
+          const person = findPerson(r.name);
+          const slot = {
+            id: person?.id ? String(person.id) : null,
+            name: person?.name ? String(person.name) : String(r.name || "").trim(),
+            role: this.titleCase(String(r.role || "")),
+            fireteam: String(r.fireteam || ""),
+            origStatus: (person || r.name) ? "FILLED" : "VACANT",
+            cert: "",
+            disposable: false,
+          };
+          slot.cert = this.ensureSlotCert(slot, slot.role);
+          return slot;
+        });
+
+        const padded = this.isChalk(u.title)
+          ? this.padSlots(slots, this.MIN_CHALK_SLOTS).map(s => ({ ...s, fireteam: String(s.fireteam || "") }))
+          : slots;
+
+        touched++;
+        return { ...u, slots: padded };
+      });
+
+      if (touched > 0) {
+        this.plan.units = nextUnits;
+        if (!this.plan.units.find(x => x.key === this.detailKey) && this.plan.units.length) {
+          this.detailKey = this.plan.units[0].key;
+        }
+        return true;
+      }
+      return false;
+    },
+,
 
     parseCsvDefaults(csvText) {
       const rows = this.csvToRows(csvText);
