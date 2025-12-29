@@ -1871,20 +1871,37 @@ async loadRemote(unitKey) {
     buildUnitFromOrbatByKey(orbat, unitKey) {
       const unit = (orbat || []).find(sq => this.keyFromName(sq.squad) === unitKey);
       if (!unit) return null;
+
+      const fireteamsRaw = (unit.fireteams || []).map(ft => this.normalizeFireteamKey(String(ft?.name || "").trim())).filter(Boolean);
+      const fireteams = [];
+      const seen = new Set();
+      fireteamsRaw.forEach(k => { if (!seen.has(k)) { seen.add(k); fireteams.push(k); } });
+
       const slots = [];
       (unit.fireteams || []).forEach(ft => {
+        const ftKey = this.normalizeFireteamKey(String(ft?.name || "").trim());
         (ft.slots || []).forEach(s => {
           const status = String(s?.status || (s?.member ? "FILLED" : "VACANT")).toUpperCase();
           const origStatus = ["VACANT", "CLOSED"].includes(status) ? status : "FILLED";
           const member = s?.member || null;
-          const slot = { id: member?.id ? String(member.id) : null, name: member?.name || null, role: s?.role || member?.slot || "", fireteam: String(ft.name || "").trim(), origStatus, cert: "", disposable: false };
+          const slot = {
+            id: member?.id ? String(member.id) : null,
+            name: member?.name || null,
+            role: s?.role || member?.slot || "",
+            fireteam: ftKey || "",
+            origStatus,
+            cert: "",
+            disposable: false
+          };
           if (slot.id) slot.cert = this.ensureSlotCert(slot, slot.role);
           slots.push(slot);
         });
       });
-      let finalSlots = this.sortSlotsByRole(slots);
-      if (this.isChalk(unit.squad)) finalSlots = finalSlots;
-      return { key: unitKey, title: unit.squad, slots: finalSlots };
+
+      let finalSlots = this.sortSlotsByFireteam(slots, fireteams);
+      if (this.isChalk(unit.squad)) finalSlots = this.padSlots(finalSlots, this.MIN_CHALK_SLOTS);
+
+      return { key: unitKey, title: unit.squad, slots: finalSlots, fireteams };
     },
 
     calcUnitPoints(unit) {
@@ -2124,12 +2141,33 @@ async loadRemote(unitKey) {
     },
 
     fillFromRoster(unitKey) {
-      const rebuilt = this.buildUnitFromOrbatByKey(this.orbat, unitKey);
-      if (!rebuilt) { this.detailError = "No matching unit in ORBAT."; return; }
+      const rebuiltBase = this.buildUnitFromOrbatByKey(this.orbat, unitKey);
+      if (!rebuiltBase) { this.detailError = "No matching unit in ORBAT."; return; }
       const idx = this.plan.units.findIndex(u => u.key === unitKey);
       if (idx < 0) return;
-      const keepLen = Math.max(this.plan.units[idx].slots.length, rebuilt.slots.length);
-      while (rebuilt.slots.length < keepLen) rebuilt.slots.push({ id: null, name: null, role: "", origStatus: "VACANT", cert: "", disposable: false });
+
+      const curr = this.plan.units[idx];
+      const keepLen = Math.max((curr.slots || []).length, (rebuiltBase.slots || []).length);
+
+      let rebuilt = {
+        ...rebuiltBase,
+        fireteams: Array.isArray(curr.fireteams) && curr.fireteams.length ? curr.fireteams : (rebuiltBase.fireteams || []),
+      };
+
+      while ((rebuilt.slots || []).length < keepLen) {
+        rebuilt.slots.push({
+          id: null,
+          name: null,
+          role: "",
+          fireteam: "",
+          origStatus: "VACANT",
+          cert: "",
+          disposable: false
+        });
+      }
+
+      rebuilt = this.sanitizeUnitFireteams(rebuilt);
+
       this.plan.units = this.plan.units.map((u, i) => (i === idx ? rebuilt : u));
       this.persistPlan();
       this.detailError = "";
