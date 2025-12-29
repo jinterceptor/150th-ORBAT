@@ -1554,8 +1554,9 @@ async loadRemote(unitKey) {
 .checkbox-dot{width:10px;height:10px;background:rgba(120,255,170,.95);border-radius:2px;display:block}
 
 /* picker */
-.squad-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center}
-.squad-modal{background-color:#050811;color:#dce6f1;width:95vw;max-width:1200px;max-height:90vh;border-radius:.8rem;box-shadow:0 0 24px rgba(0,0,0,0.9);padding:1.1rem 1.2rem 1.2rem;display:flex;flex-direction:column}
+.squad-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;box-sizing:border-box;overflow:auto}
+@media (max-height:740px){.squad-overlay{align-items:flex-start}}
+.squad-modal{background-color:#050811;color:#dce6f1;width:95vw;max-width:1200px;max-height:calc(100dvh - 2rem - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));border-radius:.8rem;box-shadow:0 0 24px rgba(0,0,0,0.9);padding:1.1rem 1.2rem 1.2rem;display:flex;flex-direction:column;overflow:hidden}
 .squad-modal.compact{max-width:1000px}
 .squad-modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem}
 .squad-close{background:transparent;border:1px solid rgba(220,230,241,0.4);color:#dce6f1;border-radius:999px;padding:.2rem .75rem;font-size:1rem;cursor:pointer}
@@ -1594,7 +1595,7 @@ async loadRemote(unitKey) {
 
 
 /* Picker list: show a real scrollbar */
-.squad-modal-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;scrollbar-gutter:stable both-edges;padding-right:.35rem}
+.squad-modal-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-gutter:stable both-edges;padding-right:.35rem}
 .squad-modal-scroll::-webkit-scrollbar{width:10px}
 .squad-modal-scroll::-webkit-scrollbar-thumb{background:rgba(158,197,230,0.35);border-radius:999px}
 .squad-modal-scroll::-webkit-scrollbar-track{background:rgba(0,0,0,0.22)}
