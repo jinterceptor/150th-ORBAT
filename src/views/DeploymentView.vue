@@ -80,10 +80,10 @@
               </div>
               <div
                 class="member-card"
-                :class="{ vacant: !slot.id && slot.origStatus !== 'CLOSED', closed: slot.origStatus === 'CLOSED' }"
+                :class="{ vacant: slot.origStatus === 'VACANT' && !slot.id, closed: slot.origStatus === 'CLOSED' }"
               >
                 <!-- VACANT / CLOSED -->
-                <template v-if="(!slot.id && slot.origStatus !== 'CLOSED') || slot.origStatus === 'CLOSED'">
+                <template v-if="slot.origStatus === 'VACANT' && !slot.id || slot.origStatus === 'CLOSED'">
                   <div class="member-header">
                     <div class="member-header-text">
                       <h3>{{ (slot.origStatus || 'VACANT').toUpperCase() }}</h3>
@@ -410,6 +410,7 @@ export default {
       plan: { units: [] },
       picker: { open: false, unitKey: "", slotIdx: -1, query: "", onlyFree: false, sort: "name_asc" },
       personnel: [],
+      troopRoster: [],
       STORAGE_KEY: "deploymentPlan2",
       versions: {},
       remoteMeta: {},
@@ -460,7 +461,8 @@ export default {
     },
     filteredPersonnel() {
       const q = this.picker.query.trim().toLowerCase();
-      const active = this.personnel.filter(p => String(p.status || "").trim().toLowerCase() !== "discharged");
+      const pool = (this.troopRoster && this.troopRoster.length) ? this.troopRoster : this.personnel;
+      const active = pool.filter(p => String(p.status || "").trim().toLowerCase() !== "discharged");
       const base = active.filter(
         p => !q ||
           (p.name || "").toLowerCase().includes(q) ||
@@ -833,86 +835,64 @@ export default {
       return this.normalizeNameForMatch(this.stripLeadingRank(raw)).replace(/"/g, "").trim();
     },
 
-
     parseRefDataTroopRows(csvText) {
       const rows = this.csvToRows(csvText);
       if (rows.length < 2) return [];
       const headers = rows[0].map(h => String(h || "").trim());
       const troopIdx = this.findHeader(headers, /^\s*troop\s*list\s*$/i);
-      const statusIdx = this.findHeader(headers, /^\s*troop\s*status\s*$/i, true);
+      const statusIdx = this.findHeader(headers, /^\s*troop\s*status\s*$/i);
       if (troopIdx < 0) return [];
 
       const out = [];
       for (let i = 1; i < rows.length; i++) {
         const name = String(rows[i]?.[troopIdx] || "").trim();
         if (!name) continue;
+        // Defensive: never treat section headers as troops
         if (/^\s*chalk\s*\d+\s*fire\s*team\s*\d+\s*$/i.test(name)) continue;
-        const status = statusIdx >= 0 ? String(rows[i]?.[statusIdx] || "").trim() : "";
-        out.push({ name, status });
+
+        const statusRaw = statusIdx >= 0 ? String(rows[i]?.[statusIdx] || "").trim() : "";
+        const status = statusRaw && statusRaw.trim() ? statusRaw.trim() : "Active";
+        out.push({
+          name,
+          troopKey: this.normalizeTroopKey(name),
+          status,
+          statusNorm: String(status || "").trim().toLowerCase(),
+        });
       }
       return out;
     },
 
     mergeTroopListIntoPersonnel(troopRows) {
-      const incoming = Array.isArray(troopRows) ? troopRows : [];
-      if (!incoming.length) return;
+      const rows = Array.isArray(troopRows) ? troopRows : [];
+      const roster = [];
+      const seen = new Set();
 
-      const existing = Array.isArray(this.personnel) ? this.personnel : [];
-      const byKey = new Map();
-      const byExact = new Map();
-
-      for (const p of existing) {
-        const k = this.normalizeTroopKey(p?.name || "");
-        if (k) byKey.set(k, p);
-        const e = this.normalizeNameForMatch(p?.name || "");
-        if (e) byExact.set(e, p);
-      }
-
-      const out = [];
-      const seenIds = new Set();
-
-      for (const t of incoming) {
-        const rawName = String(t?.name || "").trim();
-        if (!rawName) continue;
-
-        const status = String(t?.status || "").trim();
-        const statusNorm = String(status || "").trim().toLowerCase();
+      for (const r of rows) {
+        const name = String(r?.name || "").trim();
+        if (!name) continue;
+        const statusNorm = String(r?.statusNorm || r?.status || "").trim().toLowerCase();
         if (statusNorm === "discharged") continue;
 
-        const key = this.normalizeTroopKey(rawName);
-        const found =
-          (key && byKey.get(key)) ||
-          byExact.get(this.normalizeNameForMatch(rawName)) ||
-          null;
+        const troopKey = r?.troopKey ? String(r.troopKey) : this.normalizeTroopKey(name);
+        if (troopKey && seen.has(troopKey)) continue;
+        if (troopKey) seen.add(troopKey);
 
-        const person = found
-          ? { ...found }
-          : {
-              id: `troop:${this.keyFromName(key || rawName)}`,
-              name: rawName,
-              callsign: "",
-              role: "",
-              certs: [],
-              rank: "",
-              element: "",
-            };
-
-        person.status = status || person.status || "";
-        person.statusNorm = String(person.status || "").trim().toLowerCase();
-
-        out.push(person);
-        if (person.id != null) seenIds.add(String(person.id));
+        roster.push({
+          id: `troop:${this.keyFromName(troopKey || name)}`,
+          name,
+          status: String(r?.status || "").trim() || "Active",
+          statusNorm: statusNorm || "active",
+          certs: [],
+          rank: "",
+          callsign: "",
+          role: "",
+          element: "",
+        });
       }
 
-      // Keep any existing ORBAT personnel not present in troop list (defensive).
-      for (const p of existing) {
-        const id = p?.id != null ? String(p.id) : "";
-        if (!id || seenIds.has(id)) continue;
-        if (String(p.statusNorm || p.status || "").trim().toLowerCase() === "discharged") continue;
-        out.push(p);
-      }
-
-      this.personnel = out;
+      // Assign picker should use the RefData roster exclusively (Active + Reserve).
+      this.troopRoster = roster;
+      return roster;
     },
 
     parseRefDataTroopMeta(csvText) {
@@ -1034,7 +1014,7 @@ export default {
     },
 
     applyRefDataDefaults(defaultsByChalk) {
-      const people = this.personnel || [];
+      const people = [...(this.personnel || []), ...(this.troopRoster || [])];
       const exact = new Map();
       const norank = new Map();
       const shortMap = new Map();
@@ -1080,14 +1060,14 @@ export default {
           const person = found && String(found.statusNorm || "").trim().toLowerCase() === "discharged" ? null : found;
           const slot = {
             id: person?.id ? String(person.id) : null,
-            name: person?.id ? String(person.name) : null,
+            name: person?.name ? String(person.name) : (rawName ? rawName : null),
             role: this.titleCase(String(r.role || "")),
             fireteam: String(r.fireteam || ""),
-            origStatus: person?.id ? "FILLED" : "VACANT",
+            origStatus: (person?.id || rawName) ? "FILLED" : "VACANT",
             cert: "",
             disposable: false,
           };
-          slot.cert = slot.id ? this.ensureSlotCert(slot, slot.role) : "";
+          slot.cert = this.ensureSlotCert(slot, slot.role);
           return slot;
         });
 
