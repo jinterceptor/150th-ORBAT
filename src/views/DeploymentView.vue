@@ -1355,7 +1355,7 @@ async loadRemote(unitKey) {
       this.plan.units = this.plan.units.map((u, i) => (i === idx ? newG : u));
       this.persistPlan();
       this.detailError = "";
-    }
+    },
 
     clearGroup(unitKey) {
       const idx = this.plan.units.findIndex(u => u.key === unitKey);
