@@ -375,6 +375,8 @@ function readCookie(name) {
 const DEFAULT_REF_DATA_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=107253735&single=true&output=csv";
 
 
+
+const MEMBERS_MASTER_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=1185035639&single=true&output=csv";
 /* optional Netlify Identity */
 async function netlifyIdentityToken() {
   try {
@@ -410,7 +412,6 @@ export default {
       plan: { units: [] },
       picker: { open: false, unitKey: "", slotIdx: -1, query: "", onlyFree: false, sort: "name_asc" },
       personnel: [],
-      troopRoster: [],
       STORAGE_KEY: "deploymentPlan2",
       versions: {},
       remoteMeta: {},
@@ -461,8 +462,7 @@ export default {
     },
     filteredPersonnel() {
       const q = this.picker.query.trim().toLowerCase();
-      const pool = (this.troopRoster && this.troopRoster.length) ? this.troopRoster : this.personnel;
-      const active = pool.filter(p => String(p.status || "").trim().toLowerCase() !== "discharged");
+      const active = this.personnel.filter(p => String(p.status || "").trim().toLowerCase() !== "discharged");
       const base = active.filter(
         p => !q ||
           (p.name || "").toLowerCase().includes(q) ||
@@ -756,6 +756,7 @@ export default {
           const text = await res.text();
           const troopRows = this.parseRefDataTroopRows(text);
           if (troopRows && troopRows.length) this.mergeTroopListIntoPersonnel(troopRows);
+          await this.hydrateRanksFromMembersMaster();
           const troopMeta = this.parseRefDataTroopMeta(text);
           if (troopMeta && Object.keys(troopMeta).length) this.applyRefDataTroopMeta(troopMeta);
           const refDefaults = this.parseRefDataDefaults(text);
@@ -786,6 +787,7 @@ export default {
         const text = await res.text();
         const troopRows = this.parseRefDataTroopRows(text);
         if (troopRows && troopRows.length) this.mergeTroopListIntoPersonnel(troopRows);
+        await this.hydrateRanksFromMembersMaster();
         const troopMeta = this.parseRefDataTroopMeta(text);
         if (troopMeta && Object.keys(troopMeta).length) this.applyRefDataTroopMeta(troopMeta);
         const defaults = this.parseRefDataDefaults(text);
@@ -835,66 +837,111 @@ export default {
       return this.normalizeNameForMatch(this.stripLeadingRank(raw)).replace(/"/g, "").trim();
     },
 
+
     parseRefDataTroopRows(csvText) {
-      const rows = this.csvToRows(csvText);
+      const rows = this.csvToRows(String(csvText || ""));
       if (rows.length < 2) return [];
       const headers = rows[0].map(h => String(h || "").trim());
       const troopIdx = this.findHeader(headers, /^\s*troop\s*list\s*$/i);
-      const statusIdx = this.findHeader(headers, /^\s*troop\s*status\s*$/i);
+      const statusIdx = this.findHeader(headers, /^\s*troop\s*status\s*$/i, true);
       if (troopIdx < 0) return [];
-
       const out = [];
       for (let i = 1; i < rows.length; i++) {
         const name = String(rows[i]?.[troopIdx] || "").trim();
         if (!name) continue;
-        // Defensive: never treat section headers as troops
         if (/^\s*chalk\s*\d+\s*fire\s*team\s*\d+\s*$/i.test(name)) continue;
-
-        const statusRaw = statusIdx >= 0 ? String(rows[i]?.[statusIdx] || "").trim() : "";
-        const status = statusRaw && statusRaw.trim() ? statusRaw.trim() : "Active";
-        out.push({
-          name,
-          troopKey: this.normalizeTroopKey(name),
-          status,
-          statusNorm: String(status || "").trim().toLowerCase(),
-        });
+        const status = statusIdx >= 0 ? String(rows[i]?.[statusIdx] || "").trim() : "";
+        out.push({ name, status: status || "Active" });
       }
       return out;
     },
 
     mergeTroopListIntoPersonnel(troopRows) {
       const rows = Array.isArray(troopRows) ? troopRows : [];
-      const roster = [];
-      const seen = new Set();
+      if (!rows.length) return false;
 
-      for (const r of rows) {
-        const name = String(r?.name || "").trim();
+      const existing = Array.isArray(this.personnel) ? this.personnel : [];
+      const byKey = new Map();
+      for (const p of existing) {
+        const k = this.normalizeTroopKey(p?.name || "");
+        if (k) byKey.set(k, p);
+      }
+
+      const merged = [];
+      for (const t of rows) {
+        const name = String(t?.name || "").trim();
         if (!name) continue;
-        const statusNorm = String(r?.statusNorm || r?.status || "").trim().toLowerCase();
-        if (statusNorm === "discharged") continue;
+        const status = String(t?.status || "").trim() || "Active";
+        if (status.toLowerCase() === "discharged") continue;
 
-        const troopKey = r?.troopKey ? String(r.troopKey) : this.normalizeTroopKey(name);
-        if (troopKey && seen.has(troopKey)) continue;
-        if (troopKey) seen.add(troopKey);
+        const key = this.normalizeTroopKey(name);
+        const found = key ? byKey.get(key) : null;
+        const id = found?.id ? String(found.id) : `troop:${key || this.keyFromName(name)}`;
 
-        roster.push({
-          id: `troop:${this.keyFromName(troopKey || name)}`,
-          name,
-          status: String(r?.status || "").trim() || "Active",
-          statusNorm: statusNorm || "active",
-          certs: [],
-          rank: "",
-          callsign: "",
-          role: "",
-          element: "",
+        merged.push({
+          ...(found || {}),
+          id,
+          name: found?.name ? String(found.name) : name,
+          status,
         });
       }
 
-      // Assign picker should use the RefData roster exclusively (Active + Reserve).
-      this.troopRoster = roster;
-      return roster;
+      this.personnel = merged;
+      if (typeof this.purgeDischargedAssignments === "function") this.purgeDischargedAssignments();
+      return true;
     },
 
+    async hydrateRanksFromMembersMaster() {
+      try {
+        const res = await fetch(MEMBERS_MASTER_CSV_URL, { cache: "no-store" });
+        if (!res.ok) throw new Error(`MembersMaster HTTP ${res.status}`);
+        const text = await res.text();
+        const rankMap = this.parseMembersMasterRankMap(text);
+        if (rankMap && Object.keys(rankMap).length) this.applyRankMapToPersonnel(rankMap);
+      } catch (e) {
+        // Non-fatal: presets + picker should still work without ranks.
+        if (!this.apiError) this.apiError = `MembersMaster ranks: ${String(e.message || e)}`;
+      }
+    },
+
+    parseMembersMasterRankMap(csvText) {
+      const rows = this.csvToRows(String(csvText || ""));
+      if (rows.length < 2) return {};
+      let headerRow = -1;
+      for (let i = 0; i < Math.min(rows.length, 10); i++) {
+        const r = rows[i].map(c => String(c || "").trim());
+        const hasName = r.some(c => /^name$/i.test(c));
+        const hasRank = r.some(c => /^rank$/i.test(c));
+        if (hasName && hasRank) { headerRow = i; break; }
+      }
+      if (headerRow < 0) return {};
+      const headers = rows[headerRow].map(h => String(h || "").trim());
+      const rankIdx = this.findHeader(headers, /^\s*rank\s*$/i);
+      const nameIdx = this.findHeader(headers, /^\s*name\s*$/i);
+      if (rankIdx < 0 || nameIdx < 0) return {};
+
+      const out = {};
+      for (let i = headerRow + 1; i < rows.length; i++) {
+        const name = String(rows[i]?.[nameIdx] || "").trim();
+        const rank = String(rows[i]?.[rankIdx] || "").trim();
+        if (!name || !rank) continue;
+        const key = this.normalizeTroopKey(name);
+        if (!key) continue;
+        out[key] = rank;
+      }
+      return out;
+    },
+
+    applyRankMapToPersonnel(rankMap) {
+      const map = rankMap || {};
+      if (!Array.isArray(this.personnel)) return false;
+      this.personnel = this.personnel.map(p => {
+        const key = this.normalizeTroopKey(p?.name || "");
+        const r = key ? map[key] : "";
+        return r ? { ...p, rank: r } : p;
+      });
+      return true;
+    },
     parseRefDataTroopMeta(csvText) {
       const rows = this.csvToRows(csvText);
       if (rows.length < 2) return {};
@@ -1014,7 +1061,7 @@ export default {
     },
 
     applyRefDataDefaults(defaultsByChalk) {
-      const people = [...(this.personnel || []), ...(this.troopRoster || [])];
+      const people = this.personnel || [];
       const exact = new Map();
       const norank = new Map();
       const shortMap = new Map();
