@@ -752,6 +752,8 @@ export default {
           const res = await fetch(url, { cache: "no-store" });
           if (!res.ok) throw new Error(`CSV HTTP ${res.status}`);
           const text = await res.text();
+          const troopRows = this.parseRefDataTroopRows(text);
+          if (troopRows && troopRows.length) this.mergeTroopListIntoPersonnel(troopRows);
           const troopMeta = this.parseRefDataTroopMeta(text);
           if (troopMeta && Object.keys(troopMeta).length) this.applyRefDataTroopMeta(troopMeta);
           const refDefaults = this.parseRefDataDefaults(text);
@@ -780,6 +782,8 @@ export default {
         const res = await fetch(url, { cache: "no-store" });
         if (!res.ok) throw new Error(`CSV HTTP ${res.status}`);
         const text = await res.text();
+        const troopRows = this.parseRefDataTroopRows(text);
+        if (troopRows && troopRows.length) this.mergeTroopListIntoPersonnel(troopRows);
         const troopMeta = this.parseRefDataTroopMeta(text);
         if (troopMeta && Object.keys(troopMeta).length) this.applyRefDataTroopMeta(troopMeta);
         const defaults = this.parseRefDataDefaults(text);
@@ -936,10 +940,12 @@ export default {
 
         const key = `chalk ${chalk}`.toLowerCase();
         const role = (roleCtx.rest || roleCell).trim();
-        if (!nameCell) continue;
+        const isVacant = /^\s*(vacant|tbd|open)\s*$/i.test(nameCell) || (!nameCell && !!role);
+        const cleanName = isVacant ? "" : nameCell;
+        if (!cleanName && !isVacant) continue;
 
         if (!out[key]) out[key] = [];
-        out[key].push({ name: nameCell, role, fireteam: fireteam != null ? String(fireteam) : "" });
+        out[key].push({ name: cleanName, role, fireteam: fireteam != null ? String(fireteam) : "" });
       }
 
       return out;
@@ -987,14 +993,15 @@ export default {
         if (!rows) return u;
 
         const slots = rows.map(r => {
-          const found = findPerson(r.name);
+          const rawName = String(r?.name || "").trim();
+          const found = rawName ? findPerson(rawName) : null;
           const person = found && String(found.statusNorm || "").trim().toLowerCase() === "discharged" ? null : found;
           const slot = {
             id: person?.id ? String(person.id) : null,
-            name: person?.name ? String(person.name) : String(r.name || "").trim(),
+            name: person?.name ? String(person.name) : (rawName ? rawName : null),
             role: this.titleCase(String(r.role || "")),
             fireteam: String(r.fireteam || ""),
-            origStatus: (person || r.name) ? "FILLED" : "VACANT",
+            origStatus: (person?.id || rawName) ? "FILLED" : "VACANT",
             cert: "",
             disposable: false,
           };
