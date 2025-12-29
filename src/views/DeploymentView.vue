@@ -1362,6 +1362,50 @@ async loadRemote(unitKey) {
     },
     rolePriority(role) { const key = this.normalizeRole(role); const idx = this.ROLE_ORDER.indexOf(key); return idx === -1 ? 10000 : idx; },
     sortSlotsByRole(slots) { return slots.map((s,i)=>({s,i,p:this.rolePriority(s.role)})).sort((a,b)=>a.p-b.p||a.i-b.i).map(x=>x.s); },
+
+    sortSlotsByFireteam(slots, fireteams) {
+      const list = Array.isArray(slots) ? slots.slice() : [];
+      const order = (Array.isArray(fireteams) ? fireteams : []).map(x => String(x || "").trim()).filter(Boolean);
+      const orderSet = new Set(order);
+      const groups = new Map();
+      const unassignedKey = "__unassigned__";
+
+      const push = (k, s) => {
+        if (!groups.has(k)) groups.set(k, []);
+        groups.get(k).push(s);
+      };
+
+      list.forEach(s => {
+        const ft = String(s?.fireteam || "").trim();
+        push(ft || unassignedKey, s);
+      });
+
+      const unknown = [];
+      for (const k of groups.keys()) {
+        if (k !== unassignedKey && !orderSet.has(k)) unknown.push(k);
+      }
+      unknown.sort((a, b) => {
+        const na = Number(a);
+        const nb = Number(b);
+        const aIsNum = Number.isFinite(na) && String(a).trim() === String(na);
+        const bIsNum = Number.isFinite(nb) && String(b).trim() === String(nb);
+        if (aIsNum && bIsNum) return na - nb;
+        if (aIsNum) return -1;
+        if (bIsNum) return 1;
+        return String(a).localeCompare(String(b));
+      });
+
+      const finalOrder = [...order, ...unknown, unassignedKey];
+      const out = [];
+      finalOrder.forEach(k => {
+        const g = groups.get(k);
+        if (!g || !g.length) return;
+        const sorted = typeof this.sortSlotsByRole === "function" ? this.sortSlotsByRole(g) : g;
+        out.push(...sorted);
+      });
+
+      return out;
+    },
     extractCertsFromMember(member) {
       const arr = member?.certifications;
       if (Array.isArray(arr) && arr.length) {
