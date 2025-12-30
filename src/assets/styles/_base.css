@@ -36,11 +36,6 @@
 	--text-markdown-h1: rgba(255, 255, 255, 0.67);
 	--text-markdown-h2: rgba(255, 255, 255, 0.87);
 
-	/* Markdown theme overrides (can be set per content via CSS vars) */
-	--markdown-accent: var(--primary-color);
-	--markdown-strong-color: var(--text-markdown-p);
-	--markdown-link-color: rgba(147, 197, 253, 0.95);
-
 	/* For Firefox */
 	scrollbar-color: var(--primary-color) transparent !important;
 	scrollbar-width: thin;
@@ -595,6 +590,7 @@ section .section-header h1 {
 }
 
 
+
 /* Campaign groups (Mission Log) */
 .campaign-group {
 	margin-bottom: 0.35em;
@@ -697,7 +693,6 @@ section .section-header h1 {
 	border-left: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-/* Campaign status colors (reuse mission palette) */
 .campaign .start { background-color: var(--mission-start); }
 .campaign .partial-success { background-color: var(--mission-partial); }
 .campaign .success { background-color: var(--mission-success); }
@@ -1549,7 +1544,6 @@ div.markdown {
 	margin: 0%;
 	font-family: "Titillium Web", cursive;
 	font-weight: 400;
-	line-height: 1.55;
 	color: var(--text-markdown-p);
 	border-bottom: 1px solid var(--primary-color);
 	height: 350px;
@@ -1571,15 +1565,11 @@ div.markdown {
 }
 
 div.markdown p {
-	margin: 0.85em 0;
+	margin: 1em 0;
 }
 
 div.markdown hr {
-	border: none;
-	height: 1px;
-	background: linear-gradient(to right, transparent, var(--markdown-accent), transparent);
-	opacity: 0.75;
-	margin: 1.25em 0;
+	border-color: var(--primary-color);
 }
 
 div.markdown blockquote {
@@ -1589,130 +1579,8 @@ div.markdown blockquote {
 }
 
 div.markdown p strong {
-	color: var(--markdown-strong-color);
+	color: var(--primary-color);
 }
-
-div.markdown a {
-	color: var(--markdown-link-color);
-	text-decoration: underline;
-	text-underline-offset: 0.15em;
-}
-
-div.markdown .accent {
-	color: var(--markdown-accent);
-	font-weight: 700;
-}
-
-div.markdown .briefing {
-	padding: 1.25em 1.25em;
-	border: 1px solid rgba(255, 255, 255, 0.10);
-	background: rgba(0, 0, 0, 0.18);
-	border-radius: 6px;
-	box-shadow: 0 0 0 1px rgba(255,255,255,0.02) inset;
-}
-
-div.markdown .briefing-title {
-	font-family: "Big Shoulders Display", cursive;
-	font-weight: 800;
-	letter-spacing: 0.12em;
-	text-transform: uppercase;
-	font-size: 28px;
-	margin: 0 0 0.25em 0;
-}
-
-div.markdown .briefing-overline {
-	font-family: "Roboto", sans-serif;
-	font-weight: 700;
-	letter-spacing: 3px;
-	text-transform: uppercase;
-	font-size: 11px;
-	opacity: 0.85;
-	margin: 0.25em 0;
-}
-
-div.markdown .badge {
-	display: inline-block;
-	padding: 0.2em 0.6em;
-	border: 1px solid rgba(255,255,255,0.15);
-	border-radius: 999px;
-	font-family: "Roboto", sans-serif;
-	font-weight: 700;
-	letter-spacing: 2px;
-	text-transform: uppercase;
-	font-size: 11px;
-	line-height: 1.6;
-	white-space: nowrap;
-}
-
-div.markdown .badge-red { border-color: rgba(255, 59, 48, 0.55); color: #ff3b30; }
-div.markdown .badge-amber { border-color: rgba(255, 204, 0, 0.55); color: #ffcc00; }
-div.markdown .badge-green { border-color: rgba(52, 199, 89, 0.55); color: #34c759; }
-div.markdown .badge-blue { border-color: rgba(10, 132, 255, 0.55); color: #0a84ff; }
-
-div.markdown .kv {
-	display: grid;
-	grid-template-columns: 170px 1fr;
-	gap: 0.25em 1em;
-	padding: 0.75em 0;
-}
-
-div.markdown .kv .k {
-	font-family: "Roboto", sans-serif;
-	font-weight: 700;
-	letter-spacing: 2px;
-	text-transform: uppercase;
-	font-size: 11px;
-	opacity: 0.8;
-}
-
-div.markdown .kv .v {
-	font-family: "Titillium Web", cursive;
-	font-size: 16px;
-}
-
-div.markdown .objective {
-	padding: 0.9em 1em;
-	border-left: 3px solid var(--markdown-accent);
-	background: rgba(255,255,255,0.04);
-	margin: 0.75em 0;
-	border-radius: 4px;
-}
-
-div.markdown .objective .obj-id {
-	font-family: "Roboto", sans-serif;
-	font-weight: 800;
-	letter-spacing: 3px;
-	text-transform: uppercase;
-	font-size: 11px;
-	opacity: 0.9;
-}
-
-div.markdown .objective .obj-title {
-	font-family: "Big Shoulders Display", cursive;
-	font-weight: 800;
-	letter-spacing: 0.08em;
-	text-transform: uppercase;
-	font-size: 18px;
-	margin-top: 0.15em;
-}
-
-div.markdown .file-marker {
-	font-family: "Inconsolata", monospace;
-	font-size: 13px;
-	letter-spacing: 1px;
-	padding: 0.5em 0.75em;
-	border: 1px dashed rgba(255,255,255,0.18);
-	border-radius: 4px;
-	background: rgba(0,0,0,0.22);
-	opacity: 0.95;
-}
-
-/* Mission authoring helpers (use via <span class="..."> in markdown) */
-div.markdown .enc-red { color: #ff3b30; }
-div.markdown .enc-amber { color: #ffcc00; }
-div.markdown .enc-green { color: #34c759; }
-div.markdown .enc-blue { color: #0a84ff; }
-div.markdown .enc-purple { color: #bf5af2; }
 
 div.markdown h1 {
 	margin: 0px;
