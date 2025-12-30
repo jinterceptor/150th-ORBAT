@@ -358,20 +358,45 @@ export default {
 
     promotionLadderFor(rank) {
       const key = String(rank || "").trim().toUpperCase().replace(/[.\s]/g, "");
+
+      // Required OP Days are TOTAL ops needed to ATTAIN the rank (not the delta from prior rank).
+      // Example: RCT→PVT when ops >= 2; PVT→PFC when ops >= 10; PFC→SPC when ops >= 20; etc.
+      //
+      // Table provided:
+      // PVT 2, PFC 10, SPC 20, SPC2 30, SPC3 40, SPC4 50
+      // HA 2, HN 10, HM3 20, HM2 30
+      // CWO2 10, CWO3 20, CWO4 30
       const ladders = {
-        PVT: { nextAt: 2, nextRank: "PFC" },
-        PFC: { nextAt: 10, nextRank: "SPC" },
-        SPC: { nextAt: 20, nextRank: "SPC2" },
-        SPC2: { nextAt: 30, nextRank: "SPC3" },
-        SPC3: { nextAt: 40, nextRank: "SPC4" },
+        // Enlisted rifle track
+        RCT: { nextAt: 2, nextRank: "PVT" },
+        REC: { nextAt: 2, nextRank: "PVT" }, // common variant
+        RECRUIT: { nextAt: 2, nextRank: "PVT" },
 
-        HA: { nextAt: 2, nextRank: "HN" },
-        HN: { nextAt: 10, nextRank: "HM3" },
-        HM3: { nextAt: 20, nextRank: "HM2" },
+        PVT: { nextAt: 10, nextRank: "PFC" },
+        PV2: { nextAt: 10, nextRank: "PFC" }, // common variant
+        PFC: { nextAt: 20, nextRank: "SPC" },
+        SPC: { nextAt: 30, nextRank: "SPC2" },
+        SPC1: { nextAt: 30, nextRank: "SPC2" },
+        SPC2: { nextAt: 40, nextRank: "SPC3" },
+        SPC3: { nextAt: 50, nextRank: "SPC4" },
 
-        CWO2: { nextAt: 10, nextRank: "CWO3" },
-        CWO3: { nextAt: 20, nextRank: "CWO4" },
+        // Corpsman track
+        HA: { nextAt: 10, nextRank: "HN" },
+        HN: { nextAt: 20, nextRank: "HM3" },
+        HM3: { nextAt: 30, nextRank: "HM2" },
+
+        // Warrant track
+        CWO1: { nextAt: 10, nextRank: "CWO2" }, // if used
+        WO: { nextAt: 10, nextRank: "CWO2" },   // if used
+        CWO2: { nextAt: 20, nextRank: "CWO3" },
+        CWO3: { nextAt: 30, nextRank: "CWO4" },
       };
+
+      return ladders[key] || null;
+    };
+
+      return ladders[key] || null;
+    };
       return ladders[key] || null;
     },
 
