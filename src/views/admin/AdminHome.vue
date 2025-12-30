@@ -1,7 +1,11 @@
 <!-- src/views/admin/AdminHome.vue -->
 <template>
-  <div class="admin-home windows-grid">
-    <!-- LEFT: nav / summary -->
+  <div
+    class="windows-grid content-container"
+    :class="{ animate: animateView }"
+    :style="{ 'animation-delay': animationDelay }"
+  >
+    <!-- LEFT -->
     <section class="section-container left-window">
       <div class="header-shell">
         <div class="section-header simple-admin-plate admin-plate--clipped">
@@ -11,21 +15,18 @@
         <div class="admin-plate-connector" aria-hidden="true"></div>
       </div>
 
-      <div class="section-content-container left-content">
-        <div v-if="!isAuthed" class="muted pad">Staff only.</div>
-
-        <div v-else class="rail">
-          <button class="rail-card active" type="button">
+      <div class="section-content-container">
+        <div v-if="isAuthed" class="rail">
+          <button
+            class="rail-card"
+            :class="{ active: activeKey === 'promotions' }"
+            @click="activeKey = 'promotions'"
+          >
             <div class="rail-card-head">
               <img src="/icons/protocol.svg" class="rail-icon" alt="" />
               <div class="rail-title">Promotions Overview</div>
             </div>
-
             <div class="rail-card-body">
-              <div class="rail-line">
-                <span class="label">Roster</span>
-                <span class="pill">{{ filteredMembers.length }}</span>
-              </div>
               <div class="rail-line">
                 <span class="label">Eligible now</span>
                 <span class="pill ok">{{ eligibleNowCount }}</span>
@@ -34,19 +35,15 @@
                 <span class="label">Imminent (≤3)</span>
                 <span class="pill warn">{{ imminentCount }}</span>
               </div>
-              <div class="rail-foot">Discharged excluded via Troop Status sheet.</div>
+              <div class="rail-foot">Click to open</div>
             </div>
           </button>
-
-          <div class="rail-hint muted">
-            Data sources:<br />
-            <span class="mono">Members CSV</span> (roster) + <span class="mono">RefData CSV</span> (Troop Status)
-          </div>
         </div>
+        <div v-else class="muted">Staff only.</div>
       </div>
     </section>
 
-    <!-- RIGHT: Promotions table -->
+    <!-- RIGHT -->
     <section class="section-container right-window">
       <div class="header-shell">
         <div class="section-header clipped-medium-backward-pilot right-header">
@@ -57,14 +54,14 @@
       </div>
 
       <div class="section-content-container right-content">
-        <div v-if="!isAuthed" class="muted pad">Staff only.</div>
+        <div v-if="!isAuthed" class="muted">Staff only.</div>
 
         <div v-else class="promotions-panel">
           <div class="filters">
             <div class="row">
               <label class="control">
                 <span>Search</span>
-                <input v-model="search" type="text" placeholder="Name, rank, squad" />
+                <input type="text" v-model="search" placeholder="Name, rank, squad" />
               </label>
 
               <label class="control">
@@ -76,39 +73,36 @@
               </label>
 
               <label class="control">
-                <span>Sort</span>
+                <span>Sort by</span>
                 <select v-model="sortKey">
-                  <option value="remaining">Ops remaining</option>
-                  <option value="progress">Progress</option>
+                  <option value="rank">Rank (high→low)</option>
                   <option value="ops">Ops attended</option>
-                  <option value="rank">Rank</option>
-                  <option value="name">Name</option>
+                  <option value="progress">Progress to next rank</option>
+                  <option value="name">Name (A→Z)</option>
                 </select>
               </label>
 
               <label class="control chk">
-                <input v-model="onlyPromotable" type="checkbox" />
-                <span>Eligible only</span>
+                <input type="checkbox" v-model="onlyPromotable" />
+                <span>Promotable only</span>
               </label>
             </div>
           </div>
 
           <div class="chips">
             <span class="chip">Total: {{ promotionsTable.length }}</span>
-            <span class="chip ok">Eligible: {{ eligibleNowCount }}</span>
-            <span class="chip warn">≤3 ops: {{ imminentCount }}</span>
+            <span class="chip ok">Eligible now: {{ eligibleNowCount }}</span>
+            <span class="chip warn">Imminent (≤3): {{ imminentCount }}</span>
           </div>
 
           <div class="table-shell">
-            <div class="tr head grid8">
+            <div class="tr head grid6">
               <span class="th name">Name</span>
               <span class="th rank">Rank</span>
-              <span class="th status">Status</span>
               <span class="th squad">Squad</span>
               <span class="th ops">Ops</span>
-              <span class="th next">Next</span>
-              <span class="th need">Req</span>
-              <span class="th rem">Rem</span>
+              <span class="th next">Next Rank</span>
+              <span class="th prog">Progress</span>
             </div>
 
             <div class="rows-scroll">
@@ -119,41 +113,30 @@
               <div
                 v-for="(row, i) in promotionsTable"
                 :key="row.id || row.name + i"
-                class="tr grid8"
-                :class="{ eligible: row.opsToNext === 0 && row.nextRank }"
+                class="tr grid6"
               >
                 <span class="td name">{{ row.name }}</span>
                 <span class="td rank">{{ row.rank || "—" }}</span>
-                <span class="td status"><span class="status-pill" :class="statusClass(row.status)">{{ row.status }}</span></span>
                 <span class="td squad">{{ row.squad || "—" }}</span>
                 <span class="td ops">
                   <span v-if="isFiniteNum(row.ops)">{{ row.ops }}</span>
                   <span v-else class="muted">N/A</span>
                 </span>
                 <span class="td next">
-                  <span v-if="row.nextRank">{{ row.nextRank }}</span>
+                  <span v-if="row.nextRank">{{ row.nextRank }} <small v-if="row.nextAt">({{ row.nextAt }})</small></span>
                   <span v-else class="muted">—</span>
                 </span>
-                <span class="td need">
-                  <span v-if="isFiniteNum(row.nextAt)">{{ row.nextAt }}</span>
-                  <span v-else class="muted">—</span>
-                </span>
-                <span class="td rem">
-                  <span v-if="isFiniteNum(row.opsToNext)">{{ row.opsToNext }}</span>
-                  <span v-else class="muted">—</span>
-                </span>
-
-                <div class="td prog span-all">
+                <span class="td prog">
                   <div class="bar" :class="{ done: row.opsToNext === 0 && row.nextRank }">
                     <div class="fill" :style="{ width: (row.progress ?? 0) + '%' }"></div>
                   </div>
-                </div>
+                </span>
               </div>
             </div>
           </div>
 
           <div class="muted footnote">
-            Notes: “Status” comes from RefData (Troop List / Troop Status). Discharged filtered out.
+            Source: Members CSV for roster; Troop Status CSV to exclude Discharged.
           </div>
         </div>
       </div>
@@ -174,16 +157,20 @@ export default {
   },
   data() {
     return {
-      search: "",
-      selectedSquad: "__ALL__",
-      sortKey: "remaining",
-      onlyPromotable: false,
+      animateView: false,
+      animationDelay: "0ms",
+      activeKey: "promotions",
 
-      // Same method as your deployment/status filtering: Troop List + Troop Status
+      // Same sheet used elsewhere: Troop List + Troop Status
       troopStatusCsvUrl:
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=107253735&single=true&output=csv",
-      csvStatusIndex: Object.create(null),
-      csvTroopIndex: Object.create(null),
+      csvStatusIndex: Object.create(null), // nameKey -> normalized status
+      csvTroopIndex: Object.create(null), // nameKey -> present in troop list
+
+      search: "",
+      selectedSquad: "__ALL__",
+      sortKey: "rank",
+      onlyPromotable: false,
     };
   },
   computed: {
@@ -231,12 +218,11 @@ export default {
         return hasCsv ? !!this.csvTroopIndex[nk] : true;
       };
     },
-
     filteredMembers() {
       return (this.members || []).filter((m) => {
         const inList = this.isInTroopList(m);
-        const status = this.memberStatusOf(m);
-        return inList && !this.isDischarged(status);
+        const st = this.memberStatusOf(m);
+        return inList && !this.isDischarged(st);
       });
     },
 
@@ -252,24 +238,25 @@ export default {
     promotionsTable() {
       const term = (this.search || "").trim().toLowerCase();
       const squadFilter = this.selectedSquad;
+      const onlyProm = !!this.onlyPromotable;
       const rows = [];
 
       for (const m of this.filteredMembers) {
         const name = String(m?.name || "").trim();
         const rank = String(m?.rank || "").trim();
         const squad = String(m?.squad || "").trim();
-        const status = this.memberStatusOf(m);
 
         if (term) {
-          const hay = [name, rank, squad, status].join(" ").toLowerCase();
+          const hay = [name, rank, squad].join(" ").toLowerCase();
           if (!hay.includes(term)) continue;
         }
         if (squadFilter !== "__ALL__" && squad !== squadFilter) continue;
 
-        const ladder = this.promotionLadderFor(rank);
+        const rule = this.promotionLadderFor(rank);
         const ops = this.getOps(m);
-        const nextRank = ladder?.nextRank ?? null;
-        const nextAt = ladder?.nextAt ?? null;
+
+        const nextRank = rule?.nextRank ?? null;
+        const nextAt = rule?.nextAt ?? null;
 
         let progress = 0;
         let opsToNext = null;
@@ -278,12 +265,13 @@ export default {
           opsToNext = Math.max(0, nextAt - ops);
         }
 
+        if (onlyProm && !(opsToNext === 0 && !!nextRank)) continue;
+
         rows.push({
-          id: m?.id,
+          id: m.id,
           name,
           rank,
           squad,
-          status,
           ops,
           nextRank,
           nextAt,
@@ -292,46 +280,45 @@ export default {
         });
       }
 
-      const safeNum = (v, fallback = 999999) => (Number.isFinite(Number(v)) ? Number(v) : fallback);
       const rankVal = (r) => {
         const order = {
-          GEN: 1, COL: 2, MAJ: 3, CPT: 4, "1LT": 5, "2LT": 6,
-          CWO4: 7, CWO3: 8, CWO2: 9, WO: 10,
-          GYSGT: 11, SSGT: 12, SGT: 13, CPL: 14, LCPL: 15, PFC: 16, SPC: 17, PVT: 18,
-          HM2: 19, HM3: 20, HN: 21, HA: 22,
-          SPC2: 23, SPC3: 24, SPC4: 25
+          GEN: 1,
+          COL: 2,
+          MAJ: 3,
+          CPT: 4,
+          "1LT": 5,
+          "2LT": 6,
+          CWO4: 7,
+          CWO3: 8,
+          CWO2: 9,
+          WO: 10,
+          GYSGT: 11,
+          SSGT: 12,
+          SGT: 13,
+          CPL: 14,
+          LCPL: 15,
+          PFC: 16,
+          PVT: 17,
         };
         const key = String(r || "").trim().toUpperCase().replace(/[.\s]/g, "");
         return order[key] || 999;
       };
 
-      if (this.onlyPromotable) {
-        // eligible means: has a next rank + opsToNext computed and == 0
-        rows.splice(
-          0,
-          rows.length,
-          ...rows.filter((r) => r.nextRank && Number.isFinite(r.opsToNext) && r.opsToNext === 0)
-        );
-      }
-
       if (this.sortKey === "name") {
         rows.sort((a, b) => String(a.name).localeCompare(String(b.name), undefined, { sensitivity: "base" }));
       } else if (this.sortKey === "ops") {
-        rows.sort((a, b) => safeNum(b.ops, -1) - safeNum(a.ops, -1));
+        rows.sort((a, b) => (Number(b.ops) || 0) - (Number(a.ops) || 0));
       } else if (this.sortKey === "progress") {
-        rows.sort((a, b) => safeNum(b.progress, -1) - safeNum(a.progress, -1));
-      } else if (this.sortKey === "rank") {
-        rows.sort((a, b) => rankVal(a.rank) - rankVal(b.rank));
+        rows.sort((a, b) => (Number(b.progress) || 0) - (Number(a.progress) || 0));
       } else {
-        // remaining (default)
-        rows.sort((a, b) => safeNum(a.opsToNext) - safeNum(b.opsToNext) || rankVal(a.rank) - rankVal(b.rank));
+        rows.sort((a, b) => rankVal(a.rank) - rankVal(b.rank));
       }
 
       return rows;
     },
 
     eligibleNowCount() {
-      return this.promotionsTable.filter((r) => r.nextRank && Number.isFinite(r.opsToNext) && r.opsToNext === 0).length;
+      return this.promotionsTable.filter((r) => r.opsToNext === 0 && !!r.nextRank).length;
     },
     imminentCount() {
       return this.promotionsTable.filter((r) => Number.isFinite(r.opsToNext) && r.opsToNext > 0 && r.opsToNext <= 3).length;
@@ -340,39 +327,25 @@ export default {
   created() {
     this.fetchTroopStatusCsv();
   },
+  mounted() {
+    this.animateView = true;
+  },
   methods: {
     isFiniteNum(v) {
       return Number.isFinite(v);
     },
 
-    statusClass(status) {
-      const s = String(status || "").toLowerCase();
-      if (s === "active") return "ok";
-      if (s === "reserve") return "warn";
-      if (s === "eloa") return "eloa";
-      if (s === "inactive") return "inactive";
-      if (s === "other") return "other";
-      if (s === "unknown") return "unknown";
-      return "unknown";
-    },
-
     promotionLadderFor(rank) {
-      const key = String(rank || "").trim().toUpperCase().replace(/[.\s]/g, "");
-      const ladders = {
-        PVT: { nextAt: 2, nextRank: "PFC" },
-        PFC: { nextAt: 10, nextRank: "SPC" },
-        SPC: { nextAt: 20, nextRank: "SPC2" },
-        SPC2: { nextAt: 30, nextRank: "SPC3" },
-        SPC3: { nextAt: 40, nextRank: "SPC4" },
-
-        HA: { nextAt: 2, nextRank: "HN" },
-        HN: { nextAt: 10, nextRank: "HM3" },
-        HM3: { nextAt: 20, nextRank: "HM2" },
-
-        CWO2: { nextAt: 10, nextRank: "CWO3" },
-        CWO3: { nextAt: 20, nextRank: "CWO4" },
+      const r = String(rank || "").trim().toUpperCase().replace(/[.\s]/g, "");
+      const ladder = {
+        PVT: { nextAt: 3, nextRank: "PFC" },
+        PFC: { nextAt: 6, nextRank: "LCPL" },
+        LCPL: { nextAt: 10, nextRank: "CPL" },
+        CPL: { nextAt: 15, nextRank: "SGT" },
+        SGT: { nextAt: 22, nextRank: "SSGT" },
+        SSGT: { nextAt: 30, nextRank: "GYSGT" },
       };
-      return ladders[key] || null;
+      return ladder[r] || null;
     },
 
     getOps(member) {
@@ -423,7 +396,6 @@ export default {
       let cur = [];
       let val = "";
       let inQ = false;
-
       for (let i = 0; i < text.length; i++) {
         const ch = text[i];
         if (inQ) {
@@ -454,7 +426,6 @@ export default {
           }
         }
       }
-
       cur.push(val);
       rows.push(cur);
       if (rows.length && rows[rows.length - 1].every((x) => String(x).length === 0)) rows.pop();
@@ -465,23 +436,28 @@ export default {
 </script>
 
 <style scoped>
-/* Override global fixed widths from _base.css for admin screens */
-.admin-home {
+.header-shell { height: 52px; overflow: hidden; }
+
+/* Layout */
+.windows-grid {
   display: grid;
-  grid-template-columns: 420px 1fr;
+  grid-template-columns: 380px minmax(1080px, 1fr);
   column-gap: 2.4rem;
   align-items: start;
   width: 100%;
 }
 
-.left-window { width: 420px !important; }
-.right-window { min-width: 1200px; }
+.left-window { height: auto !important; }
+.right-window { display: flex; flex-direction: column; max-height: 100vh; }
 
-.header-shell { height: 52px; overflow: hidden; }
-.left-content, .right-content { padding: 0.6rem; }
+.right-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0.6rem;
+}
 
-.pad { padding: 1rem; }
-
+/* Left plate */
 .simple-admin-plate {
   position: relative;
   z-index: 2;
@@ -514,83 +490,63 @@ export default {
 }
 
 .muted { color: rgba(158, 197, 230, 0.95); }
-.mono { font-family: "Inconsolata", monospace; }
+.empty { color: rgba(158, 197, 230, 0.95); padding: 0.8rem; text-align: center; }
+.footnote { font-size: 12px; margin-top: 0.55rem; }
 
-.rail { display: grid; gap: 0.8rem; align-content: start; }
-.rail-card {
-  text-align: left;
-  border: 1px solid rgba(30,144,255,0.35);
-  background: rgba(0,10,30,0.35);
-  border-radius: 0.6rem;
-  padding: 0.75rem;
+.promotions-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  height: 100%;
+  min-height: 0;
 }
-.rail-card-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; }
-.rail-icon { width: 20px; height: 20px; }
-.rail-title { color: rgba(217, 235, 255, 0.95); font-weight: 700; letter-spacing: 0.06em; }
-.rail-line { display: flex; justify-content: space-between; align-items: center; margin-top: 0.35rem; }
-.rail-line .label { color: rgba(217, 235, 255, 0.85); }
-.rail-foot { margin-top: 0.5rem; font-size: 12px; color: rgba(158, 197, 230, 0.95); }
-.rail-hint { font-size: 12px; line-height: 1.5; }
 
-.pill {
-  font-size: 0.85rem;
-  border: 1px solid rgba(30,144,255,0.45);
-  border-radius: 999px;
-  padding: 0.05rem 0.55rem;
-  color: rgba(230, 243, 255, 0.95);
-}
-.pill.ok { border-color: rgba(120,255,170,0.7); }
-.pill.warn { border-color: rgba(255,190,80,0.7); }
+.filters { border: 1px dashed rgba(30,144,255,0.35); border-radius: .35rem; padding: .5rem; }
+.filters .row { display: grid; grid-template-columns: 1.2fr auto auto auto; gap: .6rem; align-items: end; }
 
-.promotions-panel { display: flex; flex-direction: column; gap: 0.6rem; height: 100%; min-height: 0; }
-
-.filters { border: 1px dashed rgba(30,144,255,0.35); border-radius: 0.45rem; padding: 0.65rem; }
-.filters .row { display: grid; grid-template-columns: 1.25fr auto auto auto; gap: 0.7rem; align-items: end; }
-
-.control { display: grid; gap: 0.2rem; }
-.control span { font-size: 0.85rem; color: rgba(158, 197, 230, 0.95); }
+.control { display: grid; gap: .2rem; }
+.control span { font-size: .85rem; color: rgba(158, 197, 230, 0.95); }
 .control input, .control select {
   background: rgba(0,10,30,0.35);
   border: 1px solid rgba(30,144,255,0.35);
-  border-radius: 0.45rem;
-  padding: 0.45rem 0.55rem;
+  border-radius: .35rem;
+  padding: .35rem .45rem;
   color: rgba(230, 243, 255, 0.95);
 }
 .control input::placeholder { color: rgba(170,199,230,0.95); }
 .control input:focus, .control select:focus { outline: none; border-color: rgba(30,144,255,0.6); }
 .control select option { background: rgba(5,20,40,0.98); color: rgba(230, 243, 255, 0.95); }
-.control.chk { display: flex; align-items: center; gap: 0.5rem; padding-top: 1.25rem; }
+.control.chk { display: flex; align-items: center; gap: .45rem; padding-top: 1.25rem; }
 .control.chk input[type="checkbox"] { width: 16px; height: 16px; accent-color: #78ffd0; }
-.control.chk span { color: rgba(230, 243, 255, 0.95); font-size: 0.9rem; }
+.control.chk span { color: rgba(230, 243, 255, 0.95); font-size: .9rem; }
 
-.chips { display: flex; gap: 0.45rem; flex-wrap: wrap; }
-.chip { padding: 0.25rem 0.55rem; border-radius: 999px; background: rgba(0,10,30,0.25); border: 1px solid rgba(30,144,255,0.45); color: rgba(230, 243, 255, 0.95); }
+.chips { display: flex; gap: .45rem; flex-wrap: wrap; }
+.chip { padding: .25rem .5rem; border-radius: 999px; background: rgba(0,10,30,0.25); border: 1px solid rgba(30,144,255,0.45); color: rgba(230, 243, 255, 0.95); }
 .chip.ok { border-color: rgba(120,255,170,0.7); }
 .chip.warn { border-color: rgba(255,190,80,0.7); }
 
+/* Table: restore scroll */
 .table-shell {
   flex: 1 1 auto;
   min-height: 0;
   border: 1px dashed rgba(30,144,255,0.35);
-  border-radius: 0.45rem;
+  border-radius: .35rem;
   background: rgba(0,10,30,0.18);
   display: flex;
   flex-direction: column;
-  overflow-x: auto;
+  overflow-x: auto; /* horizontal if needed */
   overflow-y: hidden;
 }
 
-.grid8 {
+.grid6 {
   display: grid;
-  grid-template-columns: 1.7fr 0.8fr 0.9fr 1.2fr 0.6fr 0.8fr 0.5fr 0.5fr;
+  grid-template-columns: 1.6fr .8fr 1fr .6fr .9fr 1.2fr;
   align-items: center;
-  min-width: 1120px;
-  column-gap: 0.1rem;
+  min-width: 980px; /* prevents clipping */
 }
-.span-all { grid-column: 1 / -1; }
 
 .tr.head {
-  font-weight: 700;
+  font-weight: 600;
   background: rgba(0,10,30,0.35);
   border-bottom: 1px dashed rgba(30,144,255,0.25);
   flex: 0 0 auto;
@@ -599,34 +555,20 @@ export default {
   z-index: 2;
 }
 
-.rows-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.rows-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto; /* vertical scroll restored */
+}
 
 .tr .th, .tr .td {
-  padding: 0.45rem 0.55rem;
+  padding: .4rem .5rem;
   color: rgba(230, 243, 255, 0.95);
   border-bottom: 1px dashed rgba(30,144,255,0.18);
 }
-.tr.eligible .td { background: rgba(120,255,170,0.06); }
-
-.status-pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.12rem 0.45rem;
-  border-radius: 999px;
-  border: 1px solid rgba(30,144,255,0.35);
-  background: rgba(0,10,30,0.22);
-  font-size: 12px;
-  letter-spacing: 0.05em;
-}
-.status-pill.ok { border-color: rgba(120,255,170,0.7); }
-.status-pill.warn { border-color: rgba(255,190,80,0.7); }
-.status-pill.eloa { border-color: rgba(170,120,255,0.7); }
-.status-pill.inactive { border-color: rgba(255,90,90,0.55); }
-.status-pill.other, .status-pill.unknown { border-color: rgba(30,144,255,0.35); }
 
 .bar {
   height: 8px;
-  margin: 0.25rem 0.55rem 0.6rem;
   background: rgba(0,10,30,0.35);
   border: 1px solid rgba(30,144,255,0.25);
   border-radius: 999px;
@@ -642,6 +584,26 @@ export default {
 }
 .bar.done .fill { background: rgba(120,255,170,0.7); }
 
-.empty { padding: 1rem; text-align: center; color: rgba(158, 197, 230, 0.95); }
-.footnote { font-size: 12px; margin-top: 0.35rem; }
+/* Left rail */
+.rail { display: grid; gap: .6rem; align-content: start; }
+.rail-card {
+  text-align: left;
+  border: 1px solid rgba(30,144,255,0.35);
+  background: rgba(0,10,30,0.35);
+  border-radius: .5rem;
+  padding: .6rem;
+  cursor: pointer;
+}
+.rail-card.active { border-color: rgba(120,255,170,0.7); }
+.rail-card-head { display: flex; align-items: center; gap: .5rem; margin-bottom: .35rem; }
+.rail-icon { width: 20px; height: 20px; }
+.rail-title, .rail-line .label { color: rgba(217, 235, 255, 0.95); }
+.pill {
+  font-size: .85rem;
+  border: 1px solid rgba(30,144,255,0.45);
+  border-radius: 999px;
+  padding: .05rem .5rem;
+  color: rgba(230, 243, 255, 0.95);
+}
+.rail-foot { margin-top: .25rem; font-size: .8rem; color: rgba(158, 197, 230, 0.95); }
 </style>
