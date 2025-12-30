@@ -794,27 +794,34 @@ export default {
   display: grid;
   grid-template-columns: 1.7fr 0.8fr;
   gap: 1.2rem;
-  align-items: start;
-  padding-top: 28px;
-  padding-left: 18px;
-  padding-right: 18px;
-  padding-bottom: 18px;
-  overflow-x: hidden;
+  align-items: stretch;
+
+  /* why: fit cleanly in viewport without windows hanging below */
+  height: calc(100vh - 96px);
+  padding: 28px 18px 18px;
+  overflow: hidden;
 }
-#pilotsView > .section-container { width: 100%; margin: 0; max-width: 100%; height: calc(100vh - 56px); }
-#pilotsView > audio { position: absolute; width: 0; height: 0; overflow: hidden; }
+#pilotsView > .section-container {
+  width: 100%;
+  margin: 0;
+  max-width: 100%;
 
-#members { grid-column: 1; }
-#trainers { grid-column: 2; }
+  /* why: ensure both windows stop at the same clean bottom edge */
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
 
-/* Shared window look (PilotsView overrides base.css fixed 393px width + margins) */
-#members.section-container,
-#trainers.section-container {
-  overflow-y: auto;
-  scrollbar-gutter: stable;
-  color: #dce6f1;
-  font-family: "Consolas","Courier New",monospace;
-  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Window internals: header stays fixed, content scrolls */
+#members .section-content-container,
+#trainers .section-content-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 0.35rem; /* why: keep scrollbar off text */
 }
 
 /* Keep ORBAT padding as before; trainers slightly tighter */
@@ -822,7 +829,19 @@ export default {
 #trainers.section-container { padding: 2.5rem 1.6rem; }
 
 @media (max-width: 1200px) {
-  #pilotsView { grid-template-columns: 1fr; padding-left: 12px; padding-right: 12px; }
+  #pilotsView {
+    grid-template-columns: 1fr;
+    padding-left: 12px;
+    padding-right: 12px;
+    height: auto;
+    overflow: visible;
+  }
+  #members, #trainers { grid-column: 1; }
+  #pilotsView > .section-container {
+    height: auto;
+    max-height: none;
+  }
+}
   #members, #trainers { grid-column: 1; }
   #pilotsView > .section-container { height: auto; }
 }
