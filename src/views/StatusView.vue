@@ -32,7 +32,8 @@
         <h1>Current Assignment</h1>
       </div>
       <div class="section-content-container">
-        <vue-markdown-it :source="missionMarkdown" class="markdown" />
+        <!-- ✅ Enable HTML so <div class="briefing"> etc. renders instead of showing as text -->
+        <vue-markdown-it :source="missionMarkdown" :options="markdownOptions" class="markdown" />
       </div>
     </section>
 
@@ -128,14 +129,21 @@ export default {
       animationDelay: "1.75s",
       missionMarkdown: "",
 
-      // RefData CSV (STRICT: Troop List + Troop Status)
       troopStatusCsvUrl:
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=107253735&single=true&output=csv",
-      csvStatusIndex: Object.create(null), // nameKey -> status
-      csvTroopIndex: Object.create(null),  // nameKey -> present in Troop List
+      csvStatusIndex: Object.create(null),
+      csvTroopIndex: Object.create(null),
     };
   },
   computed: {
+    markdownOptions() {
+      return {
+        html: true,     // ✅ REQUIRED for briefing HTML wrappers/classes
+        linkify: true,
+        typographer: true,
+      };
+    },
+
     /* ---- CSV-based membership / status helpers ---- */
     nameKey() {
       return (name) =>
@@ -173,12 +181,11 @@ export default {
     isInTroopList() {
       return (m) => {
         const nk = this.nameKey(this.cleanMemberName(m?.name));
-        const hasCsv = Object.keys(this.csvTroopIndex).length > 0; // only enforce after CSV loads
+        const hasCsv = Object.keys(this.csvTroopIndex).length > 0;
         return hasCsv ? !!this.csvTroopIndex[nk] : true;
       };
     },
 
-    /* Filtered members: only Troop List & not Discharged */
     filteredMembers() {
       return (this.members || []).filter((m) => {
         const inList = this.isInTroopList(m);
@@ -196,10 +203,9 @@ export default {
     },
 
     stats() {
-      const members = this.filteredMembers; // filtered
+      const members = this.filteredMembers;
       const orbat = this.orbat || [];
 
-      // Only count by Troop Status (not squad name)
       const activeMembers = members.filter(
         (m) => this.memberStatusOf(m) === "Active"
       ).length;
@@ -207,10 +213,7 @@ export default {
         (m) => this.memberStatusOf(m) === "Reserve"
       ).length;
 
-      // Slot accounting (treat CLOSED as VACANT)
-      let totalFireteams = 0,
-        filledSlots = 0,
-        vacantSlots = 0;
+      let totalFireteams = 0, filledSlots = 0, vacantSlots = 0;
       orbat.forEach((sq) => {
         (sq.fireteams || []).forEach((ft) => {
           const slots = ft.slots || [];
@@ -218,7 +221,7 @@ export default {
           slots.forEach((s) => {
             const st = String(s.status || "").toUpperCase();
             if (st === "FILLED" && s.member) filledSlots += 1;
-            else if (st === "VACANT" || st === "CLOSED") vacantSlots += 1; // why: CLOSED counts as free
+            else if (st === "VACANT" || st === "CLOSED") vacantSlots += 1;
           });
         });
       });
@@ -239,20 +242,17 @@ export default {
       };
     },
 
-    /* Per-element fill (CLOSED = VACANT) */
     elementFillStats() {
       const out = [];
       (this.orbat || []).forEach((sq) => {
-        let filled = 0,
-          vacant = 0,
-          hasSlots = false;
+        let filled = 0, vacant = 0, hasSlots = false;
         (sq.fireteams || []).forEach((ft) => {
           const slots = ft.slots || [];
           if (slots.length) hasSlots = true;
           slots.forEach((s) => {
             const st = String(s.status || "").toUpperCase();
             if (st === "FILLED" && s.member) filled += 1;
-            else if (st === "VACANT" || st === "CLOSED") vacant += 1; // why: CLOSED counts as free
+            else if (st === "VACANT" || st === "CLOSED") vacant += 1;
           });
         });
         if (!hasSlots) return;
@@ -264,7 +264,6 @@ export default {
       return out;
     },
 
-    /* Promotions list filtered to active roster only */
     upcomingPromotions() {
       const list = [];
       this.filteredMembers.forEach((m) => {
@@ -283,8 +282,7 @@ export default {
       list.sort((a, b) => {
         if (a.opsToNext !== b.opsToNext) return a.opsToNext - b.opsToNext;
         if (Number.isFinite(b.opsAttended) && Number.isFinite(a.opsAttended)) {
-          if (b.opsAttended !== a.opsAttended)
-            return b.opsAttended - a.opsAttended;
+          if (b.opsAttended !== a.opsAttended) return b.opsAttended - a.opsAttended;
         }
         return String(a.name).localeCompare(String(b.name));
       });
@@ -293,7 +291,7 @@ export default {
   },
   created() {
     this.setAnimate();
-    this.fetchTroopStatusCsv(); // load CSV early
+    this.fetchTroopStatusCsv();
   },
   beforeUpdate() {
     this.selectMission(this.missionSlug);
@@ -328,7 +326,6 @@ export default {
       if (statusAnimated === null) window.sessionStorage.setItem("statusAnimated", true);
     },
 
-    /* Promotion helpers (unchanged) */
     rankKey(rank) { return String(rank || "").trim().toUpperCase().replace(/[.\s]/g, ""); },
     promotionLadderFor(rank) {
       const r = this.rankKey(rank);
@@ -383,7 +380,6 @@ export default {
       return ladder?.nextRank || null;
     },
 
-    /* CSV load & parse */
     async fetchTroopStatusCsv() {
       try {
         const res = await fetch(this.troopStatusCsvUrl, { method: "GET" });
