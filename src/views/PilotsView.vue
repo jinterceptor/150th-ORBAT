@@ -883,18 +883,22 @@ export default {
 .trainers-block { width: 100%; max-width: 100%; min-width: 0; }
 .vlist { list-style: none; margin: 0; padding: 0; display: grid; gap: .18rem; }
 .vlist li {
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
   color: #e6f3ff;
   background: rgba(0,10,30,0.16);
   border: 1px solid rgba(30,144,255,0.20);
   border-radius: .35rem;
   padding: .2rem .45rem;
   font-size: .9rem;
-  line-height: 1.15;  white-space: normal;  overflow: hidden;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
+  line-height: 1.15;
+  white-space: normal;
   overflow-wrap: anywhere;
+  justify-items: start;
 }
+
 
 
 
