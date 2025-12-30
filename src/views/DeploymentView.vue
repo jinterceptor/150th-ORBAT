@@ -1101,6 +1101,9 @@ export default {
 
         if (!nameCell && !roleCell) continue;
 
+        // Hard stop: ignore everything below Chalk blocks (Broadsword Command and below)
+        if (/^\s*broadsword command\s*$/i.test(nameCell) || /^\s*broadsword command\s*$/i.test(roleCell)) break;
+
         // Section header rows like: "Chalk 1 Fireteam 2" (never a trooper)
         const nameHdr = this.parseChalkFireteamCtx(nameCell);
         const roleHdr = this.parseChalkFireteamCtx(roleCell);
