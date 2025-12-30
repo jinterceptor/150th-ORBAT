@@ -1,8 +1,8 @@
 <template>
   <div v-if="mission" class="mission" :class="[{ active: isActive }, mission.status]">
     <div class="name">
-      <h1>Mission // {{ mission.slug || 'Unknown' }}</h1>
-      <h2>{{ mission.name || 'Unnamed Mission' }}</h2>
+      <h1>Mission</h1>
+      <h2>MISSION // {{ mission.slug || 'Unknown' }}</h2>
     </div>
     <div class="status" :class="mission.status || ''">
       {{ missionStatus }}
