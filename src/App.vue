@@ -467,16 +467,17 @@ export default {
     const l1 = String(lines[1] || "").trim();
     const l2 = String(lines[2] || "").trim();
 
+    // New format: slug + status (title omitted)
     if (knownStatuses.has(l1)) {
       status = l1;
       cursor = 2;
     } else if (knownStatuses.has(l2)) {
-      // legacy 3-line header: slug, title, status
+      // Legacy format: slug + title + status
       title = l1;
       status = l2;
       cursor = 3;
     } else if (l1 && !l1.startsWith("@")) {
-      // legacy title-only line (status defaults)
+      // Legacy: slug + title (status defaults)
       title = l1;
       cursor = 2;
     }
@@ -504,7 +505,7 @@ export default {
         try {
           meta.theme = payload ? JSON.parse(payload) : {};
         } catch (e) {
-          console.warn(`Invalid @theme JSON for mission ${meta.slug || "(unknown)"}; ignoring.`, e);
+          console.warn(`Invalid @theme JSON for mission; ignoring.`, e);
         }
       }
 
@@ -524,10 +525,8 @@ export default {
 
     const inferred = inferCampaignFromPath(path);
     const { slug, title, status, cursor: afterHeader } = parseHeader(lines);
-
     const { meta, cursor: afterMeta } = parseDirectives(lines, afterHeader);
 
-    // Default mission ordering: prefer explicit @order, else numeric slug, else numeric filename
     let order = Number(meta.order);
     if (!Number.isFinite(order)) {
       const fileBase = String(path || "").split("/").pop()?.replace(/\.md$/i, "") || "";
@@ -554,7 +553,6 @@ export default {
     });
   });
 },
-    },
     async importEvents(files) {
       const contents = await Promise.all(Object.values(files).map((f) => f()));
       contents.forEach((c) => {
@@ -590,7 +588,7 @@ export default {
       used.add(candidate);
       return candidate;
     },
-  }
+  },
 };
 </script>
 
