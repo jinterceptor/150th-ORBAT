@@ -36,6 +36,11 @@
 	--text-markdown-h1: rgba(255, 255, 255, 0.67);
 	--text-markdown-h2: rgba(255, 255, 255, 0.87);
 
+	/* Markdown theme overrides (can be set per content via CSS vars) */
+	--markdown-accent: var(--primary-color);
+	--markdown-strong-color: var(--text-markdown-p);
+	--markdown-link-color: rgba(147, 197, 253, 0.95);
+
 	/* For Firefox */
 	scrollbar-color: var(--primary-color) transparent !important;
 	scrollbar-width: thin;
@@ -525,6 +530,7 @@ section .section-header h1 {
 	font-weight: 800;
 	text-transform: uppercase;
 	letter-spacing: 3px;
+を見る
 	color: var(--text-mission-title);
 }
 
@@ -1451,7 +1457,7 @@ div.markdown p {
 }
 
 div.markdown hr {
-	border-color: var(--primary-color);
+	border-color: var(--markdown-accent);
 }
 
 div.markdown blockquote {
@@ -1461,8 +1467,26 @@ div.markdown blockquote {
 }
 
 div.markdown p strong {
-	color: var(--primary-color);
+	color: var(--markdown-strong-color);
 }
+
+div.markdown a {
+	color: var(--markdown-link-color);
+	text-decoration: underline;
+	text-underline-offset: 0.15em;
+}
+
+div.markdown .accent {
+	color: var(--markdown-accent);
+	font-weight: 700;
+}
+
+/* Mission authoring helpers (use via <span class="..."> in markdown) */
+div.markdown .enc-red { color: #ff3b30; }
+div.markdown .enc-amber { color: #ffcc00; }
+div.markdown .enc-green { color: #34c759; }
+div.markdown .enc-blue { color: #0a84ff; }
+div.markdown .enc-purple { color: #bf5af2; }
 
 div.markdown h1 {
 	margin: 0px;
