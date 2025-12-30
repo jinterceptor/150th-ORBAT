@@ -6,34 +6,64 @@
     :style="{ 'animation-delay': animationDelay }"
     class="content-container"
   >
-    <!-- Mission Log -->
-    <section id="missions" class="section-container" :style="{ 'animation-delay': animationDelay }">
-      <div class="section-header clipped-medium-backward">
-        <img src="/icons/campaign.svg" />
-        <h1>Mission Log</h1>
-      </div>
-      <div class="section-content-container">
-        <div class="mission-list-container">
+    
+<!-- Mission Log -->
+<section id="missions" class="section-container" :style="{ 'animation-delay': animationDelay }">
+  <div class="section-header clipped-medium-backward">
+    <img src="/icons/campaign.svg" />
+    <h1>Mission Log</h1>
+  </div>
+  <div class="section-content-container">
+    <div class="mission-list-container">
+      <div v-for="group in campaignGroups" :key="group.key" class="campaign-group">
+        <div
+          class="campaign"
+          :class="[{ open: isCampaignOpen(group.key) }, group.status]"
+          @click="toggleCampaign(group.key)"
+        >
+          <div class="name">
+            <h1>Campaign</h1>
+            <h2>{{ group.name }}</h2>
+          </div>
+
+          <div class="status" :class="group.status">
+            {{ campaignStatusText(group.status) }}
+            <img :src="`/icons/mission-${group.status}.svg`" />
+          </div>
+
+          <div class="toggle" aria-hidden="true">
+            <span class="chevron" :class="{ open: isCampaignOpen(group.key) }">▾</span>
+          </div>
+        </div>
+
+        <div v-show="isCampaignOpen(group.key)" class="campaign-missions">
           <Mission
-            v-for="item in missions"
+            v-for="item in group.missions"
             :key="item.slug"
             :mission="item"
             :selected="missionSlug"
-            @click="selectMission(item.slug)"
+            @click.stop="selectMission(item.slug)"
           />
         </div>
       </div>
-    </section>
+    </div>
+  </div>
+</section>
 
-    <!-- Current Assignment -->
+<!-- Current Assignment -->
     <section id="assignment" class="section-container" :style="{ 'animation-delay': animationDelay }">
       <div class="section-header clipped-medium-backward">
         <img src="/icons/deployable.svg" />
         <h1>Current Assignment</h1>
       </div>
       <div class="section-content-container">
-        <!-- ✅ Enable HTML so <div class="briefing"> etc. renders instead of showing as text -->
-        <vue-markdown-it :source="missionMarkdown" :options="markdownOptions" class="markdown" />
+        <vue-markdown-it
+          :source="missionMarkdown"
+          :options="markdownOptions"
+          class="markdown"
+          :style="markdownStyle"
+          :data-mission="missionSlug"
+        />
       </div>
     </section>
 
@@ -128,21 +158,70 @@ export default {
       animateView: this.animate,
       animationDelay: "1.75s",
       missionMarkdown: "",
+      missionTheme: {},
+      expandedCampaigns: Object.create(null),
 
+      // RefData CSV (STRICT: Troop List + Troop Status)
       troopStatusCsvUrl:
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=107253735&single=true&output=csv",
-      csvStatusIndex: Object.create(null),
-      csvTroopIndex: Object.create(null),
+      csvStatusIndex: Object.create(null), // nameKey -> status
+      csvTroopIndex: Object.create(null),  // nameKey -> present in Troop List
     };
   },
   computed: {
-    markdownOptions() {
-      return {
-        html: true,     // ✅ REQUIRED for briefing HTML wrappers/classes
-        linkify: true,
-        typographer: true,
-      };
+    markdownStyle() {
+      const theme = this.missionTheme || {};
+      const style = {};
+      if (theme.accent) style["--markdown-accent"] = String(theme.accent);
+      if (theme.strong) style["--markdown-strong-color"] = String(theme.strong);
+      if (theme.link) style["--markdown-link-color"] = String(theme.link);
+      return style;
     },
+
+markdownOptions() {
+  return {
+    html: true,
+    linkify: true,
+    typographer: true,
+  };
+},
+
+campaignGroups() {
+  const missions = (this.missions || []).slice();
+
+  const byCampaign = new Map();
+  for (const m of missions) {
+    const name = String(m.campaign || "Unassigned").trim() || "Unassigned";
+    const key = String(m.campaignKey || name).trim().toUpperCase() || name.toUpperCase();
+    if (!byCampaign.has(key)) byCampaign.set(key, { key, name, missions: [] });
+    byCampaign.get(key).missions.push(m);
+  }
+
+  const normalizeStatus = (s) => String(s || "").trim();
+
+  const summarizeStatus = (ms) => {
+    const statuses = ms.map((x) => normalizeStatus(x.status));
+    if (statuses.includes("start")) return "start";
+    if (statuses.includes("failure")) return "failure";
+    if (statuses.includes("partial-success")) return "partial-success";
+    if (statuses.length && statuses.every((s) => s === "success")) return "success";
+    return "start";
+  };
+
+  const sortedGroups = Array.from(byCampaign.values()).map((g) => {
+    const ms = g.missions.slice();
+    ms.sort((a, b) => {
+      const ao = Number.isFinite(Number(a.order)) ? Number(a.order) : Number.POSITIVE_INFINITY;
+      const bo = Number.isFinite(Number(b.order)) ? Number(b.order) : Number.POSITIVE_INFINITY;
+      if (ao !== bo) return ao - bo;
+      return String(a.slug || "").localeCompare(String(b.slug || ""));
+    });
+    return { key: g.key, name: g.name, missions: ms, status: summarizeStatus(ms) };
+  });
+
+  sortedGroups.sort((a, b) => a.name.localeCompare(b.name));
+  return sortedGroups;
+},
 
     /* ---- CSV-based membership / status helpers ---- */
     nameKey() {
@@ -181,11 +260,12 @@ export default {
     isInTroopList() {
       return (m) => {
         const nk = this.nameKey(this.cleanMemberName(m?.name));
-        const hasCsv = Object.keys(this.csvTroopIndex).length > 0;
+        const hasCsv = Object.keys(this.csvTroopIndex).length > 0; // only enforce after CSV loads
         return hasCsv ? !!this.csvTroopIndex[nk] : true;
       };
     },
 
+    /* Filtered members: only Troop List & not Discharged */
     filteredMembers() {
       return (this.members || []).filter((m) => {
         const inList = this.isInTroopList(m);
@@ -203,9 +283,10 @@ export default {
     },
 
     stats() {
-      const members = this.filteredMembers;
+      const members = this.filteredMembers; // filtered
       const orbat = this.orbat || [];
 
+      // Only count by Troop Status (not squad name)
       const activeMembers = members.filter(
         (m) => this.memberStatusOf(m) === "Active"
       ).length;
@@ -213,7 +294,10 @@ export default {
         (m) => this.memberStatusOf(m) === "Reserve"
       ).length;
 
-      let totalFireteams = 0, filledSlots = 0, vacantSlots = 0;
+      // Slot accounting (treat CLOSED as VACANT)
+      let totalFireteams = 0,
+        filledSlots = 0,
+        vacantSlots = 0;
       orbat.forEach((sq) => {
         (sq.fireteams || []).forEach((ft) => {
           const slots = ft.slots || [];
@@ -221,7 +305,7 @@ export default {
           slots.forEach((s) => {
             const st = String(s.status || "").toUpperCase();
             if (st === "FILLED" && s.member) filledSlots += 1;
-            else if (st === "VACANT" || st === "CLOSED") vacantSlots += 1;
+            else if (st === "VACANT" || st === "CLOSED") vacantSlots += 1; // why: CLOSED counts as free
           });
         });
       });
@@ -242,17 +326,20 @@ export default {
       };
     },
 
+    /* Per-element fill (CLOSED = VACANT) */
     elementFillStats() {
       const out = [];
       (this.orbat || []).forEach((sq) => {
-        let filled = 0, vacant = 0, hasSlots = false;
+        let filled = 0,
+          vacant = 0,
+          hasSlots = false;
         (sq.fireteams || []).forEach((ft) => {
           const slots = ft.slots || [];
           if (slots.length) hasSlots = true;
           slots.forEach((s) => {
             const st = String(s.status || "").toUpperCase();
             if (st === "FILLED" && s.member) filled += 1;
-            else if (st === "VACANT" || st === "CLOSED") vacant += 1;
+            else if (st === "VACANT" || st === "CLOSED") vacant += 1; // why: CLOSED counts as free
           });
         });
         if (!hasSlots) return;
@@ -264,6 +351,7 @@ export default {
       return out;
     },
 
+    /* Promotions list filtered to active roster only */
     upcomingPromotions() {
       const list = [];
       this.filteredMembers.forEach((m) => {
@@ -282,7 +370,8 @@ export default {
       list.sort((a, b) => {
         if (a.opsToNext !== b.opsToNext) return a.opsToNext - b.opsToNext;
         if (Number.isFinite(b.opsAttended) && Number.isFinite(a.opsAttended)) {
-          if (b.opsAttended !== a.opsAttended) return b.opsAttended - a.opsAttended;
+          if (b.opsAttended !== a.opsAttended)
+            return b.opsAttended - a.opsAttended;
         }
         return String(a.name).localeCompare(String(b.name));
       });
@@ -291,7 +380,7 @@ export default {
   },
   created() {
     this.setAnimate();
-    this.fetchTroopStatusCsv();
+    this.fetchTroopStatusCsv(); // load CSV early
   },
   beforeUpdate() {
     this.selectMission(this.missionSlug);
@@ -302,9 +391,41 @@ export default {
     }
   },
   methods: {
+
+campaignStatusText(status) {
+  switch (String(status || "").trim()) {
+    case "start":
+      return "In\nProgress";
+    case "partial-success":
+      return "Partial\nSuccess";
+    case "success":
+      return "Campaign\nSuccess";
+    case "failure":
+      return "Campaign\nFailure";
+    default:
+      return "Unknown";
+  }
+},
+isCampaignOpen(key) {
+  const k = String(key || "").toUpperCase();
+  return !!this.expandedCampaigns[k];
+},
+toggleCampaign(key) {
+  const k = String(key || "").toUpperCase();
+  const next = !this.expandedCampaigns[k];
+  this.expandedCampaigns = { ...this.expandedCampaigns, [k]: next };
+},
+expandCampaignForMission(mission) {
+  const key = String(mission?.campaignKey || mission?.campaign || "Unassigned").toUpperCase();
+  if (!key) return;
+  if (this.expandedCampaigns[key]) return;
+  this.expandedCampaigns = { ...this.expandedCampaigns, [key]: true };
+},
     selectMission(slug) {
       this.missionSlug = slug;
       const m = this.missions.find((x) => x.slug === this.missionSlug);
+      this.expandCampaignForMission(m);
+      this.missionTheme = m?.theme || {};
       this.missionMarkdown = this.buildAssignmentMarkdown(m);
     },
     buildAssignmentMarkdown(mission) {
@@ -326,6 +447,7 @@ export default {
       if (statusAnimated === null) window.sessionStorage.setItem("statusAnimated", true);
     },
 
+    /* Promotion helpers (unchanged) */
     rankKey(rank) { return String(rank || "").trim().toUpperCase().replace(/[.\s]/g, ""); },
     promotionLadderFor(rank) {
       const r = this.rankKey(rank);
@@ -380,6 +502,7 @@ export default {
       return ladder?.nextRank || null;
     },
 
+    /* CSV load & parse */
     async fetchTroopStatusCsv() {
       try {
         const res = await fetch(this.troopStatusCsvUrl, { method: "GET" });
