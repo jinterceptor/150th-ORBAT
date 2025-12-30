@@ -1095,9 +1095,14 @@ export default {
       let curFireteam = null;
       const out = {};
 
+      // Stop parsing after Chalks section (everything below is non-chalk elements)
+      const stopSectionRe = /^\s*broadsword\s+command\s*$/i;
+
       for (let i = 1; i < rows.length; i++) {
         const nameCell = String(rows[i]?.[nameIdx] || "").trim();
         const roleCell = String(rows[i]?.[roleIdx] || "").trim();
+
+        if (stopSectionRe.test(nameCell) || stopSectionRe.test(roleCell)) break;
 
         if (!nameCell && !roleCell) continue;
 
