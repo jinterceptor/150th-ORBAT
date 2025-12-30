@@ -466,40 +466,31 @@ export default {
 
 <style scoped>
 /* Override global fixed widths from _base.css for admin screens */
-.admin-home {
+.windows-grid {
   display: grid;
-  grid-template-columns: 420px minmax(1080px, 1fr);
+  grid-template-columns: 420px minmax(1100px, 1fr);
   column-gap: 2.4rem;
   align-items: start;
   width: 100%;
 }
 
-/* Override global fixed window widths just for Admin */
-.admin-home > .section-container {
-  width: 100% !important;
+/* Override global section sizing for this view (base.css sets fixed 393px width) */
+.windows-grid > .section-container {
+  width: auto !important;
   max-width: none !important;
-}
-
-
-.left-window { width: 420px !important; }
-.right-window {
+  margin: 24px 24px !important;
+  height: calc(100vh - 190px) !important;
   display: flex;
   flex-direction: column;
-  width: 100% !important;
-  min-width: 0;
-  height: calc(100vh - 180px);
-  max-height: calc(100vh - 180px);
-  overflow: hidden;
 }
 
-.right-window .section-content-container.right-content {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
-}
-
+.left-window { min-width: 420px; }
+.right-window { min-width: 0; }
 
 .header-shell { height: 52px; overflow: hidden; }
+.left-window > .section-content-container,
+.right-window > .section-content-container { flex: 1 1 auto; min-height: 0; }
+
 .left-content, .right-content { padding: 0.6rem; }
 
 .pad { padding: 1rem; }
@@ -564,7 +555,7 @@ export default {
 .pill.ok { border-color: rgba(120,255,170,0.7); }
 .pill.warn { border-color: rgba(255,190,80,0.7); }
 
-.promotions-panel { display: flex; flex-direction: column; gap: 0.6rem; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.promotions-panel { display: flex; flex-direction: column; gap: .6rem; flex: 1 1 auto; min-height: 0; overflow: hidden; }
 
 .filters { border: 1px dashed rgba(30,144,255,0.35); border-radius: 0.45rem; padding: 0.65rem; }
 .filters .row { display: grid; grid-template-columns: 1.25fr auto auto auto; gap: 0.7rem; align-items: end; }
@@ -590,17 +581,7 @@ export default {
 .chip.ok { border-color: rgba(120,255,170,0.7); }
 .chip.warn { border-color: rgba(255,190,80,0.7); }
 
-.table-shell {
-  flex: 1 1 auto;
-  min-height: 0;
-  border: 1px dashed rgba(30,144,255,0.35);
-  border-radius: 0.45rem;
-  background: rgba(0,10,30,0.18);
-  display: flex;
-  flex-direction: column;
-  overflow-x: auto;
-  overflow-y: hidden;
-}
+.table-shell { flex: 1 1 auto; min-height: 0; border: 1px dashed rgba(30,144,255,0.35); border-radius: .35rem; background: rgba(0,10,30,0.18); display: flex; flex-direction: column; overflow-x: auto; overflow-y: hidden; }
 
 .grid8 {
   display: grid;
