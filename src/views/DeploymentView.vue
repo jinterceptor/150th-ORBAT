@@ -1095,14 +1095,9 @@ export default {
       let curFireteam = null;
       const out = {};
 
-      // Stop parsing after Chalks section (everything below is non-chalk elements)
-      const stopSectionRe = /^\s*broadsword\s+command\s*$/i;
-
       for (let i = 1; i < rows.length; i++) {
         const nameCell = String(rows[i]?.[nameIdx] || "").trim();
         const roleCell = String(rows[i]?.[roleIdx] || "").trim();
-
-        if (stopSectionRe.test(nameCell) || stopSectionRe.test(roleCell)) break;
 
         if (!nameCell && !roleCell) continue;
 
@@ -2129,10 +2124,53 @@ async loadRemote(unitKey) {
 #deploymentView { color: #e6f3ff; }
 
 /* Shell / toolbar */
-#deploymentView{display:grid;grid-template-columns:1fr;gap:1.2rem;align-items:start;width:calc(100dvw - 90px);height:calc(100dvh - 95px);min-height:0;overflow:hidden;padding:18px 18px calc(18px + env(safe-area-inset-bottom, 0px)) 18px;box-sizing:border-box}
-.deployment-window.section-container{max-width:none!important;width:auto;height:100%;display:flex;flex-direction:column;overflow:hidden}
-.header-shell{height:52px;overflow:hidden}.section-header,.section-content-container{width:100%}
-.deploy-scroll{flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto;scrollbar-gutter:stable both-edges;padding-bottom:calc(12px + env(safe-area-inset-bottom, 0px))}
+#deploymentView{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:1.2rem;
+  align-items:stretch;
+  width:calc(100dvw - 90px);
+  height:calc(100dvh - 95px);
+  min-height:0;
+  overflow:hidden;
+  padding:28px 18px calc(18px + env(safe-area-inset-bottom, 0px)) 18px;
+  box-sizing:border-box;
+}
+.deployment-window.section-container{
+  max-width:none !important;
+  width:auto;
+  height:100%;
+  max-height:100%;
+  min-height:0;
+  margin:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  box-sizing:border-box; /* why: padding shouldn't push past viewport */
+}
+.header-shell{height:52px;overflow:hidden}
+.section-header,.section-content-container{width:100%}
+.deploy-scroll{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:auto;
+  scrollbar-gutter:stable both-edges;
+  padding-right:.35rem;
+  padding-bottom:calc(12px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (max-width: 900px){
+  #deploymentView{
+    width:100%;
+    height:auto;
+    overflow:visible;
+    padding-left:12px;
+    padding-right:12px;
+  }
+  .deployment-window.section-container{height:auto;max-height:none}
+  .deploy-scroll{overflow:visible;padding-right:0}
+}
+
 
 .panel{border:1px dashed rgba(30,144,255,0.35);background:rgba(0,10,30,0.18);border-radius:.6rem;padding:.8rem .9rem;overflow:visible}
 .top-actions{display:flex;justify-content:flex-end;margin-bottom:.5rem}
