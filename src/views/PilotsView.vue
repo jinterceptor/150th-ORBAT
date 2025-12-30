@@ -842,9 +842,6 @@ export default {
     max-height: none;
   }
 }
-  #members, #trainers { grid-column: 1; }
-  #pilotsView > .section-container { height: auto; }
-}
 
 /* Help the GPU plan the animation; avoids micro-jank on heavy DOM */
 .section-content-container { will-change: opacity, filter; contain: paint; }
@@ -860,6 +857,7 @@ export default {
   padding: .7rem .8rem;
   box-sizing: border-box;
 }
+
 .cards-grid { display: grid; gap: .7rem; }
 .trainers-grid { grid-template-columns: repeat(1, minmax(0, 1fr)); }
 @media (min-width: 1400px) { .trainers-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -915,7 +913,6 @@ export default {
   line-height: 1.15;
   white-space: normal;
   overflow-wrap: anywhere;
-  justify-items: start;
 }
 
 
