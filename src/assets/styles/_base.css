@@ -2044,3 +2044,174 @@ div.markdown .tag {
 	color: var(--briefing-dim);
 	background: rgba(0, 0, 0, 0.18);
 }
+
+
+/*-------------------------------------*/
+/*-- Briefing component helpers      --*/
+/*-------------------------------------*/
+/* Aliases so mission authors can use shorter class names consistently */
+div.markdown .briefing .accent { color: var(--markdown-accent); }
+div.markdown .briefing .muted { color: var(--markdown-muted); }
+
+/* Overline (UNSC / transmission header lines) */
+div.markdown .briefing-overline {
+	font-family: "Roboto", sans-serif;
+	font-weight: 800;
+	text-transform: uppercase;
+	letter-spacing: 0.22em;
+	font-size: 11px;
+	color: var(--markdown-muted);
+	margin: 0.15em 0;
+}
+
+/* KV table aliases: .kv .k/.v (maps to .briefing-kv look) */
+div.markdown .briefing .kv {
+	display: grid;
+	grid-template-columns: 160px 1fr;
+	gap: 0.35em 0.8em;
+	align-items: baseline;
+	margin: 0.6em 0 0.2em;
+}
+div.markdown .briefing .kv .k {
+	color: var(--markdown-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.16em;
+	font-size: 11px;
+	font-family: "Roboto", sans-serif;
+}
+div.markdown .briefing .kv .v {
+	color: rgba(255, 255, 255, 0.9);
+	font-size: 14px;
+}
+
+/* Badges (classification / action emphasis) */
+div.markdown .badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.35em;
+	padding: 0.18em 0.6em;
+	border-radius: 999px;
+	font-family: "Roboto", sans-serif;
+	font-weight: 800;
+	text-transform: uppercase;
+	letter-spacing: 0.12em;
+	font-size: 10px;
+	line-height: 1.2;
+	border: 1px solid rgba(255, 255, 255, 0.18);
+	background: rgba(0, 0, 0, 0.2);
+	color: rgba(255, 255, 255, 0.92);
+}
+div.markdown .badge.badge-red {
+	border-color: rgba(255, 90, 90, 0.45);
+	background: rgba(255, 90, 90, 0.14);
+	box-shadow: 0 0 10px rgba(255, 90, 90, 0.12) inset;
+}
+div.markdown .badge.badge-amber {
+	border-color: rgba(255, 190, 80, 0.45);
+	background: rgba(255, 190, 80, 0.14);
+	box-shadow: 0 0 10px rgba(255, 190, 80, 0.10) inset;
+}
+div.markdown .badge.badge-blue {
+	border-color: rgba(126, 201, 255, 0.55);
+	background: rgba(126, 201, 255, 0.14);
+	box-shadow: 0 0 10px rgba(126, 201, 255, 0.12) inset;
+}
+
+/* File markers (/start file/ /end file/) */
+div.markdown .file-marker {
+	margin: 0.9em 0;
+	padding: 0.5em 0.75em;
+	border-radius: 8px;
+	border: 1px dashed rgba(126, 201, 255, 0.30);
+	background: rgba(0, 0, 0, 0.22);
+	color: rgba(255, 255, 255, 0.78);
+	font-family: "Inconsolata", monospace;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	font-size: 11px;
+	position: relative;
+}
+div.markdown .file-marker::before {
+	content: ">>";
+	margin-right: 0.5em;
+	color: var(--markdown-accent);
+}
+div.markdown .file-marker::after {
+	content: "";
+	position: absolute;
+	right: 12px;
+	top: 50%;
+	width: 8px;
+	height: 8px;
+	transform: translateY(-50%);
+	border-radius: 50%;
+	background: rgba(126, 201, 255, 0.55);
+	box-shadow: 0 0 12px rgba(126, 201, 255, 0.25);
+}
+
+/* Objective blocks (OBJ cards) */
+div.markdown .objective {
+	border: 1px solid rgba(126, 201, 255, 0.22);
+	border-left: 3px solid var(--markdown-accent);
+	background: rgba(0, 0, 0, 0.16);
+	border-radius: 10px;
+	padding: 0.85em 0.9em;
+	margin: 0.85em 0;
+	box-shadow: 0 0 18px rgba(0, 0, 0, 0.18) inset;
+}
+div.markdown .objective .obj-id {
+	font-family: "Roboto", sans-serif;
+	font-weight: 900;
+	text-transform: uppercase;
+	letter-spacing: 0.22em;
+	font-size: 11px;
+	color: var(--markdown-muted);
+}
+div.markdown .objective .obj-title {
+	font-family: "Big Shoulders Display", cursive;
+	font-weight: 800;
+	text-transform: uppercase;
+	letter-spacing: 0.10em;
+	font-size: 20px;
+	margin: 0.15em 0 0.35em;
+	color: rgba(255, 255, 255, 0.92);
+}
+div.markdown .objective p { margin: 0.35em 0 0; }
+
+/* Briefing section headings (inside briefing) */
+div.markdown .briefing h2 {
+	margin-top: 1.0em;
+	margin-bottom: 0.5em;
+	color: rgba(255, 255, 255, 0.88);
+	text-transform: uppercase;
+	letter-spacing: 0.14em;
+	font-family: "Big Shoulders Display", cursive;
+	font-weight: 800;
+}
+div.markdown .briefing hr {
+	border: 0;
+	border-top: 1px dashed rgba(126, 201, 255, 0.22);
+	margin: 0.95em 0;
+}
+
+/* Reduce default markdown heading weight inside briefings */
+div.markdown .briefing h3 { color: rgba(255, 255, 255, 0.82); }
+
+
+
+/* File marker variants */
+div.markdown .file-marker.start {
+	border-color: rgba(120, 255, 170, 0.28);
+}
+div.markdown .file-marker.start::after {
+	background: rgba(120, 255, 170, 0.6);
+	box-shadow: 0 0 12px rgba(120, 255, 170, 0.25);
+}
+div.markdown .file-marker.end {
+	border-color: rgba(255, 190, 80, 0.28);
+}
+div.markdown .file-marker.end::after {
+	background: rgba(255, 190, 80, 0.6);
+	box-shadow: 0 0 12px rgba(255, 190, 80, 0.25);
+}
