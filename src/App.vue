@@ -94,7 +94,7 @@ export default {
     this.setTitleFavicon(`${Config.defaultTitle} UNSC BRIEFING`, Config.icon);
 
     // preload markdown
-    this.importMissions(import.meta.glob("@/assets/missions/*.md", { query: "?raw", import: "default" }));
+    this.importMissions(import.meta.glob("@/assets/missions/**/*.md", { query: "?raw", import: "default" }));
     this.importEvents(import.meta.glob("@/assets/events/*.md", { query: "?raw", import: "default" }));
 
     // async CSVs
@@ -434,12 +434,97 @@ export default {
     },
 
     async importMissions(files) {
-      const contents = await Promise.all(Object.values(files).map((f) => f()));
-      contents.forEach((c) => {
-        const l = c.split("\n");
-        this.missions.push({ slug: l[0], name: l[1], status: l[2], content: l.slice(3).join("\n") });
-      });
-    },
+  const entries = Object.entries(files);
+
+  const toTitle = (s) =>
+    String(s || "")
+      .replace(/[-_]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+
+  const inferCampaignFromPath = (path) => {
+    const p = String(path || "");
+    const parts = p.split("/missions/");
+    if (parts.length < 2) return { slug: "", name: "Unassigned" };
+    const after = parts[1];
+    const segs = after.split("/").filter(Boolean);
+    // segs like: ["dead-orbit", "001.md"] OR ["001.md"]
+    if (segs.length <= 1) return { slug: "", name: "Unassigned" };
+    const slug = segs[0];
+    return { slug, name: toTitle(slug) };
+  };
+
+  const parseNumeric = (s) => {
+    const m = String(s || "").match(/(\d+)/);
+    return m ? Number(m[1]) : NaN;
+  };
+
+  const contents = await Promise.all(entries.map(([, f]) => f()));
+  contents.forEach((c, idx) => {
+    const [path] = entries[idx];
+    const lines = String(c || "").split(/\r?\n/);
+
+    const slug = String(lines[0] || "").trim();
+    const name = String(lines[1] || "").trim();
+    const status = String(lines[2] || "").trim();
+
+    const inferred = inferCampaignFromPath(path);
+
+    // Optional directive lines after the 3-line header (stripped from content):
+    //   @campaign DEAD ORBIT
+    //   @campaign "DEAD ORBIT"
+    //   @order 3
+    //   @theme {"accent":"#...","strong":"#...","link":"#..."}
+    let i = 3;
+    const meta = {};
+    while (i < lines.length) {
+      const raw = String(lines[i] || "");
+      const line = raw.trim();
+      if (!line.startsWith("@")) break;
+
+      const [tag, ...rest] = line.split(" ");
+      const payload = rest.join(" ").trim();
+
+      if (tag === "@campaign") {
+        meta.campaign = payload.replace(/^"(.*)"$/, "$1").trim();
+      } else if (tag === "@order") {
+        const n = Number(payload);
+        if (Number.isFinite(n)) meta.order = n;
+      } else if (tag === "@theme") {
+        try {
+          meta.theme = payload ? JSON.parse(payload) : {};
+        } catch (e) {
+          console.warn(`Invalid @theme JSON for mission ${slug || "(unknown)"}; ignoring.`, e);
+        }
+      }
+
+      i += 1;
+    }
+
+    // Derive default order if not explicitly set
+    if (!Number.isFinite(Number(meta.order))) {
+      const fileBase = String(path || "").split("/").pop()?.replace(/\.md$/i, "") || "";
+      const orderFromSlug = parseNumeric(slug);
+      const orderFromFile = parseNumeric(fileBase);
+      const order = Number.isFinite(orderFromSlug) ? orderFromSlug : orderFromFile;
+      if (Number.isFinite(order)) meta.order = order;
+    }
+
+    const content = lines.slice(i).join("\n");
+    this.missions.push({
+      slug,
+      name,
+      status,
+      content,
+      campaign: meta.campaign || inferred.name,
+      campaignKey: (meta.campaign || inferred.slug || "unassigned").toString(),
+      order: meta.order,
+      theme: meta.theme || {},
+      sourcePath: path,
+    });
+  });
+},
     async importEvents(files) {
       const contents = await Promise.all(Object.values(files).map((f) => f()));
       contents.forEach((c) => {
