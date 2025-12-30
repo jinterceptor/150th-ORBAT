@@ -6,64 +6,52 @@
     :style="{ 'animation-delay': animationDelay }"
     class="content-container"
   >
-    
-<!-- Mission Log -->
-<section id="missions" class="section-container" :style="{ 'animation-delay': animationDelay }">
-  <div class="section-header clipped-medium-backward">
-    <img src="/icons/campaign.svg" />
-    <h1>Mission Log</h1>
-  </div>
-  <div class="section-content-container">
-    <div class="mission-list-container">
-      <div v-for="group in campaignGroups" :key="group.key" class="campaign-group">
-        <div
-          class="campaign"
-          :class="[{ open: isCampaignOpen(group.key) }, group.status]"
-          @click="toggleCampaign(group.key)"
-        >
-          <div class="name">
-            <h1>Campaign</h1>
-            <h2>{{ group.name }}</h2>
-          </div>
+    <!-- Mission Log -->
+    <section id="missions" class="section-container" :style="{ 'animation-delay': animationDelay }">
+      <div class="section-header clipped-medium-backward">
+        <img src="/icons/campaign.svg" />
+        <h1>Mission Log</h1>
+      </div>
+      <div class="section-content-container">
+        
+<div class="mission-list-container">
+  <div v-for="group in campaignGroups" :key="group.key" class="campaign-group">
+    <div class="campaign" :class="[{ open: isCampaignOpen(group.key) }, group.status]" @click="toggleCampaign(group.key)">
+      <div class="name">
+        <h1>Campaign</h1>
+        <h2>{{ group.name }}</h2>
+      </div>
 
-          <div class="status" :class="group.status">
-            {{ campaignStatusText(group.status) }}
-            <img :src="`/icons/mission-${group.status}.svg`" />
-          </div>
+      <div class="status" :class="group.status">
+        {{ campaignStatusText(group.status) }}
+        <img :src="`/icons/mission-${group.status}.svg`" />
+      </div>
 
-          <div class="toggle" aria-hidden="true">
-            <span class="chevron" :class="{ open: isCampaignOpen(group.key) }">▾</span>
-          </div>
-        </div>
-
-        <div v-show="isCampaignOpen(group.key)" class="campaign-missions">
-          <Mission
-            v-for="item in group.missions"
-            :key="item.slug"
-            :mission="item"
-            :selected="missionSlug"
-            @click.stop="selectMission(item.slug)"
-          />
-        </div>
+      <div class="toggle" aria-hidden="true">
+        <span class="chevron" :class="{ open: isCampaignOpen(group.key) }">▾</span>
       </div>
     </div>
-  </div>
-</section>
 
-<!-- Current Assignment -->
+    <div v-show="isCampaignOpen(group.key)" class="campaign-missions">
+      <Mission
+        v-for="item in group.missions"
+        :key="item.slug"
+        :mission="item"
+        :selected="missionSlug"
+        @click.stop="selectMission(item.slug)"
+      />
+    </div>
+  </div>
+</div>
+
+    <!-- Current Assignment -->
     <section id="assignment" class="section-container" :style="{ 'animation-delay': animationDelay }">
       <div class="section-header clipped-medium-backward">
         <img src="/icons/deployable.svg" />
         <h1>Current Assignment</h1>
       </div>
       <div class="section-content-container">
-        <vue-markdown-it
-          :source="missionMarkdown"
-          :options="markdownOptions"
-          class="markdown"
-          :style="markdownStyle"
-          :data-mission="missionSlug"
-        />
+        <vue-markdown-it :source="missionMarkdown" :options="markdownOptions" class="markdown" :style="markdownStyle" />
       </div>
     </section>
 
@@ -168,61 +156,57 @@ export default {
       csvTroopIndex: Object.create(null),  // nameKey -> present in Troop List
     };
   },
-  computed: {
-    markdownStyle() {
-      const theme = this.missionTheme || {};
-      const style = {};
-      if (theme.accent) style["--markdown-accent"] = String(theme.accent);
-      if (theme.strong) style["--markdown-strong-color"] = String(theme.strong);
-      if (theme.link) style["--markdown-link-color"] = String(theme.link);
-      return style;
-    },
+  
+computed: {
+  markdownOptions() {
+    return {
+      html: true,
+      linkify: true,
+      typographer: true,
+    };
+  },
+  markdownStyle() {
+    const theme = this.missionTheme || {};
+    const style = {};
+    if (theme.accent) style["--markdown-accent"] = String(theme.accent);
+    if (theme.strong) style["--markdown-strong-color"] = String(theme.strong);
+    if (theme.link) style["--markdown-link-color"] = String(theme.link);
+    return style;
+  },
+  campaignGroups() {
+    const missions = (this.missions || []).slice();
 
-markdownOptions() {
-  return {
-    html: true,
-    linkify: true,
-    typographer: true,
-  };
-},
+    const byCampaign = new Map();
+    for (const m of missions) {
+      const name = String(m.campaign || "Unassigned").trim() || "Unassigned";
+      const key = String(m.campaignKey || name).trim().toUpperCase() || name.toUpperCase();
+      if (!byCampaign.has(key)) byCampaign.set(key, { key, name, missions: [] });
+      byCampaign.get(key).missions.push(m);
+    }
 
-campaignGroups() {
-  const missions = (this.missions || []).slice();
+    const summarizeStatus = (ms) => {
+      const statuses = ms.map((x) => String(x.status || "").trim());
+      if (statuses.includes("start")) return "start";
+      if (statuses.includes("failure")) return "failure";
+      if (statuses.includes("partial-success")) return "partial-success";
+      if (statuses.length && statuses.every((s) => s === "success")) return "success";
+      return "start";
+    };
 
-  const byCampaign = new Map();
-  for (const m of missions) {
-    const name = String(m.campaign || "Unassigned").trim() || "Unassigned";
-    const key = String(m.campaignKey || name).trim().toUpperCase() || name.toUpperCase();
-    if (!byCampaign.has(key)) byCampaign.set(key, { key, name, missions: [] });
-    byCampaign.get(key).missions.push(m);
-  }
-
-  const normalizeStatus = (s) => String(s || "").trim();
-
-  const summarizeStatus = (ms) => {
-    const statuses = ms.map((x) => normalizeStatus(x.status));
-    if (statuses.includes("start")) return "start";
-    if (statuses.includes("failure")) return "failure";
-    if (statuses.includes("partial-success")) return "partial-success";
-    if (statuses.length && statuses.every((s) => s === "success")) return "success";
-    return "start";
-  };
-
-  const sortedGroups = Array.from(byCampaign.values()).map((g) => {
-    const ms = g.missions.slice();
-    ms.sort((a, b) => {
-      const ao = Number.isFinite(Number(a.order)) ? Number(a.order) : Number.POSITIVE_INFINITY;
-      const bo = Number.isFinite(Number(b.order)) ? Number(b.order) : Number.POSITIVE_INFINITY;
-      if (ao !== bo) return ao - bo;
-      return String(a.slug || "").localeCompare(String(b.slug || ""));
+    const groups = Array.from(byCampaign.values()).map((g) => {
+      const ms = g.missions.slice();
+      ms.sort((a, b) => {
+        const ao = Number.isFinite(Number(a.order)) ? Number(a.order) : Number.POSITIVE_INFINITY;
+        const bo = Number.isFinite(Number(b.order)) ? Number(b.order) : Number.POSITIVE_INFINITY;
+        if (ao !== bo) return ao - bo;
+        return String(a.slug || "").localeCompare(String(b.slug || ""));
+      });
+      return { key: g.key, name: g.name, missions: ms, status: summarizeStatus(ms) };
     });
-    return { key: g.key, name: g.name, missions: ms, status: summarizeStatus(ms) };
-  });
 
-  sortedGroups.sort((a, b) => a.name.localeCompare(b.name));
-  return sortedGroups;
-},
-
+    groups.sort((a, b) => a.name.localeCompare(b.name));
+    return groups;
+  },
     /* ---- CSV-based membership / status helpers ---- */
     nameKey() {
       return (name) =>
@@ -390,56 +374,50 @@ campaignGroups() {
       this.selectMission(this.missions[0].slug);
     }
   },
-  methods: {
-
-campaignStatusText(status) {
-  switch (String(status || "").trim()) {
-    case "start":
-      return "In\nProgress";
-    case "partial-success":
-      return "Partial\nSuccess";
-    case "success":
-      return "Campaign\nSuccess";
-    case "failure":
-      return "Campaign\nFailure";
-    default:
-      return "Unknown";
-  }
+  
+methods: {
+  campaignStatusText(status) {
+    switch (String(status || "").trim()) {
+      case "start":
+        return "In\nProgress";
+      case "partial-success":
+        return "Partial\nSuccess";
+      case "success":
+        return "Campaign\nSuccess";
+      case "failure":
+        return "Campaign\nFailure";
+      default:
+        return "Unknown";
+    }
+  },
+  isCampaignOpen(key) {
+    const k = String(key || "").toUpperCase();
+    return !!this.expandedCampaigns[k];
+  },
+  toggleCampaign(key) {
+    const k = String(key || "").toUpperCase();
+    const next = !this.expandedCampaigns[k];
+    this.expandedCampaigns = { ...this.expandedCampaigns, [k]: next };
+  },
+  expandCampaignForMission(mission) {
+    const key = String(mission?.campaignKey || mission?.campaign || "Unassigned").toUpperCase();
+    if (!key) return;
+    if (this.expandedCampaigns[key]) return;
+    this.expandedCampaigns = { ...this.expandedCampaigns, [key]: true };
+  },
+    
+selectMission(slug) {
+  this.missionSlug = slug;
+  const m = this.missions.find((x) => x.slug === this.missionSlug);
+  this.expandCampaignForMission(m);
+  this.missionTheme = m?.theme || {};
+  this.missionMarkdown = this.buildAssignmentMarkdown(m);
 },
-isCampaignOpen(key) {
-  const k = String(key || "").toUpperCase();
-  return !!this.expandedCampaigns[k];
+    
+buildAssignmentMarkdown(mission) {
+  if (!mission) return "";
+  return String(mission.content || "").trim();
 },
-toggleCampaign(key) {
-  const k = String(key || "").toUpperCase();
-  const next = !this.expandedCampaigns[k];
-  this.expandedCampaigns = { ...this.expandedCampaigns, [k]: next };
-},
-expandCampaignForMission(mission) {
-  const key = String(mission?.campaignKey || mission?.campaign || "Unassigned").toUpperCase();
-  if (!key) return;
-  if (this.expandedCampaigns[key]) return;
-  this.expandedCampaigns = { ...this.expandedCampaigns, [key]: true };
-},
-    selectMission(slug) {
-      this.missionSlug = slug;
-      const m = this.missions.find((x) => x.slug === this.missionSlug);
-      this.expandCampaignForMission(m);
-      this.missionTheme = m?.theme || {};
-      this.missionMarkdown = this.buildAssignmentMarkdown(m);
-    },
-    buildAssignmentMarkdown(mission) {
-      if (!mission) return "";
-      const body = String(mission.content || "").trim();
-      const startsWithHeading = /^#{1,6}\s+/.test(body);
-      if (startsWithHeading) return body;
-
-      const name = (mission.name || "").trim();
-      const status = (mission.status || "").trim();
-      const titleLine = name ? `# ${name}\n\n` : "";
-      const subtitleLine = status ? `## ${status}\n\n` : "";
-      return `${titleLine}${subtitleLine}${body}`.trim();
-    },
     setAnimate() {
       if (this.animate) this.animateView = true;
       const statusAnimated = window.sessionStorage.getItem("statusAnimated");
