@@ -590,7 +590,7 @@ export default {
       used.add(candidate);
       return candidate;
     },
-  },
+  }
 };
 </script>
 
