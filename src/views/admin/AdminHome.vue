@@ -242,6 +242,8 @@ export default {
       const onlyProm = !!this.onlyPromotable;
       const rows = [];
       for (const m of (this.members || [])) {
+        const statusRaw = String(m?.troopStatus ?? m?.troop_status ?? m?.status ?? m?.memberStatus ?? "").trim().toLowerCase();
+        if (statusRaw && statusRaw.includes("discharged")) continue;
         const squad = String(
           m?.squad ||
           this.membershipIndex[`ID:${m?.id}`] ||
@@ -378,13 +380,16 @@ export default {
 .content-container { will-change: opacity, filter; contain: paint; }
 
 /* Layout + visuals */
-.windows-grid { display: grid; grid-template-columns: 380px minmax(1080px, 1fr); column-gap: 2.4rem; align-items: start; width: 100%; }
+.windows-grid { display: grid; grid-template-columns: 420px minmax(1240px, 1fr); column-gap: 2.1rem; align-items: start; width: 100%; }
+/* Expand admin windows (override global section sizing/margins) */
+.windows-grid > .section-container { margin: 32px 24px !important; height: calc(100vh - 180px) !important; }
+
 .windows-grid > .section-container { position: relative !important; width: 100%; max-width: none; align-self: start; }
 .left-window { height: auto !important; max-height: none !important; }
-.right-window { display: flex; flex-direction: column; max-height: 100vh; overflow: hidden; }
+.right-window { display: flex; flex-direction: column; height: calc(100vh - 180px); max-height: calc(100vh - 180px); overflow: hidden; }
 .right-window .section-content-container.right-content { flex: 1 1 auto; min-height: 0; overflow: hidden; padding: .6rem .6rem .2rem; }
 
-.promotions-panel { display: flex; flex-direction: column; gap: .6rem; height: 72vh; max-height: 72vh; min-height: 50vh; overflow: hidden; }
+.promotions-panel { display: flex; flex-direction: column; gap: .6rem; flex: 1 1 auto; min-height: 0; overflow: hidden; }
 
 .control { display: grid; gap: .2rem; }
 .control span { font-size: .85rem; color: #9ec5e6; }
@@ -418,9 +423,9 @@ export default {
 .rail-foot { margin-top: .25rem; font-size: .8rem; color: #9ec5e6; }
 
 .table-scroll { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; }
-.table-shell { flex: 1 1 auto; min-height: 0; border: 1px dashed rgba(30,144,255,0.35); border-radius: .35rem; background: rgba(0,10,30,0.18); display: flex; flex-direction: column; overflow: hidden; }
-.grid6 { display: grid; grid-template-columns: 1.6fr .8fr 1fr .6fr .9fr 1.2fr; align-items: center; }
-.tr.head { font-weight: 600; background: rgba(0,10,30,0.35); border-bottom: 1px dashed rgba(30,144,255,0.25); flex: 0 0 auto; }
+.table-shell { flex: 1 1 auto; min-height: 0; border: 1px dashed rgba(30,144,255,0.35); border-radius: .35rem; background: rgba(0,10,30,0.18); display: flex; flex-direction: column; overflow-x: auto; overflow-y: hidden; }
+.grid6 { display: grid; grid-template-columns: 1.6fr .8fr 1fr .6fr .9fr 1.2fr; align-items: center; min-width: 980px; }
+.tr.head { font-weight: 600; background: rgba(0,10,30,0.35); border-bottom: 1px dashed rgba(30,144,255,0.25); flex: 0 0 auto; position: sticky; top: 0; z-index: 2; }
 .rows-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
 .tr .th, .tr .td { padding: .4rem .5rem; color: #e6f3ff; border-bottom: 1px dashed rgba(30,144,255,0.18); }
 .rows-scroll .tr:last-child .td { border-bottom: 0; }
