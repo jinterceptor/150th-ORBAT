@@ -854,6 +854,8 @@ export default {
   display: grid;
   grid-template-rows: auto 1fr;
   gap: .45rem;
+  min-width: 0; /* why: allow grid items to shrink */
+  overflow: hidden; /* why: prevent pill bleed */
 }
 .card-head { display: flex; align-items: center; gap: .5rem; margin: 0; }
 .title {
@@ -869,7 +871,7 @@ export default {
   white-space: nowrap;
 }
 .plain-title { background: none !important; clip-path: none !important; padding: 0 !important; border: 0 !important; }
-.body { display: grid; gap: .3rem; align-content: start; }
+.body { display: grid; gap: .3rem; align-content: start; min-width: 0; }
 .lead { color: #9ec5e6; font-size: .9rem; }
 .label { color: #9ec5e6; font-size: .85rem; }
 .highlight { color: #79ffba; }
@@ -878,7 +880,7 @@ export default {
   background: linear-gradient(90deg, rgba(30,144,255,0.28), rgba(30,144,255,0.10) 60%, transparent);
   border-radius: 1px;
 }
-.trainers-block { width: 100%; max-width: clamp(160px, 92%, 320px); }
+.trainers-block { width: 100%; max-width: 100%; min-width: 0; }
 .vlist { list-style: none; margin: 0; padding: 0; display: grid; gap: .18rem; }
 .vlist li {
   color: #e6f3ff;
@@ -887,11 +889,13 @@ export default {
   border-radius: .35rem;
   padding: .2rem .45rem;
   font-size: .9rem;
-  line-height: 1.15;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.15;  white-space: normal;  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
 }
+
 
 
 .section-content_container { width: 100% !important; }
