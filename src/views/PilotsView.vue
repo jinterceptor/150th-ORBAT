@@ -328,6 +328,48 @@
         </div> <!-- /squad-modal-scroll -->
       </div> <!-- /squad-modal -->
     </section>
+    <!-- RIGHT: TRAINERS -->
+    <section id="trainers" class="section-container">
+      <div class="header-shell">
+        <div class="section-header clipped-medium-backward-pilot">
+          <img src="/icons/protocol.svg" alt="" />
+          <h1>TRAINING & CONTACTS</h1>
+        </div>
+        <div class="rhombus-back">&nbsp;</div>
+      </div>
+
+      <div class="section-content-container trainers-content">
+        <div class="panel">
+          <div v-if="trainersLoading" class="muted">Loading RefData…</div>
+          <div v-else-if="trainersError" class="error">{{ trainersError }}</div>
+
+          <div v-else class="cards-grid trainers-grid">
+            <div v-for="role in trainers" :key="role.key" class="t-card">
+              <div class="card-head">
+                <h3 class="title plain-title" :title="role.title">{{ role.title }}</h3>
+              </div>
+
+              <div class="body">
+                <div v-if="role.lead" class="lead">
+                  <span class="label">Contact:</span>
+                  <span class="highlight">{{ role.lead }}</span>
+                </div>
+
+                <div v-if="role.trainers.length" class="divider" />
+
+                <div v-if="role.trainers.length" class="trainers-block">
+                  <div class="label">Trainers</div>
+                  <ul class="vlist">
+                    <li v-for="n in role.trainers" :key="n" :title="n">{{ n }}</li>
+                  </ul>
+                </div>
+                <div v-else class="muted">No trainers listed</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <audio ref="orbatClickAudio" preload="auto">
       <source src="/sound/Orbat Main Menu Click.ogg" type="audio/ogg" />
@@ -349,6 +391,14 @@ export default {
       animateView: false,
       animationDelay: "0ms",
 
+
+      // RefData (trainers list)
+      trainersLoading: true,
+      trainersError: "",
+      refDataCsvUrl:
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=107253735&single=true&output=csv",
+      trainers: [],
+
       activeSquad: null,
       certLabels: [
         "Rifleman","Machine Gunner","Anti Tank","Corpsmen","Combat Engineer",
@@ -364,6 +414,9 @@ export default {
         marksman:  { label: "Marksman", points: 2 },
       },
     };
+  },
+  created() {
+    this.loadTrainerRefData();
   },
   mounted() {
     this.triggerFlicker();
@@ -477,6 +530,85 @@ export default {
       this.$nextTick(() => {
         requestAnimationFrame(() => { this.animateView = true; });
       });
+    },
+
+
+    /* --- RefData: Trainers (same sheet as TrainingView) --- */
+    async loadTrainerRefData() {
+      try {
+        this.trainersLoading = true;
+        this.trainersError = "";
+
+        const res = await fetch(this.refDataCsvUrl);
+        if (!res.ok) throw new Error(`Failed to fetch RefData (HTTP ${res.status}).`);
+        const csv = await res.text();
+        const table = this.parseCsv(csv);
+
+        const headerRow = table[1] || [];
+        const TRAINER_COLS = this.range(21, 30); // V..AE
+
+        const trainers = [];
+        for (const c of TRAINER_COLS) {
+          const title = this.cleanHeader(headerRow[c] || "");
+          if (!title) continue;
+
+          const raw = this.readDown(table, 2, c).filter(this.isRealName);
+          const uniq = [];
+          for (const n of raw) if (!uniq.includes(n)) uniq.push(n);
+
+          const lead = uniq[0] || "";
+          const trainersAll = uniq.slice(); // includes contact
+          trainers.push({ key: `role-${c}`, title, lead, trainers: trainersAll });
+        }
+
+        this.trainers = trainers;
+      } catch (e) {
+        this.trainersError = String(e?.message || e);
+        console.error("Trainer RefData load failed:", e);
+      } finally {
+        this.trainersLoading = false;
+      }
+    },
+
+    range(a, b) { const out = []; for (let i = a; i <= b; i++) out.push(i); return out; },
+    readDown(table, startRow, col) {
+      const out = [];
+      for (let r = startRow; r < table.length; r++) {
+        const v = this.cleanName(table[r]?.[col] || "");
+        if (!v) break;
+        out.push(v);
+      }
+      return out;
+    },
+    cleanHeader(s) { return String(s).replace(/^"+|"+$/g, "").replace(/\s+/g, " ").trim(); },
+    cleanName(s) { return String(s).replace(/\s+/g, " ").trim(); },
+    isRealName(s) { const v = String(s || "").trim(); return v && v.toLowerCase() !== "vacant"; },
+
+    parseCsv(text) {
+      const rows = [];
+      let cur = [];
+      let val = "";
+      let inQ = false;
+
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (inQ) {
+          if (ch === '"') {
+            if (text[i + 1] === '"') { val += '"'; i += 1; }
+            else inQ = false;
+          } else { val += ch; }
+        } else {
+          if (ch === '"') inQ = true;
+          else if (ch === ",") { cur.push(val); val = ""; }
+          else if (ch === "\n") { cur.push(val); rows.push(cur); cur = []; val = ""; }
+          else if (ch !== "\r") { val += ch; }
+        }
+      }
+
+      cur.push(val);
+      rows.push(cur);
+      if (rows.length && rows[rows.length - 1].every((x) => String(x).length === 0)) rows.pop();
+      return rows;
     },
 
     nameKey(name) {
@@ -657,22 +789,110 @@ export default {
 </script>
 
 <style scoped>
-/* Reserve space for scrollbar to avoid width snap at the end of the fade */
-.section-container {
-  height: 100vh;
+/* === Layout: ORBAT left, trainers right === */
+#pilotsView {
+  display: grid;
+  grid-template-columns: 1.7fr 0.8fr;
+  gap: 1.2rem;
+  align-items: start;
+  padding-top: 28px;
+  padding-left: 18px;
+  padding-right: 18px;
+  padding-bottom: 18px;
+  overflow-x: hidden;
+}
+#pilotsView > .section-container { width: 100%; margin: 0; max-width: 100%; height: calc(100vh - 56px); }
+#pilotsView > audio { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+#members { grid-column: 1; }
+#trainers { grid-column: 2; }
+
+/* Shared window look (PilotsView overrides base.css fixed 393px width + margins) */
+#members.section-container,
+#trainers.section-container {
   overflow-y: auto;
   scrollbar-gutter: stable;
-  padding: 2.5rem 3rem;
   color: #dce6f1;
   font-family: "Consolas","Courier New",monospace;
-  width: 100% !important;
-  max-width: 2200px;
-  margin: 0 auto;
   box-sizing: border-box;
+}
+
+/* Keep ORBAT padding as before; trainers slightly tighter */
+#members.section-container { padding: 2.5rem 3rem; }
+#trainers.section-container { padding: 2.5rem 1.6rem; }
+
+@media (max-width: 1200px) {
+  #pilotsView { grid-template-columns: 1fr; padding-left: 12px; padding-right: 12px; }
+  #members, #trainers { grid-column: 1; }
+  #pilotsView > .section-container { height: auto; }
 }
 
 /* Help the GPU plan the animation; avoids micro-jank on heavy DOM */
 .section-content-container { will-change: opacity, filter; contain: paint; }
+
+/* Trainers panel (borrowed from TrainingView) */
+.header-shell { height: 52px; overflow: hidden; }
+.muted { color: #9ec5e6; }
+.error { color: #ff9f9f; }
+.panel {
+  border: 1px dashed rgba(30,144,255,0.35);
+  background: rgba(0,10,30,0.18);
+  border-radius: .6rem;
+  padding: .7rem .8rem;
+  box-sizing: border-box;
+}
+.cards-grid { display: grid; gap: .7rem; }
+.trainers-grid { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+@media (min-width: 1400px) { .trainers-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1750px) { .trainers-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.t-card {
+  box-sizing: border-box;
+  border: 1px solid rgba(30,144,255,0.28);
+  background: rgba(0,10,30,0.28);
+  border-radius: .6rem;
+  padding: .6rem .7rem;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: .45rem;
+}
+.card-head { display: flex; align-items: center; gap: .5rem; margin: 0; }
+.title {
+  margin: 0;
+  color: #d9ebff;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  font-size: 1rem;
+  line-height: 1.15;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plain-title { background: none !important; clip-path: none !important; padding: 0 !important; border: 0 !important; }
+.body { display: grid; gap: .3rem; align-content: start; }
+.lead { color: #9ec5e6; font-size: .9rem; }
+.label { color: #9ec5e6; font-size: .85rem; }
+.highlight { color: #79ffba; }
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(30,144,255,0.28), rgba(30,144,255,0.10) 60%, transparent);
+  border-radius: 1px;
+}
+.trainers-block { width: 100%; max-width: clamp(160px, 92%, 320px); }
+.vlist { list-style: none; margin: 0; padding: 0; display: grid; gap: .18rem; }
+.vlist li {
+  color: #e6f3ff;
+  background: rgba(0,10,30,0.16);
+  border: 1px solid rgba(30,144,255,0.20);
+  border-radius: .35rem;
+  padding: .2rem .45rem;
+  font-size: .9rem;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 
 .section-content_container { width: 100% !important; }
 .orbat-wrapper { width: 100%; margin-top: 0.75rem; padding-bottom: 4rem; }
