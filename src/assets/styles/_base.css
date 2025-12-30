@@ -1981,7 +1981,7 @@ div.markdown .terminal {
 	border: 1px solid var(--briefing-border);
 	background: rgba(0, 0, 0, 0.26);
 	border-radius: 8px;
-	padding: 0.95em 1em;
+	padding: 1.75em 1em 0.95em;
 	margin: 0.8em 0;
 	position: relative;
 	overflow: auto;
@@ -1990,7 +1990,7 @@ div.markdown .terminal {
 div.markdown pre.terminal::before {
 	content: "SECURE TERMINAL";
 	position: absolute;
-	top: 8px;
+	top: 10px;
 	right: 10px;
 	font-family: "Roboto", sans-serif;
 	font-size: 10px;
@@ -1998,6 +1998,10 @@ div.markdown pre.terminal::before {
 	text-transform: uppercase;
 	color: var(--briefing-dim);
 	opacity: 0.9;
+	padding: 0.15em 0.45em;
+	border-radius: 6px;
+	background: rgba(0, 0, 0, 0.35);
+	border: 1px solid rgba(126, 201, 255, 0.22);
 }
 
 div.markdown .terminal .cursor {
