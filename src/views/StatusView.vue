@@ -43,6 +43,9 @@
     </div>
   </div>
 </div>
+      </div>
+    </section>
+
 
     <!-- Current Assignment -->
     <section id="assignment" class="section-container" :style="{ 'animation-delay': animationDelay }">
