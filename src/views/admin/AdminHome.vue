@@ -148,6 +148,13 @@ export default {
       animationDelay: "0ms",
       activeKey: "promotions",
 
+
+      // RefData CSV (STRICT: Troop List + Troop Status)
+      troopStatusCsvUrl:
+        \"https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=107253735&single=true&output=csv\",
+      csvStatusIndex: Object.create(null), // nameKey -> status
+      csvTroopIndex: Object.create(null),  // nameKey -> present in Troop List
+
       // Promotions
       search: "",
       selectedSquad: "__ALL__",
@@ -156,7 +163,7 @@ export default {
     };
   },
   created() {
-    /* nothing extra needed now */
+    this.fetchTroopStatusCsv();
   },
   mounted() {
     this.triggerFlicker();
@@ -174,6 +181,45 @@ export default {
     },
     cleanMemberName() { return (name) => String(name || "").replace(/\s*[\(\[].*?[\)\]]\s*$/g, "").trim(); },
     rankKey() { return (rank) => String(rank || "").trim().toUpperCase().replace(/[.\s]/g, ""); },
+
+    normalizeStatus() {
+      const pretty = {
+        ACTIVE: "Active",
+        RESERVE: "Reserve",
+        ELOA: "ELOA",
+        OTHER: "Other",
+        INACTIVE: "Inactive",
+        DISCHARGED: "Discharged",
+        UNKNOWN: "Unknown",
+      };
+      return (raw) => pretty[String(raw || "").trim().toUpperCase()] || "Unknown";
+    },
+    memberStatusOf() {
+      return (m) => {
+        const nk = this.nameKey(this.cleanMemberName(m?.name));
+        const fromCsv = this.csvStatusIndex[nk];
+        if (fromCsv) return fromCsv;
+        const fallback = String(m?.statusNorm ?? m?.status ?? m?.troopStatus ?? "").trim();
+        return fallback ? this.normalizeStatus(fallback) : "Unknown";
+      };
+    },
+    isDischarged() {
+      return (status) => String(status || "").trim().toLowerCase() === "discharged";
+    },
+    isInTroopList() {
+      return (m) => {
+        const nk = this.nameKey(this.cleanMemberName(m?.name));
+        const hasCsv = Object.keys(this.csvTroopIndex).length > 0;
+        return hasCsv ? !!this.csvTroopIndex[nk] : true;
+      };
+    },
+    filteredMembers() {
+      return (this.members || []).filter((m) => {
+        const inList = this.isInTroopList(m);
+        const status = this.memberStatusOf(m);
+        return inList && !this.isDischarged(status);
+      });
+    },
 
     nextPromotion() {
       const alias = { PRIVATE:"PVT", PRIVATEFIRSTCLASS:"PFC", SPECIALIST:"SPC", SPECIALIST2:"SPC2", SPECIALIST3:"SPC3", SPECIALIST4:"SPC4", LANCECORPORAL:"LCPL", CORPORAL:"CPL", SERGEANT:"SGT", STAFFSERGEANT:"SSGT", GUNNYSERGEANT:"GYSGT", SECONDLIEUTENANT:"2NDLT", FIRSTLIEUTENANT:"1STLT", CAPTAIN:"CAPT", HOSPITALMANAPPRENTICE:"HA", HOSPITALMAN:"HN", HOSPITALCORPSMANTHIRDCLASS:"HM3", HOSPITALCORPSMANSECONDCLASS:"HM2", HOSPITALCORPSMANFIRSTCLASS:"HM1", CHIEFHOSPITALCORPSMAN:"HMC", WARRANTOFFICER:"WO", CHIEFWARRANTOFFICER2:"CWO2", CHIEFWARRANTOFFICER3:"CWO3", CHIEFWARRANTOFFICER4:"CWO4", CHIEFWARRANTOFFICER5:"CWO5" };
@@ -241,9 +287,7 @@ export default {
       const squadFilter = this.selectedSquad;
       const onlyProm = !!this.onlyPromotable;
       const rows = [];
-      for (const m of (this.members || [])) {
-        const statusRaw = String(m?.troopStatus ?? m?.troop_status ?? m?.status ?? m?.memberStatus ?? "").trim().toLowerCase();
-        if (statusRaw && statusRaw.includes("discharged")) continue;
+      for (const m of (this.filteredMembers || this.members || [])) {
         const squad = String(
           m?.squad ||
           this.membershipIndex[`ID:${m?.id}`] ||
@@ -325,13 +369,70 @@ export default {
     },
 
     isFiniteNum(v) { return Number.isFinite(v); },
+
+
+    /* CSV load & parse (Troop List + Troop Status) */
+    async fetchTroopStatusCsv() {
+      try {
+        const res = await fetch(this.troopStatusCsvUrl, { method: "GET" });
+        const csvText = await res.text();
+        const rows = this.parseCsv(csvText);
+        if (!rows.length) return;
+
+        const header = rows[0].map((h) => String(h || "").trim());
+        const hdrLower = header.map((h) => h.toLowerCase().replace(/\s+/g, " ").trim());
+        const nameIdx = hdrLower.findIndex((h) => h === "troop list");
+        const statusIdx = hdrLower.findIndex((h) => h === "troop status");
+        if (nameIdx === -1 || statusIdx === -1) return;
+
+        const statusMap = Object.create(null);
+        const troopMap = Object.create(null);
+        for (let i = 1; i < rows.length; i++) {
+          const r = rows[i];
+          const rawName = String(r[nameIdx] || "").trim();
+          if (!rawName) continue;
+          const nk = this.nameKey(this.cleanMemberName(rawName));
+          troopMap[nk] = true;
+          statusMap[nk] = this.normalizeStatus(String(r[statusIdx] || "").trim());
+        }
+        this.csvStatusIndex = statusMap;
+        this.csvTroopIndex = troopMap;
+      } catch (e) {
+        console.warn("CSV status load failed:", e);
+      }
+    },
+    parseCsv(text) {
+      const rows = [];
+      let cur = [];
+      let val = "";
+      let inQ = false;
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (inQ) {
+          if (ch === '"') {
+            if (text[i + 1] === '"') { val += '"'; i++; } else { inQ = false; }
+          } else { val += ch; }
+        } else {
+          if (ch === '"') inQ = true;
+          else if (ch === ",") { cur.push(val); val = ""; }
+          else if (ch === "\n") { cur.push(val); rows.push(cur); cur = []; val = ""; }
+          else if (ch === "\r") { /* ignore */ }
+          else { val += ch; }
+        }
+      }
+      cur.push(val);
+      rows.push(cur);
+      if (rows.length && rows[rows.length - 1].every((x) => String(x).length === 0)) rows.pop();
+      return rows;
+    },
+
   },
 };
 </script>
 
 <style scoped>
 /* Prevent layout shift during fade */
-.right-window .section-content-container.right-content { scrollbar-gutter: stable; }
+.right-window .section-content-container.right-content { flex: 1 1 auto; min-height: 0; overflow: hidden; padding: .6rem .6rem .35rem; }
 .rows-scroll { scrollbar-gutter: stable; }
 
 /* Header alignment shells */
@@ -380,13 +481,10 @@ export default {
 .content-container { will-change: opacity, filter; contain: paint; }
 
 /* Layout + visuals */
-.windows-grid { display: grid; grid-template-columns: 420px minmax(1240px, 1fr); column-gap: 2.1rem; align-items: start; width: 100%; }
-/* Expand admin windows (override global section sizing/margins) */
-.windows-grid > .section-container { margin: 32px 24px !important; height: calc(100vh - 180px) !important; }
-
+.windows-grid { display: grid; grid-template-columns: 380px minmax(1080px, 1fr); column-gap: 2.4rem; align-items: start; width: 100%; }
 .windows-grid > .section-container { position: relative !important; width: 100%; max-width: none; align-self: start; }
 .left-window { height: auto !important; max-height: none !important; }
-.right-window { display: flex; flex-direction: column; height: calc(100vh - 180px); max-height: calc(100vh - 180px); overflow: hidden; }
+.right-window { display: flex; flex-direction: column; max-height: 100vh; overflow: hidden; }
 .right-window .section-content-container.right-content { flex: 1 1 auto; min-height: 0; overflow: hidden; padding: .6rem .6rem .2rem; }
 
 .promotions-panel { display: flex; flex-direction: column; gap: .6rem; flex: 1 1 auto; min-height: 0; overflow: hidden; }
@@ -433,5 +531,4 @@ export default {
 .bar { height: 8px; background: rgba(0,10,30,0.35); border: 1px solid rgba(30,144,255,0.35); border-radius: 999px; position: relative; overflow: hidden; }
 .bar .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; transition: width .25s ease; background: rgba(120,200,255,0.6); }
 .bar.done .fill { background: rgba(120,255,170,0.7); }
-
 </style>
