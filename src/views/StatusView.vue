@@ -43,8 +43,6 @@
     </div>
   </div>
 </div>
-      </div>
-    </section>
 
     <!-- Current Assignment -->
     <section id="assignment" class="section-container" :style="{ 'animation-delay': animationDelay }">
@@ -543,6 +541,60 @@ buildAssignmentMarkdown(mission) {
 </script>
 
 <style scoped>
+/* View layout: make all three windows reach near the bottom of the viewport */
+#status.content-container {
+  display: grid;
+  grid-template-columns: 1.05fr 1.55fr 1.05fr;
+  gap: 1.2rem;
+  align-items: stretch;
+
+  height: calc(100vh - 96px);
+  padding: 28px 18px 18px;
+  overflow: hidden;
+}
+
+/* Stop base.css fixed-width sections from constraining StatusView */
+#status > .section-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header stays fixed, content scrolls inside each window */
+#status > .section-container > .section-content-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 0.35rem; /* why: keep scrollbar off text */
+}
+
+/* Make markdown fill and scroll cleanly inside Current Assignment */
+#assignment .markdown {
+  min-height: 0;
+}
+
+/* Responsive: stack windows and let page scroll naturally */
+@media (max-width: 1200px) {
+  #status.content-container {
+    grid-template-columns: 1fr;
+    height: auto;
+    overflow: visible;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  #status > .section-container {
+    height: auto;
+    max-height: none;
+  }
+}
+
 /* Overview layout */
 .status-grid {
   display: grid;
