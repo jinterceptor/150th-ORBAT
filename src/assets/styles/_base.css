@@ -39,6 +39,17 @@
 	/* For Firefox */
 	scrollbar-color: var(--primary-color) transparent !important;
 	scrollbar-width: thin;
+
+	/* Compat (used by scrollbar hover) */
+	--highlight-color: var(--highlight-hover);
+	/* Markdown theme tokens (can be overridden per mission via inline style vars) */
+	--markdown-accent: #7ec9ff;
+	--markdown-strong-color: rgba(255, 255, 255, 0.92);
+	--markdown-link-color: #7ec9ff;
+	--markdown-code-bg: rgba(0, 0, 0, 0.28);
+	--markdown-code-border: rgba(126, 201, 255, 0.35);
+	--markdown-hr: rgba(126, 201, 255, 0.22);
+	--markdown-muted: rgba(255, 255, 255, 0.65);
 }
 
 html {
@@ -1569,7 +1580,7 @@ div.markdown p {
 }
 
 div.markdown hr {
-	border-color: var(--primary-color);
+	border-color: var(--markdown-hr);
 }
 
 div.markdown blockquote {
@@ -1578,8 +1589,43 @@ div.markdown blockquote {
 	color: #999696
 }
 
+
+
+div.markdown a,
+div.markdown a:visited {
+	color: var(--markdown-link-color);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+div.markdown a:hover {
+	filter: brightness(1.15);
+}
+
+div.markdown code {
+	font-family: "Inconsolata", monospace;
+	font-size: 0.95em;
+	padding: 0.1em 0.35em;
+	border-radius: 4px;
+	background: var(--markdown-code-bg);
+	border: 1px solid var(--markdown-code-border);
+}
+
+div.markdown pre code {
+	display: block;
+	padding: 0.85em 0.95em;
+	overflow: auto;
+	white-space: pre;
+}
+
+div.markdown .muted,
+div.markdown small {
+	color: var(--markdown-muted);
+}
+
 div.markdown p strong {
-	color: var(--primary-color);
+	color: var(--markdown-strong-color);
+	text-shadow: 0 0 10px rgba(126, 201, 255, 0.12);
 }
 
 div.markdown h1 {
@@ -1807,4 +1853,194 @@ div.markdown ol li {
 	padding: 5px;
 	line-height:11px;
 	text-align: justify;
+}
+
+/*-------------------------------------*/
+/*--  Mission Briefing (Terminal UI)  --*/
+/*-------------------------------------*/
+div.markdown .briefing {
+	--briefing-accent: var(--markdown-accent);
+	--briefing-ink: rgba(255, 255, 255, 0.90);
+	--briefing-dim: rgba(255, 255, 255, 0.68);
+	--briefing-bg: rgba(0, 0, 0, 0.18);
+	--briefing-border: rgba(126, 201, 255, 0.22);
+
+	font-family: "Inconsolata", monospace;
+	letter-spacing: 0.02em;
+	color: var(--briefing-ink);
+	border: 1px solid var(--briefing-border);
+	background: linear-gradient(180deg, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.08));
+	border-radius: 8px;
+	padding: 1em 1.1em;
+	margin: 0.25em 0 1.1em;
+	position: relative;
+	overflow: hidden;
+}
+
+div.markdown .briefing::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	background:
+		repeating-linear-gradient(
+			180deg,
+			rgba(255, 255, 255, 0.04) 0px,
+			rgba(255, 255, 255, 0.04) 1px,
+			rgba(0, 0, 0, 0) 3px,
+			rgba(0, 0, 0, 0) 6px
+		);
+	opacity: 0.25;
+}
+
+div.markdown .briefing::after {
+	content: "";
+	position: absolute;
+	left: -30%;
+	top: 0;
+	width: 60%;
+	height: 100%;
+	background: radial-gradient(circle at 30% 20%, rgba(126, 201, 255, 0.10), transparent 55%);
+	pointer-events: none;
+}
+
+div.markdown .briefing-title {
+	font-family: "Big Shoulders Display", cursive;
+	font-weight: 800;
+	text-transform: uppercase;
+	letter-spacing: 0.12em;
+	font-size: 26px;
+	margin: 0 0 0.2em;
+	color: var(--briefing-ink);
+}
+
+div.markdown .briefing-subtitle {
+	font-family: "Roboto", sans-serif;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.18em;
+	font-size: 11px;
+	color: var(--briefing-dim);
+	margin: 0 0 1em;
+}
+
+div.markdown .briefing-line {
+	border-top: 1px dashed var(--briefing-border);
+	margin: 0.9em 0;
+	opacity: 0.9;
+}
+
+div.markdown .briefing-panel {
+	border: 1px solid var(--briefing-border);
+	background: rgba(0, 0, 0, 0.18);
+	border-radius: 7px;
+	padding: 0.85em 0.9em;
+	margin: 0.75em 0;
+}
+
+div.markdown .briefing-panel.warning {
+	border-color: rgba(255, 190, 80, 0.45);
+	box-shadow: 0 0 10px rgba(255, 190, 80, 0.08) inset;
+}
+
+div.markdown .briefing-panel.danger {
+	border-color: rgba(255, 90, 90, 0.45);
+	box-shadow: 0 0 10px rgba(255, 90, 90, 0.08) inset;
+}
+
+div.markdown .briefing-kv {
+	display: grid;
+	grid-template-columns: 160px 1fr;
+	gap: 0.35em 0.8em;
+	align-items: baseline;
+}
+
+div.markdown .briefing-kv .k {
+	color: var(--briefing-dim);
+	text-transform: uppercase;
+	letter-spacing: 0.16em;
+	font-size: 11px;
+	font-family: "Roboto", sans-serif;
+}
+
+div.markdown .briefing-kv .v {
+	color: var(--briefing-ink);
+	font-size: 14px;
+}
+
+div.markdown .briefing-kv .v strong {
+	color: var(--markdown-strong-color);
+}
+
+div.markdown pre.terminal,
+div.markdown .terminal {
+	font-family: "Inconsolata", monospace;
+	font-size: 14px;
+	line-height: 1.45em;
+	white-space: pre-wrap;
+	border: 1px solid var(--briefing-border);
+	background: rgba(0, 0, 0, 0.26);
+	border-radius: 8px;
+	padding: 0.95em 1em;
+	margin: 0.8em 0;
+	position: relative;
+	overflow: auto;
+}
+
+div.markdown pre.terminal::before {
+	content: "SECURE TERMINAL";
+	position: absolute;
+	top: 8px;
+	right: 10px;
+	font-family: "Roboto", sans-serif;
+	font-size: 10px;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	color: var(--briefing-dim);
+	opacity: 0.9;
+}
+
+div.markdown .terminal .cursor {
+	display: inline-block;
+	width: 8px;
+	height: 1em;
+	background: var(--briefing-accent);
+	margin-left: 4px;
+	animation: blink 1s steps(2, start) infinite;
+}
+
+@keyframes blink {
+	to { visibility: hidden; }
+}
+
+div.markdown .objective {
+	border-left: 3px solid var(--briefing-accent);
+	padding-left: 0.85em;
+	margin: 0.8em 0;
+}
+
+div.markdown .objective .label {
+	font-family: "Roboto", sans-serif;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	font-size: 11px;
+	color: var(--briefing-dim);
+}
+
+div.markdown .objective .text {
+	margin-top: 0.25em;
+	font-size: 14px;
+	color: var(--briefing-ink);
+}
+
+div.markdown .tag {
+	display: inline-block;
+	border: 1px solid var(--briefing-border);
+	border-radius: 999px;
+	padding: 0.2em 0.6em;
+	font-size: 11px;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	color: var(--briefing-dim);
+	background: rgba(0, 0, 0, 0.18);
 }
