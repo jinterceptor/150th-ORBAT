@@ -2,7 +2,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 
 import Status from "@/views/StatusView.vue";
-import Pilots from "@/views/PilotsView.vue";
+import Pilots from "@/views/RosterView.vue";
 import Events from "@/views/EventsView.vue";
 import AdminHome from "@/views/admin/AdminHome.vue";
 import Deployment from "@/views/DeploymentView.vue";
