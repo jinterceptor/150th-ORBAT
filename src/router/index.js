@@ -22,7 +22,7 @@ const routes = [
   { path: "/", redirect: "/status" },
 
   { path: "/status", name: "Mission Status", component: Status, props: true, meta: { title: `${DEFAULT_TITLE} BRIEFING SYSTEM` } },
-  { path: "/pilots", name: "Unit Roster", component: Pilots, props: true, meta: { title: `${DEFAULT_TITLE} UNIT ROSTER` } },
+  { path: "/roster", name: "Unit Roster", component: Pilots, props: true, meta: { title: `${DEFAULT_TITLE} UNIT ROSTER` } },
   { path: "/events", name: "Events", component: Events, props: true, meta: { title: `${DEFAULT_TITLE} EVENTS` } },
 
   // NEW: Deployment (gate to staff/officer; change to public by removing requiresAdmin)
