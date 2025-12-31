@@ -4,7 +4,7 @@
     <section class="section-container deployment-window">
       <div class="header-shell">
         <div class="section-header clipped-medium-backward-pilot">
-          <img src="/icons/orbital.svg" alt="" />
+          <img src="/icons/deployable.svg" alt="" />
           <h1>DEPLOYMENT — {{ currentUnit?.title || 'Chalk' }}</h1>
         </div>
         <div class="rhombus-back">&nbsp;</div>
