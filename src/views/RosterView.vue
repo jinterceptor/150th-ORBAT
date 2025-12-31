@@ -136,7 +136,7 @@
           <div class="squad-modal-header">
             <div class="squad-header-left">
               <div class="section-header clipped-medium-backward-bio">
-                <img src="/icons/license.svg" />
+                <img src="/icons/squad.svg" />
                 <h1>SQUAD ROSTER</h1>
               </div>
               <div class="rhombus-back">&nbsp;</div>
@@ -332,7 +332,7 @@
     <section id="trainers" class="section-container">
       <div class="header-shell">
         <div class="section-header clipped-medium-backward-pilot">
-          <img src="/icons/protocol.svg" alt="" />
+          <img src="/icons/npc.svg" alt="" />
           <h1>TRAINING & CONTACTS</h1>
         </div>
         <div class="rhombus-back">&nbsp;</div>
