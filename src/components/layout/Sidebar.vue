@@ -16,7 +16,7 @@
           <span>Status</span>
         </router-link>
 
-        <router-link class="clipped-bottom-right" to="/pilots" @click.native="playBrowse">
+        <router-link class="clipped-bottom-right" to="/roster" @click.native="playBrowse">
           <img src="/icons/license.svg" />
           <span>Roster</span>
         </router-link>
