@@ -33,7 +33,7 @@
           to="/deployment"
           @click.native="playBrowse"
         >
-          <img src="/icons/protocol.svg" />
+          <img src="/icons/orbital.svg" />
           <span>Deployment</span>
         </router-link>
 
