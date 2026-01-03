@@ -959,6 +959,45 @@ export default {
 @media (min-width: 1400px){ .trainers-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 1750px){ .trainers-grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
+/* --- Trainers layout: equal-height neat grid --- */
+.trainers-grid{
+  display: grid;
+  gap: .7rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  align-items: stretch;
+  grid-auto-rows: 1fr;
+}
+
+/* Ensure each tile stretches and aligns internally */
+.t-card{
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* Consistent header height across tiles */
+.t-card .card-head{
+  flex: 0 0 auto;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+/* Let body fill remaining space */
+.t-card .body{
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .45rem;
+}
+
+/* Keep trainer list anchored to bottom when there's extra space */
+.trainers-block{
+  margin-top: auto;
+}
+
 .t-card{
   border: 1px solid rgba(170, 220, 255, 0.18);
   background: rgba(0, 0, 0, 0.26);
