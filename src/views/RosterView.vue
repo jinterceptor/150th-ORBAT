@@ -161,20 +161,20 @@
                 </div>
 
                 <div class="body">
-                  <div v-if="role.lead" class="lead">
+                  <div class="lead">
                     <span class="label">Contact:</span>
-                    <span class="highlight">{{ role.lead }}</span>
+                    <span class="highlight">{{ role.lead || "—" }}</span>
                   </div>
 
-                  <div v-if="role.trainers.length" class="divider" />
+                  <div class="divider" />
 
-                  <div v-if="role.trainers.length" class="trainers-block">
+                  <div class="trainers-block">
                     <div class="label">Trainers</div>
-                    <ul class="vlist">
+                    <ul v-if="role.trainers.length" class="vlist">
                       <li v-for="n in role.trainers" :key="n" :title="n">{{ n }}</li>
                     </ul>
+                    <div v-else class="muted">None listed</div>
                   </div>
-                  <div v-else class="muted">No trainers listed</div>
                 </div>
               </div>
             </div>
@@ -994,9 +994,13 @@ export default {
   flex: 1 1 auto;
   min-height: 0;
 
-  /* Consistent internal layout across cards */
+  /* Lock structure above the trainer list */
   display: grid;
-  grid-template-rows: minmax(56px, auto) auto 1fr;
+  grid-template-rows:
+    minmax(60px, 60px)  /* CONTACT block fixed */
+    auto                /* divider */
+    auto                /* TRAINERS label */
+    auto;               /* trainer list / none */
   gap: .45rem;
   align-content: start;
 }
@@ -1033,12 +1037,12 @@ export default {
   grid-template-rows: auto 1fr;
   gap: .18rem;
   min-width: 0;
-  min-height: 56px; /* keeps CONTACT block aligned across cards */
+  height: 60px; /* fixed so TRAINERS aligns */
 }
 .lead .label{ white-space: nowrap; }
 .lead .highlight{
   display: -webkit-box;
-  -webkit-line-clamp: 2;         /* prevent runaway height + avoid clipping */
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
