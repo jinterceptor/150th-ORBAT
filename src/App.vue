@@ -212,16 +212,17 @@ export default {
       this.stamp = `UTC ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
     },
     seedInitialFeed() {
-      if (!this.showLogin) return;
-      this.typedLines = [
-        "UNITED NATIONS SPACE COMMAND // SECURE MILNET",
-        "NODE: ORBITAL BRIEFING SYSTEM (OBS)",
-        "» AUTH HANDSHAKE: LISTENING",
-        "» ENCRYPTION SUITE: SWORD/VAULT // ACTIVE",
-        "» THREAT FILTER: ENABLED // CONTENT SANITIZED",
-      ].slice(-this.maxLines);
-      this.pickNextTarget();
-    },
+  // Start from a totally empty terminal and type the first line from the first character.
+  this.typedLines = [];
+  this.currentText = "";
+  this.currentCharIndex = 0;
+
+  // Force the very first line to be this exact string (no telemetry mutation on it)
+  this.currentTarget = "UNITED NATIONS SPACE COMMAND // SECURE MILNET";
+
+  // Clear recent picks so the next randomly chosen line doesn't repeat weirdly
+  this.lastPickIndices = [];
+},
     pickNextTarget() {
       if (Math.random() < this.blankLineChance) {
         this.currentTarget = "";
@@ -294,11 +295,11 @@ export default {
         this.currentText = this.currentTarget.slice(0, this.currentCharIndex + 1);
         this.currentCharIndex += 1;
 
-        if (this.currentCharIndex >= this.currentTarget.length) {
-          this.commitCurrentLine();
-          this.pickNextTarget();
-          this.bootTimer = window.setTimeout(tick, this.interLinePauseMs);
-          return;
+        if (this.currentCharIndex >= (this.currentTarget || "").length) {
+         this.commitCurrentLine();
+         this.pickNextTarget();
+         this.bootTimer = window.setTimeout(tick, this.interLinePauseMs);
+         return;
         }
 
         const jitter = Math.floor(minDelay + Math.random() * (maxDelay - minDelay));
