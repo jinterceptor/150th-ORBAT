@@ -1,11 +1,19 @@
 <!-- src/views/LoginView.vue -->
 <template>
   <div class="content-container">
+    <!-- Boot overlay -->
+    <BootScreenUNSC
+      v-if="showBoot"
+      channel="ACCESS PORTAL"
+      @done="onBootDone"
+    />
+
     <section class="section-container" style="max-width:780px;margin:auto">
       <div class="section-header clipped-medium-backward">
         <img src="/icons/orbital.svg" alt="">
         <h1>UNSC Access Portal</h1>
       </div>
+
       <div class="section-content-container login-grid">
         <!-- Member lane -->
         <div class="card">
@@ -36,13 +44,29 @@
 
 <script>
 import { loginStaff } from "@/stores/auth";
+import BootScreenUNSC from "@/components/BootScreenUNSC.vue";
 
 export default {
   name: "LoginView",
+  components: { BootScreenUNSC },
   data() {
-    return { username: "", password: "", loading: false, error: "", ok: false };
+    return {
+      username: "",
+      password: "",
+      loading: false,
+      error: "",
+      ok: false,
+
+      // show boot once per browser session (nice UX)
+      showBoot: sessionStorage.getItem("bootSeen") !== "1",
+    };
   },
   methods: {
+    onBootDone() {
+      this.showBoot = false;
+      sessionStorage.setItem("bootSeen", "1");
+    },
+
     async doLogin() {
       this.error = ""; this.ok = false;
       const u = this.username.trim(), p = this.password;
@@ -64,6 +88,7 @@ export default {
 </script>
 
 <style scoped>
+/* your existing styles unchanged */
 .login-grid { display:grid; grid-template-columns: 1fr 1fr; gap:1rem; }
 .card { border:1px dashed rgba(30,144,255,.35); background:rgba(0,10,30,.25); border-radius:.5rem; padding:.75rem; display:grid; gap:.6rem; }
 .title { margin:0; color:#e6f3ff; }
