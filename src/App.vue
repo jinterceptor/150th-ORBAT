@@ -176,11 +176,11 @@ export default {
     this.importEvents(import.meta.glob("@/assets/events/*.md", { query: "?raw", import: "default" }));
 
     const membersUrl =
-      "https://docs.google.com/spreadsheets/d/e...o7UXaJDDkg4bGQcl3jRP/pub?gid=1185035639&single=true&output=csv";
+      "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=1185035639&single=true&output=csv";
     const refDataUrl =
-      "https://docs.google.com/spreadsheets/d/e...To7UXaJDDkg4bGQcl3jRP/pub?gid=107253735&single=true&output=csv";
+      "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=107253735&single=true&output=csv";
     const opsUrl =
-      "https://docs.google.com/spreadsheets/d/e/2PA...o7UXaJDDkg4bGQcl3jRP/pub?gid=1115158828&single=true&output=csv";
+      "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=1115158828&single=true&output=csv";
 
     this.loadMembersCSV(membersUrl)
       .then(() => this.loadRefDataCSV(refDataUrl))
