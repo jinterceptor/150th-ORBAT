@@ -980,18 +980,21 @@ export default {
 .lead{ color:#9ec5e6; font-size:.9rem; }
 
 /* Prevent trainer contact lines from overflowing tiles */
-.t-card{ min-width: 0; }
+.t-card{ min-width: 0; overflow: hidden; }
 .lead{
-  display:flex;
-  flex-wrap:wrap;
-  gap:.35rem;
-  align-items:baseline;
-  min-width:0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: .18rem;
+  min-width: 0;
 }
+.lead .label{ white-space: nowrap; }
 .lead .highlight{
-  overflow-wrap:anywhere;
-  word-break:break-word;
-  min-width:0;
+  display: block;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
 }
 
 .label{ color:#9ec5e6; font-size:.85rem; }
