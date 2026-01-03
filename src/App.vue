@@ -16,7 +16,7 @@
           <img src="/faction-logos/FUD_UNSC_Logo.png" alt="" />
         </div>
 
-        <!-- Ambient terminal feed (fixed height, trims early so it never runs under the divider) -->
+        <!-- Ambient terminal feed (starts "scrolling" after 5 lines by trimming immediately) -->
         <div class="typed-window">
           <div class="typed" v-html="typedHtml"></div>
         </div>
@@ -128,8 +128,8 @@ export default {
       bootTimer: null,
       stamp: "",
 
-      // IMPORTANT: trim earlier so the caret never drifts under the divider
-      maxLines: 14,
+      // SIMPLE: start trimming after first 5 lines
+      maxLines: 5,
 
       interLinePauseMs: 210,
       blankLineChance: 0.08,
@@ -211,12 +211,13 @@ export default {
 
     seedInitialFeed() {
       if (!this.showLogin) return;
-      const seed = [
+      this.typedLines = [
         "UNITED NATIONS SPACE COMMAND // SECURE MILNET",
         "NODE: ORBITAL BRIEFING SYSTEM (OBS)",
         "» AUTH HANDSHAKE: LISTENING",
-      ];
-      this.typedLines = seed.slice(-this.maxLines);
+        "» ENCRYPTION SUITE: SWORD/VAULT // ACTIVE",
+        "» THREAT FILTER: ENABLED // CONTENT SANITIZED",
+      ].slice(-this.maxLines);
       this.pickNextTarget();
     },
 
@@ -263,7 +264,7 @@ export default {
     },
 
     trimToWindow() {
-      // start trimming as soon as we reach the "divider-safe" budget
+      // start "scrolling" immediately after 5 lines
       if (this.typedLines.length > this.maxLines) {
         this.typedLines.splice(0, this.typedLines.length - this.maxLines);
       }
@@ -299,7 +300,6 @@ export default {
         this.currentCharIndex += 1;
 
         if (this.currentCharIndex >= this.currentTarget.length) {
-          // seamless "reset": commit and immediately start a new bottom line
           this.commitCurrentLine();
           this.pickNextTarget();
           this.bootTimer = window.setTimeout(tick, this.interLinePauseMs);
@@ -388,7 +388,7 @@ export default {
       this.events = out.sort((a, b) => a.slug.localeCompare(b.slug));
     },
 
-    // (rest of your CSV/promotion methods unchanged)
+    // Remaining CSV/promotion methods unchanged...
     promotionLadderFor(rankName) {
       const r = String(rankName || "").trim().toUpperCase();
 
@@ -571,15 +571,14 @@ export default {
 }
 .logo-ghost img { width: min(520px, 74vw); height: auto; }
 
-/* Smaller fixed-height window ensures feed stays above the ACCESS OPTIONS divider */
+/* With maxLines=5, the feed "scrolls" almost immediately and never collides with the divider */
 .typed-window {
   position: relative;
   z-index: 2;
-  height: 190px;      /* tuned so content never runs under gate divider */
+  height: 190px;
   overflow: hidden;
   padding-right: 6px;
 
-  /* subtle fade at bottom so new lines feel like they emerge “into” the divider */
   -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 78%, rgba(0,0,0,0) 100%);
   mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 78%, rgba(0,0,0,0) 100%);
 }
@@ -593,6 +592,9 @@ export default {
 .line { margin: 2px 0; }
 .dim { opacity: 0.7; }
 .line.spacer { height: 10px; }
+
+/* Optional: keep each line to a single terminal row so it never wraps into the gate area */
+.line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .caret {
   display: inline-block;
