@@ -173,7 +173,7 @@
                     <ul v-if="role.trainers.length" class="vlist">
                       <li v-for="n in role.trainers" :key="n" :title="n">{{ n }}</li>
                     </ul>
-                    <div v-else class="muted">None listed</div>
+                    <div v-else class="muted muted-pill">None listed</div>
                   </div>
                 </div>
               </div>
@@ -398,6 +398,15 @@ export default {
     this.triggerFlicker();
   },
   computed: {
+    maxTrainerCount() {
+      const arr = this.trainers || [];
+      let m = 1;
+      for (const r of arr) {
+        const n = (r?.trainers || []).length;
+        if (n > m) m = n;
+      }
+      return m;
+    },
     attendanceMap() {
       const map = Object.create(null);
       (this.members || []).forEach(m => {
@@ -954,31 +963,22 @@ export default {
   border-radius: 14px;
   padding: 12px;
 }
-.cards-grid{ display:grid; gap: .7rem; }
-.trainers-grid{ grid-template-columns: 1fr; }
 
-/* Force true grid rows for trainer cards (prevents masonry-style stacking) */
-.cards-grid.trainers-grid{
-  display: grid !important;
-  grid-auto-flow: row;
-  grid-auto-rows: auto;
-  align-items: stretch;
-  align-content: start;
-  column-count: initial;
-  column-gap: normal;
-}
-
-
-
-/* --- Trainers layout: neat dense grid (no forced equal-height, more columns to reduce scrolling) --- */
+/* ===== TRAINERS GRID (from scratch) =====
+   Goal: every tile lines up perfectly regardless of trainer count.
+   We do this by reserving list-space based on the maximum trainer count. */
 .trainers-grid{
   display: grid;
   gap: .7rem;
-  grid-template-columns: 1fr;  /* mobile */
-  align-items: start;
+  grid-template-columns: 1fr;
+  align-items: stretch;
+  align-content: start;
+
+  /* hard-reset any "masonry/columns" inherited styles */
+  column-count: initial !important;
+  column-gap: normal !important;
 }
 
-/* Increase columns on wider screens to keep the list from getting too tall */
 @media (min-width: 900px){
   .trainers-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -986,45 +986,26 @@ export default {
   .trainers-grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
-/* Keep tiles visually consistent without forcing a fixed height */
+/* Tile */
 .t-card{
   min-width: 0;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  gap: .5rem;
-  min-height: 220px; /* consistent baseline */
-}
 
-.t-card .card-head{
-  flex: 0 0 auto;
-  min-height: 44px; /* keeps titles aligned */
-  display: flex;
-  align-items: center;
-}
-
-.t-card .body{
-  flex: 1 1 auto;
-  min-height: 0;
-
-  /* Lock structure above the trainer list */
-  display: grid;
-  grid-template-rows:
-    minmax(60px, 60px)  /* CONTACT block fixed */
-    auto                /* divider */
-    auto                /* TRAINERS label */
-    auto;               /* trainer list / none */
-  gap: .45rem;
-  align-content: start;
-}
-
-.t-card{
   border: 1px solid rgba(170, 220, 255, 0.18);
   background: rgba(0, 0, 0, 0.26);
   border-radius: 14px;
   padding: 10px 12px;
-  display:grid;
-  gap: .5rem;
+
+  display: grid;
+  grid-template-rows: 44px 64px 28px auto; /* title, contact, trainers label, list */
+  gap: .45rem;
+}
+
+/* Title: 2-line clamp, no clipping */
+.t-card .card-head{
+  display:flex;
+  align-items:center;
+  min-width:0;
 }
 .title{
   margin:0;
@@ -1032,7 +1013,6 @@ export default {
   font-size: 0.95rem;
   letter-spacing: .14em;
 
-  /* Allow 2-line titles without clipping */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -1040,20 +1020,24 @@ export default {
   text-overflow: ellipsis;
   white-space: normal;
 }
-.plain-title{ background:none !important; clip-path:none !important; padding:0 !important; border:0 !important; }
-.lead{ color:#9ec5e6; font-size:.9rem; }
 
-/* Prevent trainer contact lines from overflowing tiles */
-.t-card{ min-width: 0; overflow: hidden; }
+/* CONTACT block fixed height so TRAINERS aligns */
 .lead{
+  min-width: 0;
   display: grid;
   grid-template-rows: auto 1fr;
   gap: .18rem;
-  min-width: 0;
-  height: 60px; /* fixed so TRAINERS aligns */
+  height: 64px;
 }
-.lead .label{ white-space: nowrap; }
-.lead .highlight{
+.label{
+  color:#9ec5e6;
+  font-size:.85rem;
+  white-space: nowrap;
+}
+.highlight{
+  color:#79ffba;
+  min-width:0;
+
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -1062,30 +1046,59 @@ export default {
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
-  min-width: 0;
 }
 
-.label{ color:#9ec5e6; font-size:.85rem; }
-.highlight{ color:#79ffba; }
+/* Divider always present and consistent */
 .divider{
   height:1px;
   background: linear-gradient(90deg, rgba(170,220,255,0.22), rgba(170,220,255,0.08) 60%, transparent);
-  margin: 0; /* keep spacing governed by grid gap */
+  margin: 0;
 }
-.vlist{ list-style:none; margin:0; padding:0; display:grid; gap:.22rem; }
-.vlist li{
+
+/* TRAINERS block:
+   Reserve enough height for the max number of trainers across the dataset,
+   so every tile ends up exactly the same height (perfect alignment). */
+.trainers-block{
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: .35rem;
+
+  /* pill height ~28px + gap ~6px => ~34px per line */
+  min-height: calc(var(--max-trainers, 1) * 34px);
+}
+.vlist{
+  list-style:none;
+  margin:0;
+  padding:0;
+  display:grid;
+  gap:.22rem;
+  align-content:start;
+}
+
+/* Pills */
+.vlist li,
+.muted-pill{
   display:inline-block;
   width: fit-content;
   max-width: 100%;
+
   color:#e6f3ff;
   background: rgba(0,0,0,0.18);
   border: 1px solid rgba(170,220,255,0.14);
   border-radius: 10px;
   padding: .22rem .5rem;
+
   text-transform:none;
   letter-spacing:0;
-}
 
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.muted-pill{
+  opacity: .75;
+}
 /* ===== Modal restyle to match terminal ===== */
 .squad-overlay{
   position: fixed;
