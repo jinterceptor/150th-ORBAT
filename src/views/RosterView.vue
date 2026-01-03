@@ -999,33 +999,63 @@ attendanceMap() {
 }
 
 
-/* --- Trainers layout overrides (keep theme, improve alignment) --- */
+/* --- Trainers layout overrides (keep theme, lock alignment) --- */
 .cards-grid.trainers-grid{
   /* ensure strict grid (no masonry/columns) */
+  display: grid !important;
+  grid-auto-flow: row;
+  align-items: stretch;
+  align-content: start;
   column-count: initial !important;
   column-gap: normal !important;
 }
 
-/* Allow titles to wrap to 2 lines (prevents clipping) */
-.t-card .card-head{ min-height: 44px; display:flex; align-items:center; min-width:0; }
-.title{
+/* Keep each tile as a simple vertical stack */
+.cards-grid.trainers-grid .t-card{
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  min-width: 0;
+}
+
+/* Title: allow wrap to 2 lines (prevents clipping) */
+.cards-grid.trainers-grid .t-card .card-head{
+  flex: 0 0 auto;
+  min-height: 44px;
+  display:flex;
+  align-items:center;
+  min-width:0;
+}
+.cards-grid.trainers-grid .t-card .title{
   white-space: normal;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Fix CONTACT block height so TRAINERS header aligns */
-.lead{
-  display: grid;
+/* BODY: fixed CONTACT block, then divider, then trainers block.
+   This guarantees CONTACT/TRAINERS alignment across tiles in the same row. */
+.cards-grid.trainers-grid .t-card .body{
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid !important;
+  grid-template-rows: 60px 1px auto;
+  gap: .5rem;
+  align-content: start;
+}
+
+/* CONTACT block fixed height so TRAINERS header aligns */
+.cards-grid.trainers-grid .t-card .lead{
+  height: 60px !important;
+  min-width: 0;
+  display: grid !important;
   grid-template-rows: auto 1fr;
   gap: .18rem;
-  height: 60px;
-  min-width: 0;
 }
-.lead .label{ white-space: nowrap; }
-.lead .highlight{
+.cards-grid.trainers-grid .t-card .lead .label{ white-space: nowrap; }
+.cards-grid.trainers-grid .t-card .lead .highlight{
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -1037,21 +1067,26 @@ attendanceMap() {
   min-width: 0;
 }
 
-/* Ensure pills never overflow the tile */
-.vlist li{
+/* Divider should never add extra vertical wobble */
+.cards-grid.trainers-grid .t-card .divider{
+  height: 1px;
+  margin: 0 !important;
+}
+
+/* Trainers header + list; list grows tile height naturally */
+.cards-grid.trainers-grid .t-card .trainers-block{
+  display: grid !important;
+  grid-template-rows: auto auto;
+  gap: .35rem;
+  min-width: 0;
+}
+
+/* Pills wrap safely */
+.cards-grid.trainers-grid .t-card .vlist li{
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
-
-/* Keep internal body spacing consistent */
-.t-card .body{
-  display: grid;
-  grid-template-rows: auto auto auto auto;
-  gap: .5rem;
-}
-
-
 /* ===== Modal restyle to match terminal ===== */
 .squad-overlay{
   position: fixed;
