@@ -1,149 +1,199 @@
-
-<!-- src/views/PilotsView.vue -->
+<!-- src/views/RosterView.vue (or PilotsView.vue) -->
 <template>
-  <div id="pilotsView" class="content-container">
-    <section id="members" class="section-container">
-      <div style="height: 52px; overflow: hidden">
-        <div class="section-header clipped-medium-backward-pilot">
-          <img src="/icons/license.svg" alt="Members Icon" />
-          <h1>Unit ORBAT</h1>
+  <div id="rosterView" class="roster-shell">
+    <!-- LEFT: ORBAT -->
+    <section id="members" class="term-window">
+      <div class="term-hdr">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <div class="term-title">
+          UNSC ORDER OF BATTLE // UNIT ROSTER
         </div>
-        <div class="rhombus-back">&nbsp;</div>
       </div>
 
-      <!-- flicker only here -->
       <div
-        class="section-content-container"
+        class="term-body"
         :class="{ animate: animateView }"
         :style="{ 'animation-delay': animationDelay }"
       >
-        <div class="orbat-wrapper">
-          <div v-if="!orbat || !orbat.length">Loading squads and members...</div>
+        <div class="scanlines" aria-hidden="true"></div>
+        <div class="flicker" aria-hidden="true"></div>
 
-          <div v-else class="hierarchy-container">
-            <!-- BROADSWORD COMMAND -->
-            <div v-if="hierarchy.broadswordCommand" class="orbat-row center-row actual-row">
-              <div class="squad-row single">
-                <div class="squad-card" @click="openSquad(hierarchy.broadswordCommand)">
-                  <div class="squad-header">
-                    <div class="squad-insignia">
-                      <span>{{ squadInitials(hierarchy.broadswordCommand.squad) }}</span>
-                    </div>
-                    <div class="squad-meta">
-                      <h2>{{ hierarchy.broadswordCommand.squad }}</h2>
-                      <p class="squad-subtitle">{{ squadDescriptor(hierarchy.broadswordCommand.squad) }}</p>
-                      <p class="squad-count">{{ personnelCount(hierarchy.broadswordCommand) }} PERSONNEL</p>
+        <div class="logo-ghost" aria-hidden="true">
+          <img src="/faction-logos/FUD_UNSC_Logo.png" alt="" />
+        </div>
+
+        <div class="content-scroll">
+          <div class="orbat-wrapper">
+            <div v-if="!orbat || !orbat.length" class="muted">Loading squads and members…</div>
+
+            <div v-else class="hierarchy-container">
+              <!-- BROADSWORD COMMAND -->
+              <div v-if="hierarchy.broadswordCommand" class="orbat-row center-row actual-row">
+                <div class="squad-row single">
+                  <div class="squad-card" @click="openSquad(hierarchy.broadswordCommand)">
+                    <div class="squad-header">
+                      <div class="squad-insignia">
+                        <span>{{ squadInitials(hierarchy.broadswordCommand.squad) }}</span>
+                      </div>
+                      <div class="squad-meta">
+                        <h2>{{ hierarchy.broadswordCommand.squad }}</h2>
+                        <p class="squad-subtitle">{{ squadDescriptor(hierarchy.broadswordCommand.squad) }}</p>
+                        <p class="squad-count">{{ personnelCount(hierarchy.broadswordCommand) }} PERSONNEL</p>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <!-- CHALK ACTUAL -->
-            <div v-if="hierarchy.chalkActual" class="orbat-row center-row actual-row">
-              <div class="squad-row single">
-                <div class="squad-card" @click="openSquad(hierarchy.chalkActual)">
-                  <div class="squad-header">
-                    <div class="squad-insignia">
-                      <span>{{ squadInitials(hierarchy.chalkActual.squad) }}</span>
-                    </div>
-                    <div class="squad-meta">
-                      <h2>{{ hierarchy.chalkActual.squad }}</h2>
-                      <p class="squad-subtitle">{{ squadDescriptor(hierarchy.chalkActual.squad) }}</p>
-                      <p class="squad-count">{{ personnelCount(hierarchy.chalkActual) }} PERSONNEL</p>
+              <!-- CHALK ACTUAL -->
+              <div v-if="hierarchy.chalkActual" class="orbat-row center-row actual-row">
+                <div class="squad-row single">
+                  <div class="squad-card" @click="openSquad(hierarchy.chalkActual)">
+                    <div class="squad-header">
+                      <div class="squad-insignia">
+                        <span>{{ squadInitials(hierarchy.chalkActual.squad) }}</span>
+                      </div>
+                      <div class="squad-meta">
+                        <h2>{{ hierarchy.chalkActual.squad }}</h2>
+                        <p class="squad-subtitle">{{ squadDescriptor(hierarchy.chalkActual.squad) }}</p>
+                        <p class="squad-count">{{ personnelCount(hierarchy.chalkActual) }} PERSONNEL</p>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <!-- CHALKS -->
-            <div v-if="hierarchy.chalks.length" class="orbat-row chalk-row">
-              <div class="squad-row three">
-                <div
-                  v-for="sq in hierarchy.chalks"
-                  :key="sq.squad"
-                  class="squad-card"
-                  @click="openSquad(sq)"
-                >
-                  <div class="squad-header">
-                    <div class="squad-insignia">
-                      <span>{{ squadInitials(sq.squad) }}</span>
-                    </div>
-                    <div class="squad-meta">
-                      <h2>{{ sq.squad }}</h2>
-                      <p class="squad-subtitle">{{ squadDescriptor(sq.squad) }}</p>
-                      <p class="squad-count">{{ personnelCount(sq) }} PERSONNEL</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- SUPPORT -->
-            <div v-if="hierarchy.support.length" class="orbat-row">
-              <div class="squad-row three">
-                <div
-                  v-for="sq in hierarchy.support"
-                  :key="sq.squad"
-                  class="squad-card"
-                  @click="openSquad(sq)"
-                >
-                  <div class="squad-header">
-                    <div class="squad-insignia">
-                      <span>{{ squadInitials(sq.squad) }}</span>
-                    </div>
-                    <div class="squad-meta">
-                      <h2>{{ sq.squad }}</h2>
-                      <p class="squad-subtitle">{{ squadDescriptor(sq.squad) }}</p>
-                      <p class="squad-count">{{ personnelCount(sq) }} PERSONNEL</p>
+              <!-- CHALKS -->
+              <div v-if="hierarchy.chalks.length" class="orbat-row chalk-row">
+                <div class="squad-row three">
+                  <div
+                    v-for="sq in hierarchy.chalks"
+                    :key="sq.squad"
+                    class="squad-card"
+                    @click="openSquad(sq)"
+                  >
+                    <div class="squad-header">
+                      <div class="squad-insignia">
+                        <span>{{ squadInitials(sq.squad) }}</span>
+                      </div>
+                      <div class="squad-meta">
+                        <h2>{{ sq.squad }}</h2>
+                        <p class="squad-subtitle">{{ squadDescriptor(sq.squad) }}</p>
+                        <p class="squad-count">{{ personnelCount(sq) }} PERSONNEL</p>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <!-- OTHER -->
-            <div v-if="hierarchy.other.length" class="orbat-row">
-              <div class="squad-row three">
-                <div
-                  v-for="sq in hierarchy.other"
-                  :key="sq.squad"
-                  class="squad-card"
-                  @click="openSquad(sq)"
-                >
-                  <div class="squad-header">
-                    <div class="squad-insignia">
-                      <span>{{ squadInitials(sq.squad) }}</span>
-                    </div>
-                    <div class="squad-meta">
-                      <h2>{{ sq.squad }}</h2>
-                      <p class="squad-subtitle">{{ squadDescriptor(sq.squad) }}</p>
-                      <p class="squad-count">{{ personnelCount(sq) }} PERSONNEL</p>
+              <!-- SUPPORT -->
+              <div v-if="hierarchy.support.length" class="orbat-row">
+                <div class="squad-row three">
+                  <div
+                    v-for="sq in hierarchy.support"
+                    :key="sq.squad"
+                    class="squad-card"
+                    @click="openSquad(sq)"
+                  >
+                    <div class="squad-header">
+                      <div class="squad-insignia">
+                        <span>{{ squadInitials(sq.squad) }}</span>
+                      </div>
+                      <div class="squad-meta">
+                        <h2>{{ sq.squad }}</h2>
+                        <p class="squad-subtitle">{{ squadDescriptor(sq.squad) }}</p>
+                        <p class="squad-count">{{ personnelCount(sq) }} PERSONNEL</p>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-          </div> <!-- /hierarchy-container -->
-        </div> <!-- /orbat-wrapper -->
-      </div> <!-- /section-content-container -->
-
-      <!-- Modal (unaffected by flicker) -->
-      <div v-if="activeSquad" class="squad-overlay" @click.self="closeSquad">
-        <div class="squad-modal">
-          <div class="squad-modal-header">
-            <div class="squad-header-left">
-              <div class="section-header clipped-medium-backward-bio">
-                <img src="/icons/squad.svg" />
-                <h1>SQUAD ROSTER</h1>
+              <!-- OTHER -->
+              <div v-if="hierarchy.other.length" class="orbat-row">
+                <div class="squad-row three">
+                  <div
+                    v-for="sq in hierarchy.other"
+                    :key="sq.squad"
+                    class="squad-card"
+                    @click="openSquad(sq)"
+                  >
+                    <div class="squad-header">
+                      <div class="squad-insignia">
+                        <span>{{ squadInitials(sq.squad) }}</span>
+                      </div>
+                      <div class="squad-meta">
+                        <h2>{{ sq.squad }}</h2>
+                        <p class="squad-subtitle">{{ squadDescriptor(sq.squad) }}</p>
+                        <p class="squad-count">{{ personnelCount(sq) }} PERSONNEL</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div class="rhombus-back">&nbsp;</div>
-            </div>
+            </div> <!-- /hierarchy-container -->
+          </div> <!-- /orbat-wrapper -->
+        </div> <!-- /content-scroll -->
+      </div> <!-- /term-body -->
+    </section>
 
-            <button class="squad-close" @click="closeSquad">✕</button>
-          </div>
+    <!-- RIGHT: TRAINERS -->
+    <section id="trainers" class="term-window">
+      <div class="term-hdr">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <div class="term-title">
+          TRAINING & CONTACTS // REF DATA
+        </div>
+      </div>
+
+      <div class="term-body trainers-body">
+        <div class="scanlines" aria-hidden="true"></div>
+
+        <div class="content-scroll">
+          <div class="panel">
+            <div v-if="trainersLoading" class="muted">Loading RefData…</div>
+            <div v-else-if="trainersError" class="error">{{ trainersError }}</div>
+
+            <div v-else class="cards-grid trainers-grid">
+              <div v-for="role in trainers" :key="role.key" class="t-card">
+                <div class="card-head">
+                  <h3 class="title plain-title" :title="role.title">{{ role.title }}</h3>
+                </div>
+
+                <div class="body">
+                  <div v-if="role.lead" class="lead">
+                    <span class="label">Contact:</span>
+                    <span class="highlight">{{ role.lead }}</span>
+                  </div>
+
+                  <div v-if="role.trainers.length" class="divider" />
+
+                  <div v-if="role.trainers.length" class="trainers-block">
+                    <div class="label">Trainers</div>
+                    <ul class="vlist">
+                      <li v-for="n in role.trainers" :key="n" :title="n">{{ n }}</li>
+                    </ul>
+                  </div>
+                  <div v-else class="muted">No trainers listed</div>
+                </div>
+              </div>
+            </div>
+          </div> <!-- /panel -->
+        </div> <!-- /content-scroll -->
+      </div>
+    </section>
+
+    <!-- Modal (keeps your content/logic; restyled to match terminal theme) -->
+    <div v-if="activeSquad" class="squad-overlay" @click.self="closeSquad">
+      <div class="squad-modal">
+        <div class="term-hdr modal-hdr">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          <div class="term-title">SQUAD ROSTER // {{ activeSquad.squad }}</div>
+          <button class="squad-close" @click="closeSquad" aria-label="Close">✕</button>
+        </div>
+
+        <div class="term-body modal-body">
+          <div class="scanlines" aria-hidden="true"></div>
 
           <div class="squad-modal-meta" :class="{ invalid: !squadLoadoutStatus.valid }">
             <div class="squad-title">
@@ -155,7 +205,11 @@
 
               <div class="loadout-status">
                 <span class="points">LOADOUT: {{ squadLoadoutStatus.points }}/10 PTS</span>
-                <span v-if="!squadLoadoutStatus.valid" class="warn" :title="squadLoadoutStatus.errors.join(' • ')">
+                <span
+                  v-if="!squadLoadoutStatus.valid"
+                  class="warn"
+                  :title="squadLoadoutStatus.errors.join(' • ')"
+                >
                   ⚠ LOADOUT INVALID
                 </span>
                 <span v-else class="ok">✓ VALID</span>
@@ -324,52 +378,10 @@
 
               <div class="fireteam-divider"></div>
             </div>
-          </div> <!-- /fireteam-blocks -->
-        </div> <!-- /squad-modal-scroll -->
-      </div> <!-- /squad-modal -->
-    </section>
-    <!-- RIGHT: TRAINERS -->
-    <section id="trainers" class="section-container">
-      <div class="header-shell">
-        <div class="section-header clipped-medium-backward-pilot">
-          <img src="/icons/npc.svg" alt="" />
-          <h1>TRAINING & CONTACTS</h1>
-        </div>
-        <div class="rhombus-back">&nbsp;</div>
+          </div> <!-- /squad-modal-scroll -->
+        </div> <!-- /term-body -->
       </div>
-
-      <div class="section-content-container trainers-content">
-        <div class="panel">
-          <div v-if="trainersLoading" class="muted">Loading RefData…</div>
-          <div v-else-if="trainersError" class="error">{{ trainersError }}</div>
-
-          <div v-else class="cards-grid trainers-grid">
-            <div v-for="role in trainers" :key="role.key" class="t-card">
-              <div class="card-head">
-                <h3 class="title plain-title" :title="role.title">{{ role.title }}</h3>
-              </div>
-
-              <div class="body">
-                <div v-if="role.lead" class="lead">
-                  <span class="label">Contact:</span>
-                  <span class="highlight">{{ role.lead }}</span>
-                </div>
-
-                <div v-if="role.trainers.length" class="divider" />
-
-                <div v-if="role.trainers.length" class="trainers-block">
-                  <div class="label">Trainers</div>
-                  <ul class="vlist">
-                    <li v-for="n in role.trainers" :key="n" :title="n">{{ n }}</li>
-                  </ul>
-                </div>
-                <div v-else class="muted">No trainers listed</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+    </div>
 
     <audio ref="orbatClickAudio" preload="auto">
       <source src="/sound/Orbat Main Menu Click.ogg" type="audio/ogg" />
@@ -379,6 +391,8 @@
 
 <script>
 export default {
+  // If this file is now RosterView.vue, you can rename this safely too.
+  // Keeping it as-is will not break anything.
   name: "PilotsView",
   props: {
     animate: { type: Boolean, default: true },
@@ -390,7 +404,6 @@ export default {
     return {
       animateView: false,
       animationDelay: "0ms",
-
 
       // RefData (trainers list)
       trainersLoading: true,
@@ -523,7 +536,6 @@ export default {
     },
   },
   methods: {
-    // flicker trigger
     triggerFlicker(delayMs = 0) {
       this.animateView = false;
       this.animationDelay = `${delayMs}ms`;
@@ -532,8 +544,6 @@ export default {
       });
     },
 
-
-    /* --- RefData: Trainers (same sheet as TrainingView) --- */
     async loadTrainerRefData() {
       try {
         this.trainersLoading = true;
@@ -789,287 +799,436 @@ export default {
 </script>
 
 <style scoped>
-/* === Layout: ORBAT left, trainers right === */
-#pilotsView {
-  display: grid;
+/* ===== Unified UNSC Terminal Look ===== */
+
+.roster-shell{
+  display:grid;
   grid-template-columns: 1.7fr 0.8fr;
   gap: 1.2rem;
-  align-items: stretch;
-
-  /* why: fit cleanly in viewport without windows hanging below */
   height: calc(100vh - 96px);
   padding: 28px 18px 18px;
   overflow: hidden;
 }
-#pilotsView > .section-container {
-  width: 100%;
-  margin: 0;
-  max-width: 100%;
 
-  /* why: ensure both windows stop at the same clean bottom edge */
-  height: 100%;
-  max-height: 100%;
-  overflow: hidden;
-
-  display: flex;
-  flex-direction: column;
-}
-
-/* Window internals: header stays fixed, content scrolls */
-#members .section-content-container,
-#trainers .section-content-container {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-  padding-right: 0.35rem; /* why: keep scrollbar off text */
-}
-
-/* Keep ORBAT padding as before; trainers slightly tighter */
-#members.section-container { padding: 2.5rem 3rem; }
-#trainers.section-container { padding: 2.5rem 1.6rem; }
-
-@media (max-width: 1200px) {
-  #pilotsView {
-    grid-template-columns: 1fr;
-    padding-left: 12px;
-    padding-right: 12px;
-    height: auto;
-    overflow: visible;
-  }
-  #members, #trainers { grid-column: 1; }
-  #pilotsView > .section-container {
-    height: auto;
-    max-height: none;
+@media (max-width: 1200px){
+  .roster-shell{
+    grid-template-columns:1fr;
+    height:auto;
+    overflow:visible;
+    padding: 18px 12px;
   }
 }
 
-/* Help the GPU plan the animation; avoids micro-jank on heavy DOM */
-.section-content-container { will-change: opacity, filter; contain: paint; }
-
-/* Trainers panel (borrowed from TrainingView) */
-.header-shell { height: 52px; overflow: hidden; }
-.muted { color: #9ec5e6; }
-.error { color: #ff9f9f; }
-.panel {
-  border: 1px dashed rgba(30,144,255,0.35);
-  background: rgba(0,10,30,0.18);
-  border-radius: .6rem;
-  padding: .7rem .8rem;
-  box-sizing: border-box;
-}
-
-.cards-grid { display: grid; gap: .7rem; }
-.trainers-grid { grid-template-columns: repeat(1, minmax(0, 1fr)); }
-@media (min-width: 1400px) { .trainers-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 1750px) { .trainers-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.t-card {
-  box-sizing: border-box;
-  border: 1px solid rgba(30,144,255,0.28);
-  background: rgba(0,10,30,0.28);
-  border-radius: .6rem;
-  padding: .6rem .7rem;
-  display: grid;
-  grid-template-rows: auto 1fr;
-  gap: .45rem;
-  min-width: 0; /* why: allow grid items to shrink */
-  overflow: hidden; /* why: prevent pill bleed */
-}
-.card-head { display: flex; align-items: center; gap: .5rem; margin: 0; }
-.title {
-  margin: 0;
-  color: #d9ebff;
+/* Terminal window */
+.term-window{
+  border-radius: 16px;
+  border: 1px solid rgba(170, 220, 255, 0.22);
+  background: linear-gradient(180deg, rgba(8, 14, 20, 0.92), rgba(3, 6, 10, 0.95));
+  overflow:hidden;
+  box-shadow:
+    0 0 0 1px rgba(170, 220, 255, 0.06) inset,
+    0 0 26px rgba(120, 180, 255, 0.10),
+    0 0 110px rgba(0, 0, 0, 0.6);
+  color: rgba(190, 230, 255, 0.92);
   text-transform: uppercase;
-  letter-spacing: .14em;
-  font-size: 1rem;
-  line-height: 1.15;
-  flex: 1 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  letter-spacing: 0.08em;
+
+  display:flex;
+  flex-direction:column;
+  min-height: 0;
+}
+
+.term-hdr{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(170, 220, 255, 0.12);
+  background: rgba(0, 0, 0, 0.16);
+}
+.dot{
+  width:10px;height:10px;border-radius:50%;
+  background: rgba(170, 220, 255, 0.22);
+  box-shadow: 0 0 8px rgba(120, 180, 255, 0.12);
+}
+.term-title{
+  font-size: 12px;
+  opacity: 0.9;
   white-space: nowrap;
-}
-.plain-title { background: none !important; clip-path: none !important; padding: 0 !important; border: 0 !important; }
-.body { display: grid; gap: .3rem; align-content: start; min-width: 0; }
-.lead { color: #9ec5e6; font-size: .9rem; }
-.label { color: #9ec5e6; font-size: .85rem; }
-.highlight { color: #79ffba; }
-.divider {
-  height: 1px;
-  background: linear-gradient(90deg, rgba(30,144,255,0.28), rgba(30,144,255,0.10) 60%, transparent);
-  border-radius: 1px;
-}
-.trainers-block { width: 100%; max-width: 100%; min-width: 0; }
-.vlist { list-style: none; margin: 0; padding: 0; display: grid; gap: .18rem; }
-.vlist li {
-  display: inline-block;
-  width: fit-content;
-  max-width: 100%;
-  box-sizing: border-box;
-  color: #e6f3ff;
-  background: rgba(0,10,30,0.16);
-  border: 1px solid rgba(30,144,255,0.20);
-  border-radius: .35rem;
-  padding: .2rem .45rem;
-  font-size: .9rem;
-  line-height: 1.15;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  overflow:hidden;
+  text-overflow: ellipsis;
 }
 
+.term-body{
+  position:relative;
+  flex:1 1 auto;
+  min-height:0;
+}
+.content-scroll{
+  position:relative;
+  z-index:2;
+  height: 100%;
+  overflow:auto;
+  padding: 18px 18px 18px;
+}
 
+/* Background FX */
+.scanlines{
+  position:absolute; inset:0;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.02),
+    rgba(255, 255, 255, 0.02) 1px,
+    rgba(0, 0, 0, 0) 3px,
+    rgba(0, 0, 0, 0) 6px
+  );
+  mix-blend-mode: overlay;
+  opacity: 0.35;
+  pointer-events:none;
+}
+.flicker{
+  position:absolute; inset:-20%;
+  background: radial-gradient(circle at 30% 20%, rgba(120, 180, 255, 0.07), transparent 55%);
+  animation: flicker 2.6s infinite;
+  pointer-events:none;
+  opacity: 0.9;
+}
+@keyframes flicker{
+  0%, 100% { transform: translate3d(0,0,0); opacity: .75; }
+  10% { transform: translate3d(-1px, 1px, 0); opacity: .85; }
+  20% { transform: translate3d(1px, -1px, 0); opacity: .70; }
+  35% { transform: translate3d(0px, 2px, 0); opacity: .90; }
+  60% { transform: translate3d(2px, 0px, 0); opacity: .78; }
+}
 
+.logo-ghost{
+  position:absolute;
+  inset:0;
+  display:grid;
+  place-items:center;
+  pointer-events:none;
+  opacity:0.09;
+  filter: drop-shadow(0 0 24px rgba(0,0,0,.9));
+}
+.logo-ghost img{ width:min(520px, 74vw); height:auto; }
 
-.section-content_container { width: 100% !important; }
-.orbat-wrapper { width: 100%; margin-top: 0.75rem; padding-bottom: 4rem; }
-.hierarchy-container { width: 100%; margin-top: 2rem; }
-.orbat-row { margin-bottom: 3rem; }
-.center-row { display: flex; justify-content: center; }
-.squad-row.single { display: flex; justify-content: center; }
-.squad-row.three { display: grid; grid-template-columns: repeat(3, minmax(280px, 1fr)); gap: 2.5rem; }
-@media (max-width: 1400px) { .squad-row.three { grid-template-columns: repeat(2, minmax(260px, 1fr)); } }
-@media (max-width: 900px) { .squad-row.three { grid-template-columns: 1fr; } }
+/* Minor text helpers */
+.muted{ color:#9ec5e6; text-transform:none; letter-spacing:0; }
+.error{ color:#ff9f9f; text-transform:none; letter-spacing:0; }
+
+/* ===== Keep your existing ORBAT layouts, but nudge into terminal palette ===== */
+.orbat-wrapper{ width:100%; margin-top: 0.25rem; padding-bottom: 2.5rem; }
+.hierarchy-container{ width:100%; margin-top: 1.2rem; }
+.orbat-row{ margin-bottom: 2.2rem; }
+.center-row{ display:flex; justify-content:center; }
+.squad-row.single{ display:flex; justify-content:center; }
+.squad-row.three{ display:grid; grid-template-columns: repeat(3, minmax(280px, 1fr)); gap: 1.35rem; }
+@media (max-width: 1400px){ .squad-row.three{ grid-template-columns: repeat(2, minmax(260px, 1fr)); } }
+@media (max-width: 900px){ .squad-row.three{ grid-template-columns: 1fr; } }
 
 /* Connector lines */
-@media (min-width: 900px) {
-  .actual-row { position: relative; }
-  .actual-row::after { content: ""; position: absolute; bottom: -24px; left: 50%; transform: translateX(-50%); width: 3px; height: 24px; background: rgba(30, 144, 255, 0.6); border-radius: 2px; pointer-events: none; }
-  .chalk-row { position: relative; margin-top: 2.5rem; padding-top: 1.5rem; }
-  .chalk-row::before { content: ""; position: absolute; top: 0; left: 8%; right: 8%; height: 3px; background: rgba(30,144,255,0.6); border-radius: 2px; }
+@media (min-width: 900px){
+  .actual-row{ position:relative; }
+  .actual-row::after{
+    content:"";
+    position:absolute;
+    bottom:-22px;
+    left:50%;
+    transform: translateX(-50%);
+    width:3px;
+    height:22px;
+    background: rgba(170, 220, 255, 0.40);
+    border-radius: 2px;
+    pointer-events:none;
+  }
+  .chalk-row{ position:relative; margin-top: 2rem; padding-top: 1.2rem; }
+  .chalk-row::before{
+    content:"";
+    position:absolute;
+    top:0;
+    left:8%;
+    right:8%;
+    height:3px;
+    background: rgba(170, 220, 255, 0.35);
+    border-radius:2px;
+  }
 }
 
 /* Squad tiles */
-.squad-card { background: radial-gradient(circle at top left, rgba(30,144,255,0.25), transparent 65%), rgba(0,10,30,0.9); border: 2px solid rgba(30,144,255,0.85); border-radius: 0.8rem; box-shadow: 0 0 20px rgba(0,0,0,0.8); cursor: pointer; min-height: 210px; padding-right: 1.5rem; transition: 0.15s ease-in-out; }
-.squad-card:hover { transform: translateY(-2px); border-color: #5ab3ff; }
-.squad-header { display: grid; grid-template-columns: auto 1fr; align-items: center; padding: 1.4rem 2rem; }
-.squad-insignia { width: 95px; height: 95px; border-radius: 0.6rem; border: 4px solid #1e90ff; display: flex; align-items: center; justify-content: center; margin-right: 1.6rem; font-size: 2rem; font-weight: bold; color: #1e90ff; background: rgba(0,0,0,0.7); text-align: center; }
-.squad-meta h2 { margin: 0; font-size: 2.3rem; color: #e0f0ff; letter-spacing: 0.05em; }
-.squad-subtitle { margin: 0.2rem 0 0; font-size: 1.1rem; color: #9ec5e6; text-transform: uppercase; }
-.squad-count { margin: 0.4rem 0 0; font-size: 1rem; color: #7aa7c7; }
-
-/* Modal shell */
-.squad-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); z-index: 9999; display: flex; align-items: center; justify-content: center; }
-.squad-modal { background-color: #050811; color: #dce6f1; width: 95vw; max-width: 1860px; max-height: 90vh; border-radius: 0.8rem; box-shadow: 0 0 24px rgba(0,0,0,0.9); padding: 1.5rem 2rem 2rem; display: flex; flex-direction: column; }
-.squad-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; }
-.squad-close { background: transparent; border: 1px solid rgba(220,230,241,0.4); color: #dce6f1; border-radius: 999px; padding: 0.2rem 0.75rem; font-size: 1rem; cursor: pointer; }
-
-/* Meta */
-.squad-modal-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; border-bottom: 1px solid rgba(30,144,255,0.6); padding-bottom: 0.5rem; }
-.squad-modal-meta.invalid { border-bottom-color: rgba(255,190,80,0.9); }
-.loadout-status { margin-top: 0.35rem; display: flex; gap: 0.75rem; align-items: center; font-size: 0.85rem; text-transform: uppercase; }
-.loadout-status .points { color: #9ec5e6; }
-.loadout-status .warn { color: rgba(255,190,80,0.95); }
-.loadout-status .ok { color: rgba(120,255,170,0.9); }
-
-/* Scroll + Fireteam blocks */
-.squad-modal-scroll { overflow: auto; padding-right: .4rem; margin-top: .8rem; max-height: calc(90vh - 200px); }
-.fireteam-block { margin-bottom: 1.2rem; }
-.fireteam-header { position: sticky; top: 0; display: flex; justify-content: space-between; align-items: baseline; padding: .35rem .25rem; background: linear-gradient(to bottom, rgba(5,8,17,.92), rgba(5,8,17,.75)); z-index: 1; border-top: 1px solid rgba(30,144,255,.35); border-bottom: 1px solid rgba(30,144,255,.15); }
-.fireteam-title { font-weight: 700; letter-spacing: .06em; color: #e0f0ff; }
-.fireteam-count { color: #9ec5e6; font-size: .9rem; }
-.fireteam-divider { height: 1px; background: rgba(30,144,255,.28); margin: .9rem 0 1.2rem; }
-
-/* Cards grid – set to 5-up, with responsive fallbacks */
-.squad-members-grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: .95rem;
-}
-@media (max-width: 1680px) {
-  .squad-members-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-}
-@media (max-width: 1350px) {
-  .squad-members-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-@media (max-width: 980px) {
-  .squad-members-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (max-width: 620px) {
-  .squad-members-grid { grid-template-columns: 1fr; }
-}
-
-/* Cards */
-.member-card { position: relative; background: rgba(0, 10, 30, 0.95); border-radius: 0.4rem; border-left: 4px solid #1e90ff; box-shadow: 0 0 10px rgba(0,0,0,0.6); padding: 0.9rem 1.1rem; display: flex; flex-direction: column; }
-.member-card.vacant, .member-card.closed { border-left-color: rgba(30,144,255,0.35); }
-
-/* VACANT */
-.member-card.vacant {
+.squad-card{
   background:
-    repeating-linear-gradient(45deg, rgba(30,144,255,0.06) 0, rgba(30,144,255,0.06) 10px, transparent 10px, transparent 20px),
-    rgba(0, 12, 25, 0.9);
-  border-left-style: dashed;
+    radial-gradient(circle at top left, rgba(120, 180, 255, 0.14), transparent 62%),
+    rgba(0, 0, 0, 0.38);
+  border: 1px solid rgba(170, 220, 255, 0.26);
+  border-radius: 14px;
+  padding-right: 1rem;
+  cursor:pointer;
+  min-height: 180px;
+  transition: transform 120ms ease, border-color 140ms ease, opacity 140ms ease;
+  box-shadow: 0 0 0 1px rgba(170, 220, 255, 0.06) inset, 0 0 26px rgba(0,0,0,0.35);
+}
+.squad-card:hover{ border-color: rgba(170, 220, 255, 0.90); transform: translateY(-1px); }
+
+.squad-header{ display:grid; grid-template-columns: auto 1fr; align-items:center; padding: 1.1rem 1.2rem; gap: 1rem; }
+.squad-insignia{
+  width:72px;height:72px;
+  border-radius: 12px;
+  border: 1px solid rgba(170, 220, 255, 0.35);
+  display:flex; align-items:center; justify-content:center;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: rgba(190, 230, 255, 0.92);
+  background: rgba(0,0,0,0.35);
+}
+.squad-meta h2{ margin:0; font-size: 1.5rem; color: #e6f3ff; letter-spacing: .08em; }
+.squad-subtitle{ margin:.25rem 0 0; font-size:.9rem; color:#9ec5e6; }
+.squad-count{ margin:.35rem 0 0; font-size:.85rem; color:#7aa7c7; }
+
+/* Trainers panel */
+.panel{
+  border: 1px dashed rgba(170,220,255,0.20);
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 14px;
+  padding: 12px;
+}
+.cards-grid{ display:grid; gap: .7rem; }
+.trainers-grid{ grid-template-columns: 1fr; }
+@media (min-width: 1400px){ .trainers-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1750px){ .trainers-grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+.t-card{
+  border: 1px solid rgba(170, 220, 255, 0.18);
+  background: rgba(0, 0, 0, 0.26);
+  border-radius: 14px;
+  padding: 10px 12px;
+  display:grid;
+  gap: .5rem;
+}
+.title{
+  margin:0;
+  color:#d9ebff;
+  font-size: 0.95rem;
+  letter-spacing: .14em;
+  overflow:hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plain-title{ background:none !important; clip-path:none !important; padding:0 !important; border:0 !important; }
+.lead{ color:#9ec5e6; font-size:.9rem; }
+.label{ color:#9ec5e6; font-size:.85rem; }
+.highlight{ color:#79ffba; }
+.divider{
+  height:1px;
+  background: linear-gradient(90deg, rgba(170,220,255,0.22), rgba(170,220,255,0.08) 60%, transparent);
+}
+.vlist{ list-style:none; margin:0; padding:0; display:grid; gap:.22rem; }
+.vlist li{
+  display:inline-block;
+  width: fit-content;
+  max-width: 100%;
+  color:#e6f3ff;
+  background: rgba(0,0,0,0.18);
+  border: 1px solid rgba(170,220,255,0.14);
+  border-radius: 10px;
+  padding: .22rem .5rem;
+  text-transform:none;
+  letter-spacing:0;
 }
 
-/* CLOSED */
-.member-card.closed {
+/* ===== Modal restyle to match terminal ===== */
+.squad-overlay{
+  position: fixed;
+  inset:0;
+  background: rgba(0,0,0,0.78);
+  z-index: 9999;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 14px;
+}
+.squad-modal{
+  width: min(1860px, 96vw);
+  max-height: 92vh;
+  border-radius: 16px;
+  border: 1px solid rgba(170, 220, 255, 0.22);
+  background: linear-gradient(180deg, rgba(8, 14, 20, 0.95), rgba(3, 6, 10, 0.96));
+  overflow:hidden;
+  box-shadow: 0 0 0 1px rgba(170, 220, 255, 0.06) inset, 0 0 80px rgba(0,0,0,0.7);
+  display:flex;
+  flex-direction:column;
+}
+.modal-hdr{ gap: 10px; }
+.squad-close{
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid rgba(170,220,255,0.26);
+  color: rgba(190,230,255,0.92);
+  border-radius: 999px;
+  padding: 6px 10px;
+  cursor:pointer;
+}
+.squad-close:hover{ border-color: rgba(170,220,255,0.85); }
+
+.modal-body{ padding: 14px 16px 16px; }
+.squad-modal-meta{
+  display:flex;
+  justify-content: space-between;
+  align-items:center;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(170,220,255,0.16);
+}
+.squad-modal-meta.invalid{ border-bottom-color: rgba(255,190,80,0.55); }
+.squad-title h2{ margin:0; color:#e6f3ff; letter-spacing:.12em; }
+.subtitle{ margin:.2rem 0 0; color:#9ec5e6; font-size:.9rem; }
+.squad-tag{
+  width: 64px; height: 64px;
+  border-radius: 14px;
+  border: 1px solid rgba(170,220,255,0.22);
+  background: rgba(0,0,0,0.28);
+  display:grid; place-items:center;
+  font-weight: 900;
+}
+.loadout-status{ margin-top:.35rem; display:flex; gap:.75rem; align-items:center; font-size:.82rem; }
+.loadout-status .points{ color:#9ec5e6; }
+.loadout-status .warn{ color: rgba(255,190,80,0.95); }
+.loadout-status .ok{ color: rgba(120,255,170,0.9); }
+
+.squad-modal-scroll{
+  margin-top: 12px;
+  overflow:auto;
+  padding-right: .4rem;
+  max-height: calc(92vh - 210px);
+}
+
+.fireteam-header{
+  position: sticky;
+  top: 0;
+  display:flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 8px 10px;
+  background: rgba(0,0,0,0.38);
+  border-top: 1px solid rgba(170,220,255,0.16);
+  border-bottom: 1px solid rgba(170,220,255,0.10);
+  backdrop-filter: blur(4px);
+  z-index: 2;
+}
+.fireteam-title{ color:#e6f3ff; letter-spacing:.14em; font-weight: 800; }
+.fireteam-count{ color:#9ec5e6; font-size:.9rem; }
+.fireteam-divider{ height:1px; background: rgba(170,220,255,0.14); margin: 12px 0 16px; }
+
+/* Cards grid (keep your responsiveness) */
+.squad-members-grid{ display:grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .95rem; }
+@media (max-width: 1680px){ .squad-members-grid{ grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 1350px){ .squad-members-grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 980px){ .squad-members-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 620px){ .squad-members-grid{ grid-template-columns: 1fr; } }
+
+.member-card{
+  background: rgba(0,0,0,0.34);
+  border: 1px solid rgba(170,220,255,0.18);
+  border-left: 4px solid rgba(170,220,255,0.40);
+  border-radius: 14px;
+  padding: 12px 12px;
+  box-shadow: 0 0 0 1px rgba(170,220,255,0.05) inset, 0 0 22px rgba(0,0,0,0.35);
+  display:flex;
+  flex-direction:column;
+}
+.member-card.vacant, .member-card.closed{
+  border-left-color: rgba(170,220,255,0.18);
+}
+.member-card.vacant{
+  background:
+    repeating-linear-gradient(45deg, rgba(170,220,255,0.05) 0, rgba(170,220,255,0.05) 10px, transparent 10px, transparent 20px),
+    rgba(0,0,0,0.28);
+}
+.member-card.closed{
   filter: grayscale(85%);
-  opacity: 0.6;
+  opacity: 0.65;
   background:
-    repeating-linear-gradient(45deg, rgba(200,200,200,0.06) 0, rgba(200,200,200,0.06) 8px, transparent 8px, transparent 16px),
-    repeating-linear-gradient(-45deg, rgba(200,200,200,0.04) 0, rgba(200,200,200,0.04) 8px, transparent 8px, transparent 16px),
-    rgba(1, 6, 14, 0.9);
+    repeating-linear-gradient(45deg, rgba(220,220,220,0.05) 0, rgba(220,220,220,0.05) 8px, transparent 8px, transparent 16px),
+    rgba(0,0,0,0.22);
 }
-.member-card.closed .member-header h3,
-.member-card.closed .rank-line,
-.member-card.closed .detail-line,
-.member-card.closed .cert-label,
-.member-card.closed .cert-none,
-.member-card.closed .member-footer { opacity: 0.75; }
 
-/* Header */
-.member-header { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: .9rem; }
-.member-header h3 { margin: 0; font-size: 1.1rem; color: #e0f0ff; word-break: break-word; }
-.rank-line { margin: 0.15rem 0 0; font-size: 0.88rem; color: #9ec5e6; display: flex; gap: .6rem; flex-wrap: wrap; }
-.member-rank-insignia-wrapper { width: 46px; height: 46px; display: grid; place-items: center; }
-.member-rank-insignia { max-width: 46px; max-height: 46px; object-fit: contain; }
+.member-header{ display:grid; grid-template-columns:auto 1fr; align-items:center; gap: .75rem; }
+.member-header h3{ margin:0; font-size: 1.02rem; color:#e6f3ff; word-break: break-word; }
+.rank-line{ margin:.15rem 0 0; font-size:.85rem; color:#9ec5e6; display:flex; gap:.6rem; flex-wrap: wrap; }
+.member-rank-insignia-wrapper{ width: 42px; height: 42px; display:grid; place-items:center; }
+.member-rank-insignia{ max-width: 42px; max-height: 42px; object-fit: contain; }
 
-/* Body */
-.member-body { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; margin-top: 0.6rem; font-size: 0.9rem; }
-.member-column p { margin: 0.18rem 0; }
+.member-body{ display:grid; grid-template-columns: 1fr 1fr; gap: .85rem; margin-top: .6rem; font-size:.9rem; }
+.member-column p{ margin: .18rem 0; }
 
-/* Info accents */
-.detail-line strong { color: #9ec5e6; }
-.role-accent { color: #55ff88; font-weight: 600; }
-.role-corpsman { color: #ff6b6b; font-weight: 700; }
-.date-accent { color: #55ff88; }
-.accent { color: #a3e7ff; }
-.accent-strong { color: #7fffd4; font-weight: 700; }
+.detail-line strong{ color:#9ec5e6; }
+.role-accent{ color:#79ffba; font-weight: 700; }
+.role-corpsman{ color:#ff6b6b; font-weight: 800; }
+.date-accent{ color:#79ffba; }
+.accent{ color:#a3e7ff; }
+.accent-strong{ color:#7fffd4; font-weight: 800; }
 
-/* Keep on one line */
-.join-date { white-space: nowrap; }
-.next-rank-line { white-space: nowrap; }
+.join-date{ white-space: nowrap; }
+.next-rank-line{ white-space: nowrap; }
 
-/* Ops / promo */
-.ops-promo { margin-top: 0.45rem; padding: 0.45rem 0.55rem; border: 1px dashed rgba(30,144,255,0.45); border-radius: 0.35rem; background: rgba(0,10,30,0.35); }
-.ops-promo.imminent { border-color: rgba(120,255,170,0.85); background: rgba(0,50,20,0.35); color: rgba(120,255,170,0.95); box-shadow: 0 0 10px rgba(120,255,170,0.15) inset; }
+.ops-promo{
+  margin-top: .45rem;
+  padding: .45rem .55rem;
+  border: 1px dashed rgba(170,220,255,0.18);
+  border-radius: 12px;
+  background: rgba(0,0,0,0.22);
+}
+.ops-promo.imminent{
+  border-color: rgba(120,255,170,0.45);
+  background: rgba(0,50,20,0.22);
+  color: rgba(120,255,170,0.95);
+  box-shadow: 0 0 10px rgba(120,255,170,0.10) inset;
+}
 
-/* Loadout controls */
-.loadout-row { margin-top: 0.4rem; }
-.disposable { user-select: none; }
-.primary-label { display: block; margin-bottom: .15rem; font-size: .85rem; color: #9ec5e6; }
-.loadout-select { width: 100%; background: #040a14; border: 1px solid rgba(30,144,255,.45); color: #dce6f1; border-radius: .3rem; padding: .25rem .35rem; }
+.primary-label{ display:block; margin-bottom: .15rem; font-size:.85rem; color:#9ec5e6; }
+.loadout-select{
+  width:100%;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(170,220,255,0.18);
+  color: rgba(190,230,255,0.92);
+  border-radius: 12px;
+  padding: .35rem .45rem;
+}
 
-/* Certs */
-.cert-list { display: grid; grid-template-columns: 20px 1fr; row-gap: .28rem; }
-.cert-row { display: contents; }
-.cert-checkbox { width: 16px; height: 16px; border: 1px solid rgba(30,144,255,.6); border-radius: 3px; display: inline-flex; align-items: center; justify-content: center; margin-right: 6px; }
-.cert-checkbox.checked { border-color: rgba(120,255,170,.9); box-shadow: 0 0 6px rgba(120,255,170,.25) inset; }
-.checkbox-dot { width: 10px; height: 10px; background: rgba(120,255,170,.95); border-radius: 2px; display: block; }
-.cert-label { color: #dce6f1; }
-.cert-none { font-size: .85rem; opacity: .75; }
+.cert-list{ display:grid; grid-template-columns: 20px 1fr; row-gap: .28rem; }
+.cert-row{ display: contents; }
+.cert-checkbox{
+  width: 16px; height: 16px;
+  border: 1px solid rgba(170,220,255,0.26);
+  border-radius: 4px;
+  display:inline-flex; align-items:center; justify-content:center;
+}
+.cert-checkbox.checked{
+  border-color: rgba(120,255,170,0.55);
+  box-shadow: 0 0 6px rgba(120,255,170,0.16) inset;
+}
+.checkbox-dot{ width:10px;height:10px;background: rgba(120,255,170,0.95); border-radius: 2px; }
+.cert-label{ color: rgba(190,230,255,0.92); text-transform:none; letter-spacing:0; }
+.cert-none{ font-size:.85rem; opacity:.75; }
 
-/* Footer */
-.member-footer { margin-top: 0.6rem; font-size: 0.75rem; color: #7aa7c7; display: flex; justify-content: space-between; }
+.member-footer{
+  margin-top: .6rem;
+  font-size: .75rem;
+  color:#7aa7c7;
+  display:flex;
+  justify-content: space-between;
+}
 
-/* Safety belt */
-:deep(.squad-modal img) { max-width: 100%; height: auto; }
-
-/* ---- Flicker animation ONLY for content (modal unaffected) ---- */
-.section-content-container.animate {
+/* Flicker entry animation (only within the left terminal body) */
+.term-body.animate{
   animation: contentEntry 260ms ease-out both;
 }
-@keyframes contentEntry {
+@keyframes contentEntry{
   0%   { opacity: 0; filter: brightness(1.15) saturate(1.05) blur(1px); }
   60%  { opacity: 1; filter: brightness(1.0)  saturate(1.0)  blur(0); }
-  80%  { opacity: 0.98; filter: brightness(1.03); }
+  80%  { opacity: .98; filter: brightness(1.03); }
   100% { opacity: 1; filter: none; }
 }
+
+/* Safety belt */
+:deep(.squad-modal img){ max-width: 100%; height:auto; }
 </style>
