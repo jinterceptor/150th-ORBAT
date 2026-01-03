@@ -16,8 +16,8 @@
           <img src="/faction-logos/FUD_UNSC_Logo.png" alt="" />
         </div>
 
-        <!-- Ambient terminal feed (fixed height, scroll illusion via trimming top lines) -->
-        <div class="typed-window" ref="typedWindow">
+        <!-- Ambient terminal feed (fixed height, trims early so it never runs under the divider) -->
+        <div class="typed-window">
           <div class="typed" v-html="typedHtml"></div>
         </div>
 
@@ -102,7 +102,6 @@ export default {
       showAdminModal: false,
 
       // --- Ambient terminal feed ---
-      // (We never "reset" visually: we keep adding lines and trimming the top.)
       feedPool: [
         "UNITED NATIONS SPACE COMMAND // SECURE MILNET",
         "NODE: ORBITAL BRIEFING SYSTEM (OBS)",
@@ -121,20 +120,20 @@ export default {
         "» LOCAL SESSION: QUARANTINE OK",
       ],
 
-      typedLines: [],          // committed lines (already typed)
-      currentTarget: "",       // the full line we are typing right now
-      currentText: "",         // current typed substring
+      typedLines: [],
+      currentTarget: "",
+      currentText: "",
       currentCharIndex: 0,
 
       bootTimer: null,
       stamp: "",
 
-      // Feel knobs
-      maxLines: 22,            // how many lines are visible in the window (trim from top)
-      interLinePauseMs: 220,   // pause after finishing a line
-      blankLineChance: 0.10,   // occasional spacer line
-      lineRepeatAvoid: 6,      // avoid repeating last N line indices
+      // IMPORTANT: trim earlier so the caret never drifts under the divider
+      maxLines: 14,
 
+      interLinePauseMs: 210,
+      blankLineChance: 0.08,
+      lineRepeatAvoid: 6,
       lastPickIndices: [],
 
       animate: Config.animate,
@@ -176,7 +175,6 @@ export default {
     this.importMissions(import.meta.glob("@/assets/missions/**/*.md", { query: "?raw", import: "default" }));
     this.importEvents(import.meta.glob("@/assets/events/*.md", { query: "?raw", import: "default" }));
 
-    // async CSVs (kept as in your original)
     const membersUrl =
       "https://docs.google.com/spreadsheets/d/e...o7UXaJDDkg4bGQcl3jRP/pub?gid=1185035639&single=true&output=csv";
     const refDataUrl =
@@ -188,7 +186,6 @@ export default {
       .then(() => this.loadRefDataCSV(refDataUrl))
       .then(() => this.loadOpsCSV(opsUrl).catch((err) => console.warn("Ops CSV failed; continuing.", err)));
 
-    // if already authenticated earlier, skip overlay
     const role = sessionStorage.getItem("authRole");
     if (role === "member" || role === "staff") {
       this.showLogin = false;
@@ -206,14 +203,12 @@ export default {
   },
 
   methods: {
-    // --- terminal helpers ---
     updateStamp() {
       const d = new Date();
       const pad = (n) => String(n).padStart(2, "0");
       this.stamp = `UTC ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
     },
 
-    // Pre-fill a couple of lines so it doesn't start from an empty box
     seedInitialFeed() {
       if (!this.showLogin) return;
       const seed = [
@@ -226,7 +221,6 @@ export default {
     },
 
     pickNextTarget() {
-      // occasional blank spacer line
       if (Math.random() < this.blankLineChance) {
         this.currentTarget = "";
         this.currentText = "";
@@ -234,7 +228,6 @@ export default {
         return;
       }
 
-      // pick a line not used very recently
       const poolLen = this.feedPool.length;
       let idx = Math.floor(Math.random() * poolLen);
       let guard = 0;
@@ -246,7 +239,6 @@ export default {
       this.lastPickIndices.push(idx);
       if (this.lastPickIndices.length > this.lineRepeatAvoid) this.lastPickIndices.shift();
 
-      // add some dynamic telemetry spice
       const base = this.feedPool[idx];
       this.currentTarget = this.withTelemetry(base);
       this.currentText = "";
@@ -254,12 +246,9 @@ export default {
     },
 
     withTelemetry(line) {
-      // light, UNSC-ish “living system” vibe without changing your layout
       const pad = (n) => String(n).padStart(2, "0");
       const now = new Date();
       const t = `${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}`;
-
-      // Random packet IDs, etc.
       const hex = () => Math.floor(Math.random() * 0xffff).toString(16).toUpperCase().padStart(4, "0");
       const pct = () => `${Math.floor(80 + Math.random() * 20)}%`;
 
@@ -274,19 +263,14 @@ export default {
     },
 
     trimToWindow() {
-      // keep the window height stable by trimming top lines
+      // start trimming as soon as we reach the "divider-safe" budget
       if (this.typedLines.length > this.maxLines) {
         this.typedLines.splice(0, this.typedLines.length - this.maxLines);
       }
     },
 
     commitCurrentLine() {
-      // Commit either a blank spacer or the completed line
-      if (this.currentTarget === "") {
-        this.typedLines.push("");
-      } else {
-        this.typedLines.push(this.currentTarget);
-      }
+      this.typedLines.push(this.currentTarget === "" ? "" : this.currentTarget);
       this.trimToWindow();
     },
 
@@ -304,7 +288,6 @@ export default {
           return;
         }
 
-        // If target is blank line: commit quickly and pick another
         if (this.currentTarget === "") {
           this.commitCurrentLine();
           this.pickNextTarget();
@@ -312,12 +295,11 @@ export default {
           return;
         }
 
-        // Type next character
         this.currentText = this.currentTarget.slice(0, this.currentCharIndex + 1);
         this.currentCharIndex += 1;
 
-        // Finished line: commit and immediately pick next (seamless “reset”)
         if (this.currentCharIndex >= this.currentTarget.length) {
+          // seamless "reset": commit and immediately start a new bottom line
           this.commitCurrentLine();
           this.pickNextTarget();
           this.bootTimer = window.setTimeout(tick, this.interLinePauseMs);
@@ -332,14 +314,12 @@ export default {
       tick();
     },
 
-    // MEMBER → set role then fade out + route
     memberLogin() {
       if (this.isFading) return;
       sessionStorage.setItem("authRole", "member");
       this.fadeAndEnter("/status");
     },
 
-    // OFFICER/STAFF → open modal
     openAdminLogin() {
       if (this.isFading) return;
       this.showAdminModal = true;
@@ -356,7 +336,6 @@ export default {
     fadeAndEnter(targetPath) {
       this.isFading = true;
 
-      // stop ambient loop cleanly
       if (this.bootTimer) {
         window.clearTimeout(this.bootTimer);
         this.bootTimer = null;
@@ -409,7 +388,7 @@ export default {
       this.events = out.sort((a, b) => a.slug.localeCompare(b.slug));
     },
 
-    // --- promotion logic kept as-is ---
+    // (rest of your CSV/promotion methods unchanged)
     promotionLadderFor(rankName) {
       const r = String(rankName || "").trim().toUpperCase();
 
@@ -592,13 +571,17 @@ export default {
 }
 .logo-ghost img { width: min(520px, 74vw); height: auto; }
 
-/* Fixed-height window so the feed never stretches the layout */
+/* Smaller fixed-height window ensures feed stays above the ACCESS OPTIONS divider */
 .typed-window {
   position: relative;
   z-index: 2;
-  height: 220px;           /* <-- tune this to taste */
-  overflow: hidden;        /* key: no stretching, no native scrollbar */
+  height: 190px;      /* tuned so content never runs under gate divider */
+  overflow: hidden;
   padding-right: 6px;
+
+  /* subtle fade at bottom so new lines feel like they emerge “into” the divider */
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 78%, rgba(0,0,0,0) 100%);
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 78%, rgba(0,0,0,0) 100%);
 }
 
 .typed {
