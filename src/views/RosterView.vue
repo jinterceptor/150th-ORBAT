@@ -173,7 +173,7 @@
                     <ul v-if="role.trainers.length" class="vlist">
                       <li v-for="n in role.trainers" :key="n" :title="n">{{ n }}</li>
                     </ul>
-                    <div v-else class="muted muted-pill">None listed</div>
+                    <div v-else class="muted">None listed</div>
                   </div>
                 </div>
               </div>
@@ -398,16 +398,7 @@ export default {
     this.triggerFlicker();
   },
   computed: {
-    maxTrainerCount() {
-      const arr = this.trainers || [];
-      let m = 1;
-      for (const r of arr) {
-        const n = (r?.trainers || []).length;
-        if (n > m) m = n;
-      }
-      return m;
-    },
-    attendanceMap() {
+attendanceMap() {
       const map = Object.create(null);
       (this.members || []).forEach(m => {
         const ops = Number(m.opsAttended);
@@ -964,9 +955,10 @@ export default {
   padding: 12px;
 }
 
-/* ===== TRAINERS GRID (from scratch) =====
-   Goal: every tile lines up perfectly regardless of trainer count.
-   We do this by reserving list-space based on the maximum trainer count. */
+/* ===== TRAINERS GRID (themed) =====
+   Goal: keep the UNSC terminal aesthetic, show ALL trainers, and keep
+   TITLE/CONTACT/TRAINERS header aligned across tiles. */
+
 .trainers-grid{
   display: grid;
   gap: .7rem;
@@ -974,7 +966,7 @@ export default {
   align-items: stretch;
   align-content: start;
 
-  /* hard-reset any "masonry/columns" inherited styles */
+  /* hard-reset any masonry/columns inherited styles */
   column-count: initial !important;
   column-gap: normal !important;
 }
@@ -989,20 +981,21 @@ export default {
 /* Tile */
 .t-card{
   min-width: 0;
-  overflow: hidden;
 
   border: 1px solid rgba(170, 220, 255, 0.18);
   background: rgba(0, 0, 0, 0.26);
   border-radius: 14px;
   padding: 10px 12px;
 
-  display: grid;
-  grid-template-rows: 44px 64px 28px auto; /* title, contact, trainers label, list */
-  gap: .45rem;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
 }
 
 /* Title: 2-line clamp, no clipping */
 .t-card .card-head{
+  flex: 0 0 auto;
+  min-height: 44px;
   display:flex;
   align-items:center;
   min-width:0;
@@ -1023,16 +1016,19 @@ export default {
 
 /* CONTACT block fixed height so TRAINERS aligns */
 .lead{
+  flex: 0 0 auto;
   min-width: 0;
   display: grid;
   grid-template-rows: auto 1fr;
   gap: .18rem;
-  height: 64px;
+  height: 60px;
 }
 .label{
   color:#9ec5e6;
   font-size:.85rem;
   white-space: nowrap;
+  letter-spacing: .08em;
+  text-transform: uppercase;
 }
 .highlight{
   color:#79ffba;
@@ -1055,17 +1051,12 @@ export default {
   margin: 0;
 }
 
-/* TRAINERS block:
-   Reserve enough height for the max number of trainers across the dataset,
-   so every tile ends up exactly the same height (perfect alignment). */
+/* Trainers block: header aligned; list expands tile height naturally */
 .trainers-block{
   min-width: 0;
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto;
   gap: .35rem;
-
-  /* pill height ~28px + gap ~6px => ~34px per line */
-  min-height: calc(var(--max-trainers, 1) * 34px);
 }
 .vlist{
   list-style:none;
@@ -1076,9 +1067,8 @@ export default {
   align-content:start;
 }
 
-/* Pills */
-.vlist li,
-.muted-pill{
+/* Pills (allow wrapping so nothing clips; still looks like terminal tags) */
+.vlist li{
   display:inline-block;
   width: fit-content;
   max-width: 100%;
@@ -1092,12 +1082,9 @@ export default {
   text-transform:none;
   letter-spacing:0;
 
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.muted-pill{
-  opacity: .75;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 /* ===== Modal restyle to match terminal ===== */
 .squad-overlay{
