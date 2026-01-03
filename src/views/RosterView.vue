@@ -195,25 +195,13 @@
         <div class="term-body modal-body">
           <div class="scanlines" aria-hidden="true"></div>
 
-          <div class="squad-modal-meta" :class="{ invalid: !squadLoadoutStatus.valid }">
+          <div class="squad-modal-meta">
             <div class="squad-title">
               <h2>{{ activeSquad.squad }}</h2>
               <p class="subtitle">
                 {{ squadDescriptor(activeSquad.squad) }} ·
                 {{ personnelCount(activeSquad) }} PERSONNEL
               </p>
-
-              <div class="loadout-status">
-                <span class="points">LOADOUT: {{ squadLoadoutStatus.points }}/10 PTS</span>
-                <span
-                  v-if="!squadLoadoutStatus.valid"
-                  class="warn"
-                  :title="squadLoadoutStatus.errors.join(' • ')"
-                >
-                  ⚠ LOADOUT INVALID
-                </span>
-                <span v-else class="ok">✓ VALID</span>
-              </div>
             </div>
 
             <div class="squad-tag"><span>{{ squadInitials(activeSquad.squad) }}</span></div>
@@ -327,31 +315,6 @@
                             <strong>Requirements:</strong>
                             <span class="accent-strong">{{ nextPromotion(slot.member).misc }}</span>
                           </p>
-                        </div>
-
-                        <div class="loadout-row">
-                          <label class="disposable">
-                            <input
-                              type="checkbox"
-                              :checked="getLoadout(slot.member).disposable"
-                              @change="toggleDisposable(slot.member)"
-                            />
-                            Disposable Rocket (1pt)
-                          </label>
-                        </div>
-
-                        <div class="loadout-row">
-                          <label class="primary-label">Assigned Loadout</label>
-                          <select
-                            class="loadout-select"
-                            :value="getLoadout(slot.member).primary"
-                            @change="setPrimary(slot.member, $event.target.value)"
-                          >
-                            <option value="">None / Standard</option>
-                            <option v-for="opt in availableLoadouts(slot.member)" :key="opt" :value="opt">
-                              {{ loadoutLabel(opt) }}
-                            </option>
-                          </select>
                         </div>
                       </div>
 
@@ -1015,6 +978,22 @@ export default {
 }
 .plain-title{ background:none !important; clip-path:none !important; padding:0 !important; border:0 !important; }
 .lead{ color:#9ec5e6; font-size:.9rem; }
+
+/* Prevent trainer contact lines from overflowing tiles */
+.t-card{ min-width: 0; }
+.lead{
+  display:flex;
+  flex-wrap:wrap;
+  gap:.35rem;
+  align-items:baseline;
+  min-width:0;
+}
+.lead .highlight{
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  min-width:0;
+}
+
 .label{ color:#9ec5e6; font-size:.85rem; }
 .highlight{ color:#79ffba; }
 .divider{
@@ -1078,7 +1057,6 @@ export default {
   padding-bottom: 10px;
   border-bottom: 1px solid rgba(170,220,255,0.16);
 }
-.squad-modal-meta.invalid{ border-bottom-color: rgba(255,190,80,0.55); }
 .squad-title h2{ margin:0; color:#e6f3ff; letter-spacing:.12em; }
 .subtitle{ margin:.2rem 0 0; color:#9ec5e6; font-size:.9rem; }
 .squad-tag{
@@ -1089,10 +1067,6 @@ export default {
   display:grid; place-items:center;
   font-weight: 900;
 }
-.loadout-status{ margin-top:.35rem; display:flex; gap:.75rem; align-items:center; font-size:.82rem; }
-.loadout-status .points{ color:#9ec5e6; }
-.loadout-status .warn{ color: rgba(255,190,80,0.95); }
-.loadout-status .ok{ color: rgba(120,255,170,0.9); }
 
 .squad-modal-scroll{
   margin-top: 12px;
@@ -1159,6 +1133,10 @@ export default {
 
 .member-body{ display:grid; grid-template-columns: 1fr 1fr; gap: .85rem; margin-top: .6rem; font-size:.9rem; }
 .member-column p{ margin: .18rem 0; }
+
+/* Readability: prevent dark/black strong text in modal */
+.member-column strong{ color:#e6f3ff; }
+.member-column.right p{ color: rgba(230,243,255,.92); }
 
 .detail-line strong{ color:#9ec5e6; }
 .role-accent{ color:#79ffba; font-weight: 700; }
