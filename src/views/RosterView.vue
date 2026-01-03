@@ -957,6 +957,19 @@ export default {
 .cards-grid{ display:grid; gap: .7rem; }
 .trainers-grid{ grid-template-columns: 1fr; }
 
+/* Force true grid rows for trainer cards (prevents masonry-style stacking) */
+.cards-grid.trainers-grid{
+  display: grid !important;
+  grid-auto-flow: row;
+  grid-auto-rows: auto;
+  align-items: stretch;
+  align-content: start;
+  column-count: initial;
+  column-gap: normal;
+}
+
+
+
 /* --- Trainers layout: neat dense grid (no forced equal-height, more columns to reduce scrolling) --- */
 .trainers-grid{
   display: grid;
