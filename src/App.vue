@@ -118,7 +118,7 @@ export default {
         "» INTRUSION MONITOR: ARMED",
         "» PACKET INTEGRITY: PASS",
         "» AUTH HANDSHAKE: LISTENING",
-        "» LOCAL SESSION: QUARANTINE OK",
+        "» LOCAL SESSION: QUARANTINE OK"
       ],
       typedLines: [],
       currentTarget: "",
@@ -126,8 +126,8 @@ export default {
       currentCharIndex: 0,
       bootTimer: null,
       stamp: "",
-      maxLines: 5,
-      interLinePauseMs: 210,
+      maxLines: 5,              // start scrolling after first 5 committed lines
+      interLinePauseMs: 320,    // slightly longer line pause to match slower typing
       blankLineChance: 0.08,
       lineRepeatAvoid: 6,
       lastPickIndices: [],
@@ -142,11 +142,12 @@ export default {
       events: [],
       members: [],
       orbat: [],
-      reserves: [],
+      reserves: []
     };
   },
 
   computed: {
+    // caret is inline on the active typing line (not floating on its own line)
     typedHtml() {
       const escape = (s) =>
         String(s)
@@ -154,16 +155,25 @@ export default {
           .replaceAll("<", "&lt;")
           .replaceAll(">", "&gt;");
 
-      const renderLine = (l) => {
-        if (l === "") return `<div class="line spacer"></div>`;
-        const isFlavor = l.trim().startsWith("»");
-        return `<div class="line ${isFlavor ? "dim" : ""}">${escape(l)}</div>`;
-      };
+      const lineClass = (l) => (String(l || "").trim().startsWith("»") ? "line dim" : "line");
 
-      const committed = this.typedLines.map(renderLine).join("");
-      const live = this.currentText ? renderLine(this.currentText) : "";
-      return `${committed}${live}<div class="line dim"><span class="caret"></span></div>`;
-    },
+      const committed = this.typedLines
+        .map((l) => {
+          if (l === "") return `<div class="line spacer"></div>`;
+          return `<div class="${lineClass(l)}">${escape(l)}</div>`;
+        })
+        .join("");
+
+      // If we deliberately picked a blank spacer as the next target, show caret alone.
+      if (this.currentTarget === "") {
+        return `${committed}<div class="line dim"><span class="caret"></span></div>`;
+      }
+
+      // Live typing line + caret appended inline
+      const liveText = escape(this.currentText || "");
+      const liveCls = lineClass(this.currentTarget);
+      return `${committed}<div class="${liveCls}">${liveText}<span class="caret"></span></div>`;
+    }
   },
 
   created() {
@@ -211,18 +221,22 @@ export default {
       const pad = (n) => String(n).padStart(2, "0");
       this.stamp = `UTC ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
     },
+
+    // Start typing from the very beginning (no pre-seeded lines)
     seedInitialFeed() {
-  // Start from a totally empty terminal and type the first line from the first character.
-  this.typedLines = [];
-  this.currentText = "";
-  this.currentCharIndex = 0;
+      if (!this.showLogin) return;
 
-  // Force the very first line to be this exact string (no telemetry mutation on it)
-  this.currentTarget = "UNITED NATIONS SPACE COMMAND // SECURE MILNET";
+      this.typedLines = [];
+      this.currentText = "";
+      this.currentCharIndex = 0;
 
-  // Clear recent picks so the next randomly chosen line doesn't repeat weirdly
-  this.lastPickIndices = [];
-},
+      // Force the very first line to begin at character 1
+      this.currentTarget = "UNITED NATIONS SPACE COMMAND // SECURE MILNET";
+
+      // reset recent picks
+      this.lastPickIndices = [];
+    },
+
     pickNextTarget() {
       if (Math.random() < this.blankLineChance) {
         this.currentTarget = "";
@@ -247,6 +261,7 @@ export default {
       this.currentText = "";
       this.currentCharIndex = 0;
     },
+
     withTelemetry(line) {
       const pad = (n) => String(n).padStart(2, "0");
       const now = new Date();
@@ -262,20 +277,25 @@ export default {
       if (line.includes("IFF PACKET")) return `» IFF PACKET: RECEIVED // TAG ${hex()} // ${t}`;
       return line;
     },
+
     trimToWindow() {
+      // start "scrolling" immediately after first 5 committed lines
       if (this.typedLines.length > this.maxLines) {
         this.typedLines.splice(0, this.typedLines.length - this.maxLines);
       }
     },
+
     commitCurrentLine() {
       this.typedLines.push(this.currentTarget === "" ? "" : this.currentTarget);
       this.trimToWindow();
     },
+
     startAmbientFeed() {
       if (!this.showLogin) return;
 
-      const minDelay = 12;
-      const maxDelay = 30;
+      // half-speed typing (increase delays)
+      const minDelay = 24;
+      const maxDelay = 60;
 
       const tick = () => {
         this.updateStamp();
@@ -288,7 +308,7 @@ export default {
         if (this.currentTarget === "") {
           this.commitCurrentLine();
           this.pickNextTarget();
-          this.bootTimer = window.setTimeout(tick, Math.max(120, this.interLinePauseMs));
+          this.bootTimer = window.setTimeout(tick, Math.max(180, this.interLinePauseMs));
           return;
         }
 
@@ -296,14 +316,14 @@ export default {
         this.currentCharIndex += 1;
 
         if (this.currentCharIndex >= (this.currentTarget || "").length) {
-         this.commitCurrentLine();
-         this.pickNextTarget();
-         this.bootTimer = window.setTimeout(tick, this.interLinePauseMs);
-         return;
+          this.commitCurrentLine();
+          this.pickNextTarget();
+          this.bootTimer = window.setTimeout(tick, this.interLinePauseMs);
+          return;
         }
 
         const jitter = Math.floor(minDelay + Math.random() * (maxDelay - minDelay));
-        const extra = Math.random() < 0.06 ? 90 : 0;
+        const extra = Math.random() < 0.06 ? 140 : 0;
         this.bootTimer = window.setTimeout(tick, jitter + extra);
       };
 
@@ -332,6 +352,12 @@ export default {
 
     fadeAndEnter(targetPath) {
       this.isFading = true;
+
+      // stop ambience loop cleanly once we commit to leaving the login overlay
+      if (this.bootTimer) {
+        window.clearTimeout(this.bootTimer);
+        this.bootTimer = null;
+      }
 
       const a = this.$refs.startupAudio;
       if (a && typeof a.play === "function") {
@@ -388,7 +414,7 @@ export default {
             });
             resolve();
           },
-          error: () => resolve(),
+          error: () => resolve()
         });
       });
     },
@@ -409,7 +435,7 @@ export default {
         HM2:  { nextAt: 30, nextRank: null },
         CWO2: { nextAt: 10, nextRank: "CWO3" },
         CWO3: { nextAt: 20, nextRank: "CWO4" },
-        CWO4: { nextAt: 30, nextRank: null },
+        CWO4: { nextAt: 30, nextRank: null }
       })[r] || null;
     },
     opsToNextPromotion(member) {
@@ -450,13 +476,13 @@ export default {
                   squad: "",
                   fireteam: "",
                   slot: "",
-                  opsAttended: 0,
+                  opsAttended: 0
                 };
               })
               .filter(Boolean);
             resolve(this.members);
           },
-          error: reject,
+          error: reject
         });
       });
     },
@@ -485,7 +511,7 @@ export default {
 
             const KNOWN_ROLE_HEADER_HINTS = [
               "squad roles","role","chalk 1 fireteam 1","chalk 2 fireteam 1","chalk 3 fireteam 1","chalk 4 fireteam 1",
-              "broadsword","wyvern","caladrius","ifrit","chalk actual",
+              "broadsword","wyvern","caladrius","ifrit","chalk actual"
             ];
 
             let slotHeaderRowIndex = -1, slotCol = -1, roleCol = -1;
@@ -619,12 +645,12 @@ export default {
             this.orbat = Object.values(orbatMap).map((s) => ({
               squad: s.squad,
               members: (s.members || []).slice().sort((a, b) => (a.name || "").localeCompare(b.name || "")),
-              fireteams: Object.values(s.fireteams || {}).map((ft) => ({ name: ft.name, slots: (ft.slots || []).slice() })),
+              fireteams: Object.values(s.fireteams || {}).map((ft) => ({ name: ft.name, slots: (ft.slots || []).slice() }))
             }));
 
             resolve(this.orbat);
           },
-          error: reject,
+          error: reject
         });
       });
     },
@@ -743,7 +769,7 @@ export default {
           campaignKey,
           order,
           theme: meta.theme || {},
-          sourcePath: path,
+          sourcePath: path
         });
       });
     },
@@ -757,7 +783,7 @@ export default {
           location: l[1],
           time: l[2],
           thumbnail: l[3],
-          content: l.slice(4).join("\n"),
+          content: l.slice(4).join("\n")
         });
       });
     },
@@ -788,8 +814,8 @@ export default {
       }
       used.add(candidate);
       return candidate;
-    },
-  },
+    }
+  }
 };
 </script>
 
@@ -880,11 +906,12 @@ export default {
 .dim { opacity: 0.7; }
 .line.spacer { height: 10px; }
 
+/* caret sits inline at end of active line */
 .caret {
   display: inline-block;
   width: 10px;
   height: 14px;
-  margin-right: 8px;
+  margin-left: 8px;
   border-left: 2px solid rgba(190, 230, 255, 0.9);
   animation: blink 1.1s infinite;
   transform: translateY(2px);
