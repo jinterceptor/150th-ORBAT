@@ -969,11 +969,8 @@ export default {
 @media (min-width: 900px){
   .trainers-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (min-width: 1350px){
+@media (min-width: 1200px){
   .trainers-grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-@media (min-width: 1750px){
-  .trainers-grid{ grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
 /* Keep tiles visually consistent without forcing a fixed height */
@@ -999,7 +996,7 @@ export default {
 
   /* Consistent internal layout across cards */
   display: grid;
-  grid-template-rows: auto auto 1fr;
+  grid-template-rows: minmax(56px, auto) auto 1fr;
   gap: .45rem;
   align-content: start;
 }
@@ -1033,14 +1030,18 @@ export default {
 .t-card{ min-width: 0; overflow: hidden; }
 .lead{
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-rows: auto 1fr;
   gap: .18rem;
   min-width: 0;
+  min-height: 56px; /* keeps CONTACT block aligned across cards */
 }
 .lead .label{ white-space: nowrap; }
 .lead .highlight{
-  display: block;
-  max-width: 100%;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;         /* prevent runaway height + avoid clipping */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
