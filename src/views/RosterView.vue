@@ -954,138 +954,104 @@ attendanceMap() {
   border-radius: 14px;
   padding: 12px;
 }
+.cards-grid{ display:grid; gap: .7rem; }
+.trainers-grid{ grid-template-columns: 1fr; }
+@media (min-width: 1400px){ .trainers-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1750px){ .trainers-grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
-/* ===== TRAINERS GRID (themed) =====
-   Goal: keep the UNSC terminal aesthetic, show ALL trainers, and keep
-   TITLE/CONTACT/TRAINERS header aligned across tiles. */
-
-.trainers-grid{
-  display: grid;
-  gap: .7rem;
-  grid-template-columns: 1fr;
-  align-items: stretch;
-  align-content: start;
-
-  /* hard-reset any masonry/columns inherited styles */
-  column-count: initial !important;
-  column-gap: normal !important;
-}
-
-@media (min-width: 900px){
-  .trainers-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (min-width: 1200px){
-  .trainers-grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-
-/* Tile */
 .t-card{
-  min-width: 0;
-
   border: 1px solid rgba(170, 220, 255, 0.18);
   background: rgba(0, 0, 0, 0.26);
   border-radius: 14px;
   padding: 10px 12px;
-
-  display: flex;
-  flex-direction: column;
+  display:grid;
   gap: .5rem;
-}
-
-/* Title: 2-line clamp, no clipping */
-.t-card .card-head{
-  flex: 0 0 auto;
-  min-height: 44px;
-  display:flex;
-  align-items:center;
-  min-width:0;
 }
 .title{
   margin:0;
   color:#d9ebff;
   font-size: 0.95rem;
   letter-spacing: .14em;
-
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  overflow:hidden;
   text-overflow: ellipsis;
-  white-space: normal;
-}
-
-/* CONTACT block fixed height so TRAINERS aligns */
-.lead{
-  flex: 0 0 auto;
-  min-width: 0;
-  display: grid;
-  grid-template-rows: auto 1fr;
-  gap: .18rem;
-  height: 60px;
-}
-.label{
-  color:#9ec5e6;
-  font-size:.85rem;
   white-space: nowrap;
-  letter-spacing: .08em;
-  text-transform: uppercase;
 }
-.highlight{
-  color:#79ffba;
-  min-width:0;
-
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-/* Divider always present and consistent */
+.plain-title{ background:none !important; clip-path:none !important; padding:0 !important; border:0 !important; }
+.lead{ color:#9ec5e6; font-size:.9rem; }
+.label{ color:#9ec5e6; font-size:.85rem; }
+.highlight{ color:#79ffba; }
 .divider{
   height:1px;
   background: linear-gradient(90deg, rgba(170,220,255,0.22), rgba(170,220,255,0.08) 60%, transparent);
-  margin: 0;
 }
-
-/* Trainers block: header aligned; list expands tile height naturally */
-.trainers-block{
-  min-width: 0;
-  display: grid;
-  grid-template-rows: auto auto;
-  gap: .35rem;
-}
-.vlist{
-  list-style:none;
-  margin:0;
-  padding:0;
-  display:grid;
-  gap:.22rem;
-  align-content:start;
-}
-
-/* Pills (allow wrapping so nothing clips; still looks like terminal tags) */
+.vlist{ list-style:none; margin:0; padding:0; display:grid; gap:.22rem; }
 .vlist li{
   display:inline-block;
   width: fit-content;
   max-width: 100%;
-
   color:#e6f3ff;
   background: rgba(0,0,0,0.18);
   border: 1px solid rgba(170,220,255,0.14);
   border-radius: 10px;
   padding: .22rem .5rem;
-
   text-transform:none;
   letter-spacing:0;
+}
 
+
+/* --- Trainers layout overrides (keep theme, improve alignment) --- */
+.cards-grid.trainers-grid{
+  /* ensure strict grid (no masonry/columns) */
+  column-count: initial !important;
+  column-gap: normal !important;
+}
+
+/* Allow titles to wrap to 2 lines (prevents clipping) */
+.t-card .card-head{ min-height: 44px; display:flex; align-items:center; min-width:0; }
+.title{
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Fix CONTACT block height so TRAINERS header aligns */
+.lead{
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: .18rem;
+  height: 60px;
+  min-width: 0;
+}
+.lead .label{ white-space: nowrap; }
+.lead .highlight{
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+}
+
+/* Ensure pills never overflow the tile */
+.vlist li{
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
+
+/* Keep internal body spacing consistent */
+.t-card .body{
+  display: grid;
+  grid-template-rows: auto auto auto auto;
+  gap: .5rem;
+}
+
+
 /* ===== Modal restyle to match terminal ===== */
 .squad-overlay{
   position: fixed;
