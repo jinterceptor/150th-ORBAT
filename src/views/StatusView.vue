@@ -544,6 +544,158 @@ buildAssignmentMarkdown(mission) {
 </script>
 
 <style scoped>
+/* =========================
+   UNSC TERMINAL THEME PASS
+   (visual-only; no logic changes)
+   ========================= */
+
+#status .section-container{
+  border-radius: 16px;
+  border: 1px solid rgba(170, 220, 255, 0.22);
+  background: linear-gradient(180deg, rgba(8, 14, 20, 0.92), rgba(3, 6, 10, 0.95));
+  box-shadow:
+    0 0 0 1px rgba(170, 220, 255, 0.06) inset,
+    0 0 26px rgba(120, 180, 255, 0.10),
+    0 0 110px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  position: relative;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* Scanlines + soft glow per window */
+#status .section-container::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.02),
+    rgba(255, 255, 255, 0.02) 1px,
+    rgba(0, 0, 0, 0) 3px,
+    rgba(0, 0, 0, 0) 6px
+  );
+  mix-blend-mode: overlay;
+  opacity: 0.28;
+  z-index: 0;
+}
+#status .section-container::after{
+  content:"";
+  position:absolute;
+  inset:-20%;
+  pointer-events:none;
+  background: radial-gradient(circle at 30% 20%, rgba(120, 180, 255, 0.07), transparent 55%);
+  opacity: 0.9;
+  animation: statusFlicker 2.6s infinite;
+  z-index: 0;
+}
+@keyframes statusFlicker{
+  0%, 100% { transform: translate3d(0,0,0); opacity: .75; }
+  10% { transform: translate3d(-1px, 1px, 0); opacity: .85; }
+  20% { transform: translate3d(1px, -1px, 0); opacity: .70; }
+  35% { transform: translate3d(0px, 2px, 0); opacity: .90; }
+  60% { transform: translate3d(2px, 0px, 0); opacity: .78; }
+}
+
+/* Ensure header/content sit above effects */
+#status .section-header,
+#status .section-content-container{ position: relative; z-index: 1; }
+
+/* Header bar -> terminal chrome */
+#status .section-header{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(170, 220, 255, 0.12);
+  background: rgba(0, 0, 0, 0.16);
+}
+
+/* Neutralize clipped header shape to match terminal window */
+#status .section-header.clipped-medium-backward{
+  clip-path: none !important;
+  background: rgba(0, 0, 0, 0.16) !important;
+  border-radius: 0 !important;
+}
+
+/* Add "window dots" without changing template */
+#status .section-header::before{
+  content:"";
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(170, 220, 255, 0.22);
+  box-shadow:
+    16px 0 0 rgba(170, 220, 255, 0.22),
+    32px 0 0 rgba(170, 220, 255, 0.22);
+  margin-right: 8px;
+  flex: 0 0 auto;
+  opacity: .95;
+}
+
+/* Header icon + title */
+#status .section-header img{
+  width: 18px;
+  height: 18px;
+  opacity: .9;
+  filter: drop-shadow(0 0 10px rgba(120,180,255,0.18));
+}
+#status .section-header h1{
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(190, 230, 255, 0.92);
+  letter-spacing: 0.12em;
+}
+
+/* Content padding to match terminal rhythm */
+#status .section-content-container{
+  padding: 16px 16px 18px;
+}
+
+/* Mission Log (campaign list) theming (light touch, keeps existing behaviors) */
+#missions .campaign{
+  border: 1px solid rgba(170,220,255,0.18) !important;
+  background: rgba(0,0,0,0.26) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 0 0 1px rgba(170,220,255,0.05) inset, 0 0 22px rgba(0,0,0,0.28);
+}
+#missions .campaign:hover{
+  border-color: rgba(170,220,255,0.75) !important;
+}
+#missions .campaign .name h1{
+  font-size: 11px !important;
+  opacity: .7;
+  margin: 0;
+}
+#missions .campaign .name h2{
+  margin: 0;
+  color: #e6f3ff;
+}
+#missions .campaign .status{
+  border-left: 1px solid rgba(170,220,255,0.12);
+  padding-left: 10px;
+}
+
+/* Current Assignment markdown container */
+#assignment .markdown{
+  border: 1px dashed rgba(170,220,255,0.20);
+  background: rgba(0,0,0,0.22);
+  border-radius: 14px;
+  padding: 12px 12px;
+}
+
+/* Status Overview blocks: switch to terminal palette */
+.status-block,
+.promotion-row{
+  border-color: rgba(170,220,255,0.22) !important;
+  background: rgba(0,0,0,0.26) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 0 0 1px rgba(170,220,255,0.05) inset, 0 0 22px rgba(0,0,0,0.28);
+}
+
+
 /* View layout: make all three windows reach near the bottom of the viewport */
 #status.content-container {
   display: grid;
