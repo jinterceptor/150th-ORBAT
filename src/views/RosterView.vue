@@ -956,46 +956,49 @@ export default {
 }
 .cards-grid{ display:grid; gap: .7rem; }
 .trainers-grid{ grid-template-columns: 1fr; }
-@media (min-width: 1400px){ .trainers-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 1750px){ .trainers-grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
-/* --- Trainers layout: equal-height neat grid --- */
+/* --- Trainers layout: neat dense grid (no forced equal-height, more columns to reduce scrolling) --- */
 .trainers-grid{
   display: grid;
   gap: .7rem;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  align-items: stretch;
-  grid-auto-rows: 1fr;
+  grid-template-columns: 1fr;  /* mobile */
+  align-items: start;
 }
 
-/* Ensure each tile stretches and aligns internally */
+/* Increase columns on wider screens to keep the list from getting too tall */
+@media (min-width: 900px){
+  .trainers-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1350px){
+  .trainers-grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1750px){
+  .trainers-grid{ grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* Keep tiles visually consistent without forcing a fixed height */
 .t-card{
-  height: 100%;
+  min-width: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  gap: .5rem;
+  min-height: 220px; /* consistent baseline */
 }
 
-/* Consistent header height across tiles */
 .t-card .card-head{
   flex: 0 0 auto;
-  min-height: 44px;
+  min-height: 44px; /* keeps titles aligned */
   display: flex;
   align-items: center;
 }
 
-/* Let body fill remaining space */
 .t-card .body{
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
   gap: .45rem;
-}
-
-/* Keep trainer list anchored to bottom when there's extra space */
-.trainers-block{
-  margin-top: auto;
 }
 
 .t-card{
