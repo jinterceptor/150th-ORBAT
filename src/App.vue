@@ -1,54 +1,31 @@
 <!-- /src/App.vue -->
 <template>
   <div v-if="showLogin" class="login-overlay" :class="{ fading: isFading }">
-    <div class="term">
-      <div class="term-hdr">
-        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-        <div class="term-title">UNSC SECURE ACCESS TERMINAL // BRIEFING GRID</div>
-        <div class="term-stamp">{{ stamp }}</div>
+    <div class="login-bg">
+      <img class="login-logo" src="/faction-logos/FUD_UNSC_Logo.png" alt="UNSC Logo" />
+    </div>
+
+    <div class="login-text" @click.stop>
+      <div class="login-lore">
+        UNITED NATIONS SPACE COMMAND<br />
+        SECURE MILITARY NETWORK
+      </div>
+      <div class="login-warning">
+        UNAUTHORIZED ACCESS IS PUNISHABLE UNDER THE<br />
+        UNIFIED MILITARY CODE
       </div>
 
-      <div class="term-body">
-        <div class="scanlines" aria-hidden="true"></div>
-        <div class="flicker" aria-hidden="true"></div>
+      <!-- Two explicit login options -->
+      <div class="login-options">
+        <button class="login-option" @click="memberLogin">
+          <div class="opt-title">Member Login</div>
+          <div class="opt-desc">Continue to Mission Status</div>
+        </button>
 
-        <div class="logo-ghost" aria-hidden="true">
-          <img src="/faction-logos/FUD_UNSC_Logo.png" alt="" />
-        </div>
-
-        <!-- Ambient terminal feed (starts "scrolling" after 5 lines by trimming immediately) -->
-        <div class="typed-window">
-          <div class="typed" v-html="typedHtml"></div>
-        </div>
-
-        <div class="gate">
-          <div class="gate-title">ACCESS OPTIONS</div>
-
-          <div class="login-options-wrap">
-            <div class="login-options">
-              <button class="login-option" :disabled="isFading" @click="memberLogin">
-                <div class="opt-title">Member Access</div>
-                <div class="opt-desc">Read-only // Mission Status & Roster</div>
-              </button>
-
-              <button class="login-option" :disabled="isFading" @click="openAdminLogin">
-                <div class="opt-title">Officer / Staff</div>
-                <div class="opt-desc">Authenticate // Admin & Deployment</div>
-              </button>
-            </div>
-          </div>
-
-          <div class="hint dim">
-            SELECT ACCESS PATH. UNAUTHORIZED ACCESS IS PUNISHABLE UNDER THE UNIFIED MILITARY CODE.
-          </div>
-        </div>
-      </div>
-
-      <div class="term-ftr dim">
-        <span>SYS: OK</span>
-        <span>IFF: VALID</span>
-        <span>NET: LINK</span>
-        <span>SEC: GREEN</span>
+        <button class="login-option" @click="openAdminLogin">
+          <div class="opt-title">Officer / Staff</div>
+          <div class="opt-desc">Authenticate to Admin Panel</div>
+        </button>
       </div>
     </div>
 
@@ -66,6 +43,7 @@
     </div>
 
     <div id="router-view-container">
+      <!-- transition intentionally removed -->
       <router-view
         :key="$route.fullPath"
         :animate="animate"
@@ -94,47 +72,11 @@ import Papa from "papaparse";
 export default {
   name: "App",
   components: { Header, Sidebar, AdminLoginModal },
-
   data() {
     return {
       showLogin: true,
       isFading: false,
       showAdminModal: false,
-
-      // --- Ambient terminal feed ---
-      feedPool: [
-        "UNITED NATIONS SPACE COMMAND // SECURE MILNET",
-        "NODE: ORBITAL BRIEFING SYSTEM (OBS)",
-        "ROUTE: KHARON REACH RELAY // HEKATE AO",
-        "AUTHORITY: NAVSPECWARCOM // 150TH RRG",
-        "» ENCRYPTION SUITE: SWORD/VAULT // ACTIVE",
-        "» THREAT FILTER: ENABLED // CONTENT SANITIZED",
-        "» IFF PACKET: RECEIVED // VERIFIED",
-        "» WRITE ACCESS: STAFF CREDENTIALS REQUIRED",
-        "» TELEMETRY: SYNCHRONIZED",
-        "» SATCOM: UPLINK STABLE",
-        "» EDGE CACHE: PRIMED",
-        "» INTRUSION MONITOR: ARMED",
-        "» PACKET INTEGRITY: PASS",
-        "» AUTH HANDSHAKE: LISTENING",
-        "» LOCAL SESSION: QUARANTINE OK",
-      ],
-
-      typedLines: [],
-      currentTarget: "",
-      currentText: "",
-      currentCharIndex: 0,
-
-      bootTimer: null,
-      stamp: "",
-
-      // SIMPLE: start trimming after first 5 lines
-      maxLines: 5,
-
-      interLinePauseMs: 210,
-      blankLineChance: 0.08,
-      lineRepeatAvoid: 6,
-      lastPickIndices: [],
 
       animate: Config.animate,
       initialSlug: Config.initialSlug,
@@ -148,178 +90,37 @@ export default {
       reserves: [],
     };
   },
-
-  computed: {
-    typedHtml() {
-      const escape = (s) =>
-        String(s)
-          .replaceAll("&", "&amp;")
-          .replaceAll("<", "&lt;")
-          .replaceAll(">", "&gt;");
-
-      const renderLine = (l) => {
-        if (l === "") return `<div class="line spacer"></div>`;
-        const isFlavor = l.trim().startsWith("»");
-        return `<div class="line ${isFlavor ? "dim" : ""}">${escape(l)}</div>`;
-      };
-
-      const committed = this.typedLines.map(renderLine).join("");
-      const live = this.currentText ? renderLine(this.currentText) : "";
-      return `${committed}${live}<div class="line dim"><span class="caret"></span></div>`;
-    },
-  },
-
   created() {
     this.setTitleFavicon(`${Config.defaultTitle} UNSC BRIEFING`, Config.icon);
 
+    // preload markdown
     this.importMissions(import.meta.glob("@/assets/missions/**/*.md", { query: "?raw", import: "default" }));
     this.importEvents(import.meta.glob("@/assets/events/*.md", { query: "?raw", import: "default" }));
 
-    const membersUrl =
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=1185035639&single=true&output=csv";
-    const refDataUrl =
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=107253735&single=true&output=csv";
-    const opsUrl =
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=1115158828&single=true&output=csv";
+    // async CSVs
+    const membersUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=1185035639&single=true&output=csv";
+    const refDataUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=107253735&single=true&output=csv";
+    const opsUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=1115158828&single=true&output=csv";
 
     this.loadMembersCSV(membersUrl)
       .then(() => this.loadRefDataCSV(refDataUrl))
       .then(() => this.loadOpsCSV(opsUrl).catch((err) => console.warn("Ops CSV failed; continuing.", err)));
 
+    // if already authenticated earlier, skip overlay
     const role = sessionStorage.getItem("authRole");
     if (role === "member" || role === "staff") {
       this.showLogin = false;
     }
   },
-
-  mounted() {
-    this.updateStamp();
-    this.seedInitialFeed();
-    this.startAmbientFeed();
-  },
-
-  beforeUnmount() {
-    if (this.bootTimer) window.clearTimeout(this.bootTimer);
-  },
-
   methods: {
-    updateStamp() {
-      const d = new Date();
-      const pad = (n) => String(n).padStart(2, "0");
-      this.stamp = `UTC ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
-    },
-
-    seedInitialFeed() {
-      if (!this.showLogin) return;
-      this.typedLines = [
-        "UNITED NATIONS SPACE COMMAND // SECURE MILNET",
-        "NODE: ORBITAL BRIEFING SYSTEM (OBS)",
-        "» AUTH HANDSHAKE: LISTENING",
-        "» ENCRYPTION SUITE: SWORD/VAULT // ACTIVE",
-        "» THREAT FILTER: ENABLED // CONTENT SANITIZED",
-      ].slice(-this.maxLines);
-      this.pickNextTarget();
-    },
-
-    pickNextTarget() {
-      if (Math.random() < this.blankLineChance) {
-        this.currentTarget = "";
-        this.currentText = "";
-        this.currentCharIndex = 0;
-        return;
-      }
-
-      const poolLen = this.feedPool.length;
-      let idx = Math.floor(Math.random() * poolLen);
-      let guard = 0;
-      while (this.lastPickIndices.includes(idx) && guard < 20) {
-        idx = Math.floor(Math.random() * poolLen);
-        guard += 1;
-      }
-
-      this.lastPickIndices.push(idx);
-      if (this.lastPickIndices.length > this.lineRepeatAvoid) this.lastPickIndices.shift();
-
-      const base = this.feedPool[idx];
-      this.currentTarget = this.withTelemetry(base);
-      this.currentText = "";
-      this.currentCharIndex = 0;
-    },
-
-    withTelemetry(line) {
-      const pad = (n) => String(n).padStart(2, "0");
-      const now = new Date();
-      const t = `${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}`;
-      const hex = () => Math.floor(Math.random() * 0xffff).toString(16).toUpperCase().padStart(4, "0");
-      const pct = () => `${Math.floor(80 + Math.random() * 20)}%`;
-
-      if (line.includes("TELEMETRY")) return `» TELEMETRY: SYNCHRONIZED // ${pct()} // T+${t}`;
-      if (line.includes("SATCOM")) return `» SATCOM: UPLINK STABLE // CH-${1 + Math.floor(Math.random() * 6)} // ${t}`;
-      if (line.includes("PACKET INTEGRITY")) return `» PACKET INTEGRITY: PASS // CRC ${hex()}-${hex()} // ${t}`;
-      if (line.includes("EDGE CACHE")) return `» EDGE CACHE: PRIMED // SECTOR ${hex()} // ${t}`;
-      if (line.includes("INTRUSION MONITOR")) return `» INTRUSION MONITOR: ARMED // WATCH ${hex()} // ${t}`;
-      if (line.includes("IFF PACKET")) return `» IFF PACKET: RECEIVED // TAG ${hex()} // ${t}`;
-
-      return line;
-    },
-
-    trimToWindow() {
-      // start "scrolling" immediately after 5 lines
-      if (this.typedLines.length > this.maxLines) {
-        this.typedLines.splice(0, this.typedLines.length - this.maxLines);
-      }
-    },
-
-    commitCurrentLine() {
-      this.typedLines.push(this.currentTarget === "" ? "" : this.currentTarget);
-      this.trimToWindow();
-    },
-
-    startAmbientFeed() {
-      if (!this.showLogin) return;
-
-      const minDelay = 12;
-      const maxDelay = 30;
-
-      const tick = () => {
-        this.updateStamp();
-
-        if (!this.showLogin) {
-          this.bootTimer = null;
-          return;
-        }
-
-        if (this.currentTarget === "") {
-          this.commitCurrentLine();
-          this.pickNextTarget();
-          this.bootTimer = window.setTimeout(tick, Math.max(120, this.interLinePauseMs));
-          return;
-        }
-
-        this.currentText = this.currentTarget.slice(0, this.currentCharIndex + 1);
-        this.currentCharIndex += 1;
-
-        if (this.currentCharIndex >= this.currentTarget.length) {
-          this.commitCurrentLine();
-          this.pickNextTarget();
-          this.bootTimer = window.setTimeout(tick, this.interLinePauseMs);
-          return;
-        }
-
-        const jitter = Math.floor(minDelay + Math.random() * (maxDelay - minDelay));
-        const extra = Math.random() < 0.06 ? 90 : 0;
-        this.bootTimer = window.setTimeout(tick, jitter + extra);
-      };
-
-      tick();
-    },
-
+    // MEMBER → straight to /status
     memberLogin() {
       if (this.isFading) return;
       sessionStorage.setItem("authRole", "member");
       this.fadeAndEnter("/status");
     },
 
+    // OFFICER/STAFF → open modal (AdminLoginModal handles credentials)
     openAdminLogin() {
       if (this.isFading) return;
       this.showAdminModal = true;
@@ -328,6 +129,7 @@ export default {
       this.showAdminModal = false;
     },
     onAdminLoginSuccess() {
+      // why: ensure guards see staff role immediately
       sessionStorage.setItem("authRole", "staff");
       this.showAdminModal = false;
       this.fadeAndEnter("/admin");
@@ -336,79 +138,83 @@ export default {
     fadeAndEnter(targetPath) {
       this.isFading = true;
 
-      if (this.bootTimer) {
-        window.clearTimeout(this.bootTimer);
-        this.bootTimer = null;
-      }
-
       const a = this.$refs.startupAudio;
       if (a && typeof a.play === "function") {
         a.currentTime = 0;
         a.play().catch(() => {});
       }
 
-      window.setTimeout(() => {
+      setTimeout(() => {
         this.showLogin = false;
-        this.$router.replace(targetPath);
-      }, 650);
+        this.isFading = false;
+        const curr = this.$router?.currentRoute?.value?.path;
+        if (curr !== targetPath) this.$router.push(targetPath);
+      }, 800);
     },
 
-    setTitleFavicon(title, iconPath) {
-      if (title) document.title = String(title);
-      if (!iconPath) return;
-
-      let link = document.querySelector("link[rel*='icon']");
+    normalize(str) {
+      return String(str || "").replace(/"/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+    },
+    setTitleFavicon(title, favicon) {
+      document.title = title;
+      let link = document.querySelector('link[rel="icon"]');
       if (!link) {
         link = document.createElement("link");
         link.rel = "icon";
         document.head.appendChild(link);
       }
-      link.href = iconPath;
+      link.href = favicon;
     },
 
-    async importMissions(glob) {
-      const entries = Object.entries(glob);
-      const out = [];
-      for (const [path, loader] of entries) {
-        const raw = await loader();
-        const name = path.split("/").pop().replace(".md", "");
-        out.push({ slug: name, raw });
-      }
-      this.missions = out.sort((a, b) => a.slug.localeCompare(b.slug));
+    loadOpsCSV(opsUrl) {
+      return new Promise((resolve) => {
+        Papa.parse(opsUrl, {
+          download: true,
+          skipEmptyLines: true,
+          header: false,
+          complete: (results) => {
+            const rows = (results.data || []).slice(1);
+            const opsMap = {};
+            rows.forEach((row) => {
+              const rawName = String(row[0] || "").trim();
+              const rawOps = String(row[2] || "").trim();
+              if (!rawName) return;
+              const ops = Number(rawOps);
+              if (Number.isNaN(ops)) return;
+              const quoted = rawName.match(/"([^"]+)"/);
+              const nameCore = quoted ? quoted[1] : rawName;
+              const key = String(nameCore).replace(/"/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+              opsMap[key] = ops;
+            });
+            (this.members || []).forEach((m) => {
+              const key = String(m.name || "").replace(/"/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+              m.opsAttended = opsMap[key] ?? null;
+            });
+            resolve();
+          },
+          error: () => resolve(),
+        });
+      });
     },
 
-    async importEvents(glob) {
-      const entries = Object.entries(glob);
-      const out = [];
-      for (const [path, loader] of entries) {
-        const raw = await loader();
-        const name = path.split("/").pop().replace(".md", "");
-        out.push({ slug: name, raw });
-      }
-      this.events = out.sort((a, b) => a.slug.localeCompare(b.slug));
-    },
-
-    // Remaining CSV/promotion methods unchanged...
-    promotionLadderFor(rankName) {
-      const r = String(rankName || "").trim().toUpperCase();
-
-      if (r.includes("SR") && r.includes("PILOT")) return { nextRank: "Chief Pilot", nextAt: 16 };
-      if (r.includes("CHIEF") && r.includes("PILOT")) return { nextRank: "Master Chief Pilot", nextAt: 24 };
-
-      if (r.includes("MASTER") && r.includes("CHIEF")) return { nextRank: null, nextAt: null };
-      if (r.includes("CHIEF")) return { nextRank: "Master Chief", nextAt: 24 };
-
-      if (r.includes("SERGEANT") && r.includes("FIRST")) return { nextRank: "Chief", nextAt: 20 };
-      if (r.includes("GUNNERY")) return { nextRank: "First Sergeant", nextAt: 16 };
-      if (r.includes("STAFF")) return { nextRank: "Gunnery Sergeant", nextAt: 12 };
-      if (r.includes("SERGEANT")) return { nextRank: "Staff Sergeant", nextAt: 8 };
-
-      if (r.includes("CORPORAL")) return { nextRank: "Sergeant", nextAt: 6 };
-      if (r.includes("LANCE")) return { nextRank: "Corporal", nextAt: 4 };
-      if (r.includes("PRIVATE FIRST") || r.includes("PFC")) return { nextRank: "Lance Corporal", nextAt: 2 };
-      if (r.includes("PRIVATE")) return { nextRank: "Private First Class", nextAt: 1 };
-
-      return { nextRank: null, nextAt: null };
+    rankKey(rank) { return String(rank || "").trim().toUpperCase().replace(/\s+/g, ""); },
+    promotionLadderFor(rank) {
+      const r = this.rankKey(rank);
+      return ({
+        PVT:  { nextAt: 2,  nextRank: "PFC" },
+        PFC:  { nextAt: 10, nextRank: "SPC" },
+        SPC:  { nextAt: 20, nextRank: "SPC2" },
+        SPC2: { nextAt: 30, nextRank: "SPC3" },
+        SPC3: { nextAt: 40, nextRank: "SPC4" },
+        SPC4: { nextAt: 50, nextRank: null },
+        HA:   { nextAt: 2,  nextRank: "HN" },
+        HN:   { nextAt: 10, nextRank: "HM3" },
+        HM3:  { nextAt: 20, nextRank: "HM2" },
+        HM2:  { nextAt: 30, nextRank: null },
+        CWO2: { nextAt: 10, nextRank: "CWO3" },
+        CWO3: { nextAt: 20, nextRank: "CWO4" },
+        CWO4: { nextAt: 30, nextRank: null },
+      })[r] || null;
     },
     opsToNextPromotion(member) {
       const ops = Number(member?.opsAttended);
@@ -426,16 +232,33 @@ export default {
       return new Promise((resolve, reject) => {
         Papa.parse(csvUrl, {
           download: true,
-          header: true,
           skipEmptyLines: true,
+          header: false,
           complete: (results) => {
-            this.members = (results.data || []).map((r) => ({
-              ...r,
-              opsAttended: 0,
-              nextPromotionOps: null,
-              nextPromotionRank: null,
-            }));
-            resolve();
+            const rows = (results.data || []).slice(2);
+            const CERT_COLUMNS = 13;
+            const usedUNSCIds = new Set();
+            this.members = rows
+              .map((row) => {
+                const name = String(row[1] || "").trim();
+                if (!name) return null;
+                const oldId = String(row[4] || "").trim();
+                return {
+                  rank: String(row[0] || "").trim(),
+                  name,
+                  joinDate: String(row[3] || "").trim(),
+                  id: this.makeUNSCId(oldId, name, usedUNSCIds),
+                  certifications: row
+                    .slice(5, 5 + CERT_COLUMNS)
+                    .map((c) => (String(c || "").trim().toUpperCase() === "Y" ? "Y" : "N")),
+                  squad: "",
+                  fireteam: "",
+                  slot: "",
+                  opsAttended: 0,
+                };
+              })
+              .filter(Boolean);
+            resolve(this.members);
           },
           error: reject,
         });
@@ -446,60 +269,324 @@ export default {
       return new Promise((resolve, reject) => {
         Papa.parse(csvUrl, {
           download: true,
-          header: true,
-          skipEmptyLines: true,
+          skipEmptyLines: false,
+          header: false,
           complete: (results) => {
             const rows = results.data || [];
+            const findCol = (row, names) => {
+              const wanted = names.map((n) => this.normalize(n));
+              return row.findIndex((c) => wanted.includes(this.normalize(c)));
+            };
 
-            const orbat = rows
-              .filter((r) => String(r?.type || "").toLowerCase() === "orbat")
-              .map((r) => ({ ...r }));
-            const reserves = rows
-              .filter((r) => String(r?.type || "").toLowerCase() === "reserve")
-              .map((r) => ({ ...r }));
+            let membershipHeaderRowIndex = -1, memberCol = -1, squadCol = -1;
+            for (let i = 0; i < 2; i++) {
+              const r = rows[i] || [];
+              const m = findCol(r, ["Squad Member"]);
+              const s = findCol(r, ["Squads"]);
+              if (m !== -1 && s !== -1) { membershipHeaderRowIndex = i; memberCol = m; squadCol = s; break; }
+            }
+            if (membershipHeaderRowIndex === -1) { resolve([]); return; }
 
-            this.orbat = orbat;
-            this.reserves = reserves;
+            const KNOWN_ROLE_HEADER_HINTS = [
+              "squad roles","role","chalk 1 fireteam 1","chalk 2 fireteam 1","chalk 3 fireteam 1","chalk 4 fireteam 1",
+              "broadsword","wyvern","caladrius","ifrit","chalk actual",
+            ];
 
-            resolve();
+            let slotHeaderRowIndex = -1, slotCol = -1, roleCol = -1;
+            for (let i = 0; i < 4; i++) {
+              const r = rows[i] || [];
+              const sl = findCol(r, ["Squad Slots", "Slot"]);
+              if (sl === -1) continue;
+              let rc = findCol(r, ["Squad Roles", "Role"]);
+              if (rc === -1) {
+                rc = r.findIndex((c) => {
+                  const n = this.normalize(c);
+                  if (!n) return false;
+                  if (n.includes("fireteam")) return true;
+                  return KNOWN_ROLE_HEADER_HINTS.includes(n);
+                });
+              }
+              if (sl !== -1 && rc !== -1) { slotHeaderRowIndex = i; slotCol = sl; roleCol = rc; break; }
+            }
+            const slottingAvailable = slotHeaderRowIndex !== -1 && slotCol !== -1 && roleCol !== -1;
+
+            const findMemberByLabel = (label) => {
+              const labelNorm = this.normalize(label);
+              if (!labelNorm) return null;
+
+              let m = this.members.find((mem) => labelNorm.includes(this.normalize(mem.name)));
+              if (m) return m;
+
+              const parts = labelNorm.split(" ");
+              const surname = parts[parts.length - 1] || "";
+              const initialMatch = labelNorm.match(/\b([a-z])\./i);
+              const initial = initialMatch ? initialMatch[1].toLowerCase() : "";
+
+              m = this.members.find((mem) => {
+                const n = this.normalize(mem.name);
+                const np = n.split(" ");
+                const memSurname = np[np.length - 1] || "";
+                const memInitial = (np[0] || "").charAt(0);
+                if (!surname || memSurname !== surname) return false;
+                if (initial && memInitial !== initial) return false;
+                return true;
+              }) || null;
+
+              return m;
+            };
+
+            const membershipRows = rows
+              .slice(membershipHeaderRowIndex + 1)
+              .map((r) => {
+                const label = String(r[memberCol] || "").trim();
+                const squad = String(r[squadCol] || "").trim();
+                if (!label || !squad) return null;
+                return { label, squad };
+              })
+              .filter(Boolean);
+
+            membershipRows.forEach(({ label, squad }) => {
+              const mem = findMemberByLabel(label);
+              if (!mem) return;
+              if (!mem.squad) mem.squad = squad;
+            });
+
+            const slotEntries = [];
+            const parseHeading = (txt) => {
+              const raw = String(txt || "").trim();
+              if (!raw) return null;
+              const ft = raw.match(/^(.*?)(?:\s+)?fireteam\s*(\d+)\s*$/i);
+              if (ft) return { squad: ft[1].trim(), fireteam: `Fireteam ${ft[2].trim()}` };
+              const n = this.normalize(raw);
+              const singles = ["broadsword","broadsword command","ifrit","wyvern","wyvern air wing","caladrius","chalk actual"];
+              if (singles.includes(n)) return { squad: raw.trim(), fireteam: "Element" };
+              return null;
+            };
+
+            if (slottingAvailable) {
+              let currentSquad = "", currentFireteam = "Element";
+              for (let i = slotHeaderRowIndex + 1; i < rows.length; i++) {
+                const r = rows[i] || [];
+                const slotTxt = String(r[slotCol] || "").trim();
+                const roleTxt = String(r[roleCol] || "").trim();
+                const heading = parseHeading(roleTxt);
+                if (heading) { currentSquad = heading.squad; currentFireteam = heading.fireteam || "Element"; continue; }
+                if (!currentSquad || !roleTxt) continue;
+
+                const slotNorm = this.normalize(slotTxt);
+                if (slotNorm === "vacant" || slotNorm === "closed") {
+                  slotEntries.push({ squad: currentSquad, fireteam: currentFireteam, role: roleTxt, status: slotNorm.toUpperCase(), member: null });
+                  continue;
+                }
+
+                const mem = slotTxt ? findMemberByLabel(slotTxt) : null;
+                if (!mem) continue;
+                mem.squad = currentSquad; mem.fireteam = currentFireteam; mem.slot = roleTxt;
+                slotEntries.push({ squad: currentSquad, fireteam: currentFireteam, role: roleTxt, status: "FILLED", member: mem });
+              }
+            }
+
+            const ALWAYS_SQUADS = ["Chalk Actual","Chalk 1","Chalk 2","Chalk 3","Chalk 4","Broadsword Command","Wyvern","Caladrius","Fillers","Recruit","Reserves"];
+            const orbatMap = {};
+            ALWAYS_SQUADS.forEach((s) => { orbatMap[s] = { squad: s, members: [], fireteams: {} }; });
+
+            this.members.forEach((m) => {
+              if (!m.squad) return;
+              if (!orbatMap[m.squad]) { orbatMap[m.squad] = { squad: m.squad, members: [], fireteams: {} }; }
+              orbatMap[m.squad].members.push(m);
+              const ft = (m.fireteam || "").trim();
+              const role = (m.slot || "").trim();
+              if (ft && role) {
+                orbatMap[m.squad].fireteams[ft] ??= { name: ft, slots: [] };
+                const exists = orbatMap[m.squad].fireteams[ft].slots.some(
+                  (s) => s.status === "FILLED" && s.member?.id && s.member.id === m.id && s.role === role
+                );
+                if (!exists) {
+                  orbatMap[m.squad].fireteams[ft].slots.push({ role, status: "FILLED", member: m });
+                }
+              }
+            });
+
+            slotEntries.forEach((e) => {
+              if (!orbatMap[e.squad]) { orbatMap[e.squad] = { squad: e.squad, members: [], fireteams: {} }; }
+              const ftName = e.fireteam || "Element";
+              orbatMap[e.squad].fireteams[ftName] ??= { name: ftName, slots: [] };
+              if (e.status === "FILLED" && e.member?.id) {
+                const exists = orbatMap[e.squad].fireteams[ftName].slots.some(
+                  (s) => s.status === "FILLED" && s.member?.id === e.member.id && s.role === e.role
+                );
+                if (exists) return;
+              }
+              orbatMap[e.squad].fireteams[ftName].slots.push({ role: e.role, status: e.status, member: e.member });
+            });
+
+            this.orbat = Object.values(orbatMap).map((s) => ({
+              squad: s.squad,
+              members: (s.members || []).slice().sort((a, b) => (a.name || "").localeCompare(b.name || "")),
+              fireteams: Object.values(s.fireteams || {}).map((ft) => ({ name: ft.name, slots: (ft.slots || []).slice() })),
+            }));
+
+            resolve(this.orbat);
           },
           error: reject,
         });
       });
     },
 
-    loadOpsCSV(csvUrl) {
-      return new Promise((resolve, reject) => {
-        Papa.parse(csvUrl, {
-          download: true,
-          header: true,
-          skipEmptyLines: true,
-          complete: (results) => {
-            const rows = results.data || [];
-            const byName = new Map();
+    async importMissions(files) {
+  const entries = Object.entries(files);
+  const contents = await Promise.all(entries.map(([, f]) => f()));
 
-            rows.forEach((r) => {
-              const name = String(r?.name || r?.Name || "").trim();
-              const ops = Number(r?.ops || r?.Ops || r?.opsAttended || r?.OpsAttended);
-              if (!name) return;
-              if (!Number.isFinite(ops)) return;
-              byName.set(name.toLowerCase(), ops);
-            });
+  const knownStatuses = new Set(["start", "partial-success", "success", "failure"]);
 
-            this.members = (this.members || []).map((m) => {
-              const key = String(m?.name || m?.Name || "").trim().toLowerCase();
-              const ops = byName.get(key) ?? 0;
-              const nextPromotionOps = this.opsToNextPromotion({ ...m, opsAttended: ops });
-              const nextPromotionRank = this.nextPromotionRank({ ...m, opsAttended: ops });
+  const toTitle = (s) =>
+    String(s || "")
+      .replace(/[-_]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/\b\w/g, (c) => c.toUpperCase());
 
-              return { ...m, opsAttended: ops, nextPromotionOps, nextPromotionRank };
-            });
+  const inferCampaignFromPath = (path) => {
+    const p = String(path || "");
+    const parts = p.split("/missions/");
+    if (parts.length < 2) return { key: "UNASSIGNED", name: "Unassigned" };
+    const after = parts[1];
+    const segs = after.split("/").filter(Boolean);
+    if (segs.length <= 1) return { key: "UNASSIGNED", name: "Unassigned" };
+    const slug = segs[0];
+    return { key: slug.toUpperCase(), name: toTitle(slug) };
+  };
 
-            resolve();
-          },
-          error: reject,
-        });
+  const parseHeader = (lines) => {
+    const slug = String(lines[0] || "").trim();
+    let cursor = 1;
+
+    let title = "";
+    let status = "start";
+
+    const l1 = String(lines[1] || "").trim();
+    const l2 = String(lines[2] || "").trim();
+
+    // New format: slug + status (title omitted)
+    if (knownStatuses.has(l1)) {
+      status = l1;
+      cursor = 2;
+    } else if (knownStatuses.has(l2)) {
+      // Legacy format: slug + title + status
+      title = l1;
+      status = l2;
+      cursor = 3;
+    } else if (l1 && !l1.startsWith("@")) {
+      // Legacy: slug + title (status defaults)
+      title = l1;
+      cursor = 2;
+    }
+
+    return { slug, title, status, cursor };
+  };
+
+  const parseDirectives = (lines, startIdx) => {
+    let i = startIdx;
+    const meta = {};
+    while (i < lines.length) {
+      const raw = String(lines[i] || "");
+      const line = raw.trim();
+      if (!line.startsWith("@")) break;
+
+      const [tag, ...rest] = line.split(" ");
+      const payload = rest.join(" ").trim();
+
+      if (tag === "@campaign") {
+        meta.campaign = payload.replace(/^"(.*)"$/, "$1").trim();
+      } else if (tag === "@order") {
+        const n = Number(payload);
+        if (Number.isFinite(n)) meta.order = n;
+      } else if (tag === "@theme") {
+        try {
+          meta.theme = payload ? JSON.parse(payload) : {};
+        } catch (e) {
+          console.warn(`Invalid @theme JSON for mission; ignoring.`, e);
+        }
+      }
+
+      i += 1;
+    }
+    return { meta, cursor: i };
+  };
+
+  const parseNumeric = (s) => {
+    const m = String(s || "").match(/(\d+)/);
+    return m ? Number(m[1]) : NaN;
+  };
+
+  contents.forEach((c, idx) => {
+    const path = entries[idx][0];
+    const lines = String(c || "").split(/\r?\n/);
+
+    const inferred = inferCampaignFromPath(path);
+    const { slug, title, status, cursor: afterHeader } = parseHeader(lines);
+    const { meta, cursor: afterMeta } = parseDirectives(lines, afterHeader);
+
+    let order = Number(meta.order);
+    if (!Number.isFinite(order)) {
+      const fileBase = String(path || "").split("/").pop()?.replace(/\.md$/i, "") || "";
+      const orderFromSlug = parseNumeric(slug);
+      const orderFromFile = parseNumeric(fileBase);
+      order = Number.isFinite(orderFromSlug) ? orderFromSlug : orderFromFile;
+    }
+
+    const content = lines.slice(afterMeta).join("\n");
+
+    const campaignName = meta.campaign ? meta.campaign : inferred.name;
+    const campaignKey = meta.campaign ? String(meta.campaign).toUpperCase() : inferred.key;
+
+    this.missions.push({
+      slug,
+      name: title, // legacy only; UI no longer requires this
+      status: knownStatuses.has(status) ? status : "start",
+      content,
+      campaign: campaignName,
+      campaignKey,
+      order,
+      theme: meta.theme || {},
+      sourcePath: path,
+    });
+  });
+},
+    async importEvents(files) {
+      const contents = await Promise.all(Object.values(files).map((f) => f()));
+      contents.forEach((c) => {
+        const l = c.split("\n");
+        this.events.push({ title: l[0], location: l[1], time: l[2], thumbnail: l[3], content: l.slice(4).join("\n") });
       });
+    },
+
+    makeInitials(name) {
+      const parts = String(name || "").trim().toUpperCase().split(/\s+/).filter(Boolean);
+      if (!parts.length) return "XX";
+      const first = parts[0]?.[0] || "X";
+      const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] || "X") : "X";
+      return `${first}${last}`;
+    },
+    hash32(str) {
+      let h = 2166136261;
+      const s = String(str || "");
+      for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+      return h >>> 0;
+    },
+    pad5(n) { return String(n).padStart(5, "0"); },
+    makeUNSCId(oldId, name, used) {
+      const initials = this.makeInitials(name);
+      let seed = this.hash32(`${oldId}::${name}`);
+      let a = seed % 100000;
+      let b = ((seed / 100000) >>> 0) % 100000;
+      let candidate = `${this.pad5(a)}-${this.pad5(b)}-${initials}`;
+      while (used.has(candidate)) {
+        seed = (seed + 1) >>> 0; a = seed % 100000; b = ((seed / 100000) >>> 0) % 100000;
+        candidate = `${this.pad5(a)}-${this.pad5(b)}-${initials}`;
+      }
+      used.add(candidate);
+      return candidate;
     },
   },
 };
@@ -509,198 +596,46 @@ export default {
 #app { min-height: 100vh; overflow: hidden !important; }
 
 .login-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 99999;
-  display: grid;
-  place-items: center;
-  background: radial-gradient(ellipse at center, rgba(6, 12, 18, 0.96), rgba(0, 0, 0, 0.985));
-  opacity: 1;
-  transition: opacity 0.8s ease;
+  position: fixed; inset: 0; z-index: 99999;
+  display: grid; place-items: center;
+  background: #000;
+  cursor: default;
+  opacity: 1; transition: opacity 0.8s ease;
 }
 .login-overlay.fading { opacity: 0; pointer-events: none; }
 
-.term {
-  width: min(920px, 94vw);
-  border-radius: 16px;
-  border: 1px solid rgba(170, 220, 255, 0.22);
-  background: linear-gradient(180deg, rgba(8, 14, 20, 0.92), rgba(3, 6, 10, 0.95));
-  overflow: hidden;
-  box-shadow:
-    0 0 0 1px rgba(170, 220, 255, 0.06) inset,
-    0 0 26px rgba(120, 180, 255, 0.10),
-    0 0 110px rgba(0, 0, 0, 0.6);
-  color: rgba(190, 230, 255, 0.92);
-  font-family: "Titillium Web", sans-serif;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
+.login-bg { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.login-logo { width: min(520px, 70vw); height: auto; opacity: 0.18; filter: drop-shadow(0 0 24px rgba(0, 0, 0, 0.9)); }
 
-.term-hdr {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  border-bottom: 1px solid rgba(170, 220, 255, 0.12);
-  background: rgba(0, 0, 0, 0.16);
-}
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: rgba(170, 220, 255, 0.22);
-  box-shadow: 0 0 8px rgba(120, 180, 255, 0.12);
-}
-.term-title { font-size: 12px; opacity: 0.9; }
-.term-stamp { margin-left: auto; font-size: 12px; opacity: 0.6; letter-spacing: .12em; }
-
-.term-body {
-  position: relative;
-  padding: 26px 20px 18px;
-  min-height: 380px;
-}
-
-.logo-ghost {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  pointer-events: none;
-  opacity: 0.12;
-  filter: drop-shadow(0 0 24px rgba(0, 0, 0, 0.9));
-}
-.logo-ghost img { width: min(520px, 74vw); height: auto; }
-
-/* With maxLines=5, the feed "scrolls" almost immediately and never collides with the divider */
-.typed-window {
-  position: relative;
-  z-index: 2;
-  height: 190px;
-  overflow: hidden;
-  padding-right: 6px;
-
-  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 78%, rgba(0,0,0,0) 100%);
-  mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 78%, rgba(0,0,0,0) 100%);
-}
-
-.typed {
-  font-size: 14px;
-  line-height: 1.7;
-  text-shadow: 0 0 10px rgba(120, 180, 255, 0.10);
-}
-
-.line { margin: 2px 0; }
-.dim { opacity: 0.7; }
-.line.spacer { height: 10px; }
-
-/* Optional: keep each line to a single terminal row so it never wraps into the gate area */
-.line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-.caret {
-  display: inline-block;
-  width: 10px;
-  height: 14px;
-  margin-right: 8px;
-  border-left: 2px solid rgba(190, 230, 255, 0.9);
-  animation: blink 1.1s infinite;
-  transform: translateY(2px);
-}
-@keyframes blink {
-  0%, 45% { opacity: 1; }
-  46%, 100% { opacity: 0; }
-}
-
-.gate {
-  position: relative;
-  z-index: 2;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(170, 220, 255, 0.14);
-}
-
-.gate-title {
-  font-size: 12px;
-  opacity: 0.85;
-  margin-bottom: 10px;
-  letter-spacing: .16em;
-}
-
-.login-options-wrap {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-}
+.login-text { position: relative; z-index: 1; text-align: center; color: rgba(170, 255, 210, 0.92); font-family: "Titillium Web", sans-serif; letter-spacing: 0.18em; text-transform: uppercase; }
+.login-lore { font-size: 14px; margin-bottom: 1.2em; opacity: 0.9; }
+.login-warning { font-size: 11px; line-height: 1.8em; opacity: 0.75; margin-bottom: 2em; }
 
 .login-options {
-  display: flex;
-  justify-content: center;
-  gap: 14px;
-  width: min(760px, 100%);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  width: min(720px, 92vw);
   margin: 0 auto;
-  flex-wrap: wrap;
 }
-
 .login-option {
-  flex: 1 1 280px;
-  max-width: 360px;
-
-  background: rgba(0, 0, 0, 0.38);
-  border: 1px solid rgba(170, 220, 255, 0.26);
+  background: rgba(0,0,0,.45);
+  border: 1px solid rgba(170,255,210,.35);
   border-radius: 14px;
-  padding: 16px 18px;
+  padding: 18px 20px;
   cursor: pointer;
-  color: rgba(190, 230, 255, 0.92);
+  color: rgba(170, 255, 210, 0.92);
   text-transform: uppercase;
   letter-spacing: .12em;
-  transition: transform 120ms ease, border-color 140ms ease, opacity 140ms ease;
 }
-.login-option:hover { border-color: rgba(170, 220, 255, 0.9); transform: translateY(-1px); }
-.login-option:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
-
-.opt-title { font-size: 16px; font-weight: 800; margin-bottom: 6px; }
+.login-option:hover { border-color: rgba(170,255,210,.9); }
+.opt-title { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
 .opt-desc { font-size: 12px; opacity: .8; letter-spacing: .08em; }
 
-.hint { margin-top: 12px; font-size: 11px; letter-spacing: .14em; line-height: 1.7; }
-
-.term-ftr {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-top: 1px solid rgba(170, 220, 255, 0.12);
-  background: rgba(0, 0, 0, 0.16);
-  font-size: 12px;
-}
-
-/* FX */
-.scanlines {
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(255, 255, 255, 0.02),
-    rgba(255, 255, 255, 0.02) 1px,
-    rgba(0, 0, 0, 0) 3px,
-    rgba(0, 0, 0, 0) 6px
-  );
-  mix-blend-mode: overlay;
-  opacity: 0.35;
-  pointer-events: none;
-}
-
-.flicker {
-  position: absolute;
-  inset: -20%;
-  background: radial-gradient(circle at 30% 20%, rgba(120, 180, 255, 0.07), transparent 55%);
-  animation: flicker 2.6s infinite;
-  pointer-events: none;
-  opacity: 0.9;
-}
-
-@keyframes flicker {
-  0%, 100% { transform: translate3d(0, 0, 0); opacity: 0.75; }
-  10% { transform: translate3d(-1px, 1px, 0); opacity: 0.85; }
-  20% { transform: translate3d(1px, -1px, 0); opacity: 0.7; }
-  35% { transform: translate3d(0px, 2px, 0); opacity: 0.9; }
-  60% { transform: translate3d(2px, 0px, 0); opacity: 0.78; }
-}
+/* Router transitions kept off intentionally to avoid route/animation race
+.hud-enter-active { animation: hud-in 420ms ease-out both; }
+.hud-leave-active { animation: hud-out 220ms ease-in both; }
+@keyframes hud-in { 0%{opacity:0;filter:blur(2px);} 100%{opacity:1;filter:blur(0);} }
+@keyframes hud-out { 0%{opacity:1;filter:blur(0);} 100%{opacity:0;filter:blur(2px);} }
+*/
 </style>
