@@ -21,22 +21,22 @@
         <div class="gate">
           <div class="gate-title">ACCESS OPTIONS</div>
 
-          <div class="login-options">
-            <button class="login-option" :disabled="!typedDone || isFading" @click="memberLogin">
-              <div class="opt-title">Member Access</div>
-              <div class="opt-desc">Read-only // Mission Status & Roster</div>
-            </button>
+          <!-- Centered options row -->
+          <div class="login-options-wrap">
+            <div class="login-options">
+              <button class="login-option" :disabled="isFading" @click="memberLogin">
+                <div class="opt-title">Member Access</div>
+                <div class="opt-desc">Read-only // Mission Status & Roster</div>
+              </button>
 
-            <button class="login-option" :disabled="!typedDone || isFading" @click="openAdminLogin">
-              <div class="opt-title">Officer / Staff</div>
-              <div class="opt-desc">Authenticate // Admin & Deployment</div>
-            </button>
+              <button class="login-option" :disabled="isFading" @click="openAdminLogin">
+                <div class="opt-title">Officer / Staff</div>
+                <div class="opt-desc">Authenticate // Admin & Deployment</div>
+              </button>
+            </div>
           </div>
 
-          <div class="hint dim" v-if="!typedDone">
-            INITIALIZING… INPUT LOCKED UNTIL HANDSHAKE COMPLETES
-          </div>
-          <div class="hint dim" v-else>
+          <div class="hint dim">
             SELECT ACCESS PATH. UNAUTHORIZED ACCESS IS PUNISHABLE UNDER THE UNIFIED MILITARY CODE.
           </div>
         </div>
@@ -45,8 +45,8 @@
       <div class="term-ftr dim">
         <span>SYS: OK</span>
         <span>IFF: VALID</span>
-        <span>NET: {{ typedDone ? "LINK" : "SYNC" }}</span>
-        <span>SEC: {{ typedDone ? "GREEN" : "AMBER" }}</span>
+        <span>NET: LINK</span>
+        <span>SEC: GREEN</span>
       </div>
     </div>
 
@@ -93,13 +93,14 @@ import Papa from "papaparse";
 export default {
   name: "App",
   components: { Header, Sidebar, AdminLoginModal },
+
   data() {
     return {
       showLogin: true,
       isFading: false,
       showAdminModal: false,
 
-      // --- UNSC terminal boot ---
+      // --- UNSC terminal loop ---
       fullLines: [
         "UNITED NATIONS SPACE COMMAND // SECURE MILNET",
         "NODE: ORBITAL BRIEFING SYSTEM (OBS)",
@@ -111,14 +112,15 @@ export default {
         "» IFF PACKET: RECEIVED // VERIFIED",
         "» WRITE ACCESS: STAFF CREDENTIALS REQUIRED",
         "",
-        "HANDSHAKE: PENDING // STANDBY",
+        "HANDSHAKE: LIVE // AWAITING USER INPUT",
       ],
       typedLines: [],
       typedCharIndex: 0,
       lineIndex: 0,
-      typedDone: false,
       bootTimer: null,
       stamp: "",
+      loopDelayMs: 900, // pause between loops
+      maxLines: 18,     // keep it from growing forever
 
       animate: Config.animate,
       initialSlug: Config.initialSlug,
@@ -149,8 +151,8 @@ export default {
         })
         .join("");
 
-      if (!this.typedDone) return `${html}<div class="line dim"><span class="caret"></span></div>`;
-      return html;
+      // Always show caret (ambient loop)
+      return `${html}<div class="line dim"><span class="caret"></span></div>`;
     },
   },
 
@@ -161,10 +163,13 @@ export default {
     this.importMissions(import.meta.glob("@/assets/missions/**/*.md", { query: "?raw", import: "default" }));
     this.importEvents(import.meta.glob("@/assets/events/*.md", { query: "?raw", import: "default" }));
 
-    // async CSVs
-    const membersUrl = "https://docs.google.com/spreadsheets/d/e...o7UXaJDDkg4bGQcl3jRP/pub?gid=1185035639&single=true&output=csv";
-    const refDataUrl = "https://docs.google.com/spreadsheets/d/e...To7UXaJDDkg4bGQcl3jRP/pub?gid=107253735&single=true&output=csv";
-    const opsUrl = "https://docs.google.com/spreadsheets/d/e/2PA...o7UXaJDDkg4bGQcl3jRP/pub?gid=1115158828&single=true&output=csv";
+    // async CSVs (kept as in your original)
+    const membersUrl =
+      "https://docs.google.com/spreadsheets/d/e...o7UXaJDDkg4bGQcl3jRP/pub?gid=1185035639&single=true&output=csv";
+    const refDataUrl =
+      "https://docs.google.com/spreadsheets/d/e...To7UXaJDDkg4bGQcl3jRP/pub?gid=107253735&single=true&output=csv";
+    const opsUrl =
+      "https://docs.google.com/spreadsheets/d/e/2PA...o7UXaJDDkg4bGQcl3jRP/pub?gid=1115158828&single=true&output=csv";
 
     this.loadMembersCSV(membersUrl)
       .then(() => this.loadRefDataCSV(refDataUrl))
@@ -179,7 +184,7 @@ export default {
 
   mounted() {
     this.updateStamp();
-    this.startTyping();
+    this.startTypingLoop();
   },
 
   beforeUnmount() {
@@ -187,44 +192,77 @@ export default {
   },
 
   methods: {
-    // --- terminal boot helpers ---
+    // --- terminal helpers ---
     updateStamp() {
       const d = new Date();
       const pad = (n) => String(n).padStart(2, "0");
       this.stamp = `UTC ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
     },
 
-    startTyping() {
+    startTypingLoop() {
       if (!this.showLogin) return;
 
       const minDelay = 12;
       const maxDelay = 30;
 
+      const resetForLoop = () => {
+        this.typedCharIndex = 0;
+        this.lineIndex = 0;
+        this.typedLines = [];
+      };
+
+      const pushLine = (line) => {
+        this.typedLines.push(line);
+        if (this.typedLines.length > this.maxLines) {
+          this.typedLines.splice(0, this.typedLines.length - this.maxLines);
+        }
+      };
+
       const tick = () => {
         this.updateStamp();
 
-        if (this.lineIndex >= this.fullLines.length) {
-          this.typedDone = true;
+        // overlay might have been dismissed mid-loop
+        if (!this.showLogin) {
           this.bootTimer = null;
+          return;
+        }
+
+        // reached end → pause → loop again
+        if (this.lineIndex >= this.fullLines.length) {
+          this.bootTimer = window.setTimeout(() => {
+            resetForLoop();
+            tick();
+          }, this.loopDelayMs);
           return;
         }
 
         const target = this.fullLines[this.lineIndex];
 
+        // blank spacer line
         if (target === "") {
-          this.typedLines.push("");
+          pushLine("");
           this.lineIndex += 1;
           this.typedCharIndex = 0;
           this.bootTimer = window.setTimeout(tick, 140);
           return;
         }
 
-        if (this.typedLines.length <= this.lineIndex) this.typedLines.push("");
+        // ensure we have a "current typing line" at the end
+        if (
+          this.typedLines.length === 0 ||
+          this.typedLines[this.typedLines.length - 1] === "" ||
+          this.typedCharIndex === 0
+        ) {
+          pushLine("");
+        }
 
+        // mutate last line
+        const currentIndex = this.typedLines.length - 1;
         const next = target.slice(0, this.typedCharIndex + 1);
-        this.typedLines.splice(this.lineIndex, 1, next);
+        this.typedLines.splice(currentIndex, 1, next);
         this.typedCharIndex += 1;
 
+        // finished this line
         if (this.typedCharIndex >= target.length) {
           this.lineIndex += 1;
           this.typedCharIndex = 0;
@@ -247,7 +285,7 @@ export default {
       this.fadeAndEnter("/status");
     },
 
-    // OFFICER/STAFF → open modal (AdminLoginModal handles credentials)
+    // OFFICER/STAFF → open modal
     openAdminLogin() {
       if (this.isFading) return;
       this.showAdminModal = true;
@@ -256,7 +294,6 @@ export default {
       this.showAdminModal = false;
     },
     onAdminLoginSuccess() {
-      // why: ensure guards see staff role immediately
       sessionStorage.setItem("authRole", "staff");
       this.showAdminModal = false;
       this.fadeAndEnter("/admin");
@@ -264,6 +301,12 @@ export default {
 
     fadeAndEnter(targetPath) {
       this.isFading = true;
+
+      // stop ambient loop cleanly
+      if (this.bootTimer) {
+        window.clearTimeout(this.bootTimer);
+        this.bootTimer = null;
+      }
 
       const a = this.$refs.startupAudio;
       if (a && typeof a.play === "function") {
@@ -312,6 +355,7 @@ export default {
       this.events = out.sort((a, b) => a.slug.localeCompare(b.slug));
     },
 
+    // --- promotion logic kept as-is ---
     promotionLadderFor(rankName) {
       const r = String(rankName || "").trim().toUpperCase();
 
@@ -480,7 +524,7 @@ export default {
 .term-body {
   position: relative;
   padding: 26px 20px 18px;
-  min-height: 360px;
+  min-height: 380px;
 }
 
 .logo-ghost {
@@ -500,7 +544,7 @@ export default {
   font-size: 14px;
   line-height: 1.7;
   text-shadow: 0 0 10px rgba(120, 180, 255, 0.10);
-  min-height: 200px;
+  min-height: 210px;
 }
 
 .line { margin: 2px 0; }
@@ -528,6 +572,7 @@ export default {
   padding-top: 14px;
   border-top: 1px solid rgba(170, 220, 255, 0.14);
 }
+
 .gate-title {
   font-size: 12px;
   opacity: 0.85;
@@ -535,15 +580,28 @@ export default {
   letter-spacing: .16em;
 }
 
+/* NEW: center the options horizontally regardless of background logo */
+.login-options-wrap {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+/* This becomes a centered 2-up row; wraps nicely on small screens */
 .login-options {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  display: flex;
+  justify-content: center;
   gap: 14px;
   width: min(760px, 100%);
+  margin: 0 auto;
+  flex-wrap: wrap;
 }
 
 .login-option {
-  background: rgba(0, 0, 0, 0.35);
+  flex: 1 1 280px;
+  max-width: 360px;
+
+  background: rgba(0, 0, 0, 0.38);
   border: 1px solid rgba(170, 220, 255, 0.26);
   border-radius: 14px;
   padding: 16px 18px;
@@ -602,11 +660,4 @@ export default {
   35% { transform: translate3d(0px, 2px, 0); opacity: 0.9; }
   60% { transform: translate3d(2px, 0px, 0); opacity: 0.78; }
 }
-
-/* Router transitions kept off intentionally to avoid route/animation race
-.hud-enter-active { animation: hud-in 420ms ease-out both; }
-.hud-leave-active { animation: hud-out 220ms ease-in both; }
-@keyframes hud-in { 0%{opacity:0;filter:blur(2px);} 100%{opacity:1;filter:blur(0);} }
-@keyframes hud-out { 0%{opacity:1;filter:blur(0);} 100%{opacity:0;filter:blur(2px);} }
-*/
 </style>
