@@ -996,9 +996,12 @@ export default {
 .t-card .body{
   flex: 1 1 auto;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
+
+  /* Consistent internal layout across cards */
+  display: grid;
+  grid-template-rows: auto auto 1fr;
   gap: .45rem;
+  align-content: start;
 }
 
 .t-card{
@@ -1014,9 +1017,14 @@ export default {
   color:#d9ebff;
   font-size: 0.95rem;
   letter-spacing: .14em;
-  overflow:hidden;
+
+  /* Allow 2-line titles without clipping */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
 }
 .plain-title{ background:none !important; clip-path:none !important; padding:0 !important; border:0 !important; }
 .lead{ color:#9ec5e6; font-size:.9rem; }
@@ -1044,6 +1052,7 @@ export default {
 .divider{
   height:1px;
   background: linear-gradient(90deg, rgba(170,220,255,0.22), rgba(170,220,255,0.08) 60%, transparent);
+  margin: 0; /* keep spacing governed by grid gap */
 }
 .vlist{ list-style:none; margin:0; padding:0; display:grid; gap:.22rem; }
 .vlist li{
