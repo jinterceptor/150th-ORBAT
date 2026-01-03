@@ -16,12 +16,14 @@
           <img src="/faction-logos/FUD_UNSC_Logo.png" alt="" />
         </div>
 
-        <div class="typed" v-html="typedHtml"></div>
+        <!-- Ambient terminal feed (fixed height, scroll illusion via trimming top lines) -->
+        <div class="typed-window" ref="typedWindow">
+          <div class="typed" v-html="typedHtml"></div>
+        </div>
 
         <div class="gate">
           <div class="gate-title">ACCESS OPTIONS</div>
 
-          <!-- Centered options row -->
           <div class="login-options-wrap">
             <div class="login-options">
               <button class="login-option" :disabled="isFading" @click="memberLogin">
@@ -64,7 +66,6 @@
     </div>
 
     <div id="router-view-container">
-      <!-- transition intentionally removed -->
       <router-view
         :key="$route.fullPath"
         :animate="animate"
@@ -100,27 +101,41 @@ export default {
       isFading: false,
       showAdminModal: false,
 
-      // --- UNSC terminal loop ---
-      fullLines: [
+      // --- Ambient terminal feed ---
+      // (We never "reset" visually: we keep adding lines and trimming the top.)
+      feedPool: [
         "UNITED NATIONS SPACE COMMAND // SECURE MILNET",
         "NODE: ORBITAL BRIEFING SYSTEM (OBS)",
         "ROUTE: KHARON REACH RELAY // HEKATE AO",
         "AUTHORITY: NAVSPECWARCOM // 150TH RRG",
-        "",
         "» ENCRYPTION SUITE: SWORD/VAULT // ACTIVE",
         "» THREAT FILTER: ENABLED // CONTENT SANITIZED",
         "» IFF PACKET: RECEIVED // VERIFIED",
         "» WRITE ACCESS: STAFF CREDENTIALS REQUIRED",
-        "",
-        "HANDSHAKE: LIVE // AWAITING USER INPUT",
+        "» TELEMETRY: SYNCHRONIZED",
+        "» SATCOM: UPLINK STABLE",
+        "» EDGE CACHE: PRIMED",
+        "» INTRUSION MONITOR: ARMED",
+        "» PACKET INTEGRITY: PASS",
+        "» AUTH HANDSHAKE: LISTENING",
+        "» LOCAL SESSION: QUARANTINE OK",
       ],
-      typedLines: [],
-      typedCharIndex: 0,
-      lineIndex: 0,
+
+      typedLines: [],          // committed lines (already typed)
+      currentTarget: "",       // the full line we are typing right now
+      currentText: "",         // current typed substring
+      currentCharIndex: 0,
+
       bootTimer: null,
       stamp: "",
-      loopDelayMs: 900, // pause between loops
-      maxLines: 18,     // keep it from growing forever
+
+      // Feel knobs
+      maxLines: 22,            // how many lines are visible in the window (trim from top)
+      interLinePauseMs: 220,   // pause after finishing a line
+      blankLineChance: 0.10,   // occasional spacer line
+      lineRepeatAvoid: 6,      // avoid repeating last N line indices
+
+      lastPickIndices: [],
 
       animate: Config.animate,
       initialSlug: Config.initialSlug,
@@ -143,23 +158,21 @@ export default {
           .replaceAll("<", "&lt;")
           .replaceAll(">", "&gt;");
 
-      const html = this.typedLines
-        .map((l) => {
-          if (l === "") return `<div class="line spacer"></div>`;
-          const isFlavor = l.trim().startsWith("»");
-          return `<div class="line ${isFlavor ? "dim" : ""}">${escape(l)}</div>`;
-        })
-        .join("");
+      const renderLine = (l) => {
+        if (l === "") return `<div class="line spacer"></div>`;
+        const isFlavor = l.trim().startsWith("»");
+        return `<div class="line ${isFlavor ? "dim" : ""}">${escape(l)}</div>`;
+      };
 
-      // Always show caret (ambient loop)
-      return `${html}<div class="line dim"><span class="caret"></span></div>`;
+      const committed = this.typedLines.map(renderLine).join("");
+      const live = this.currentText ? renderLine(this.currentText) : "";
+      return `${committed}${live}<div class="line dim"><span class="caret"></span></div>`;
     },
   },
 
   created() {
     this.setTitleFavicon(`${Config.defaultTitle} UNSC BRIEFING`, Config.icon);
 
-    // preload markdown
     this.importMissions(import.meta.glob("@/assets/missions/**/*.md", { query: "?raw", import: "default" }));
     this.importEvents(import.meta.glob("@/assets/events/*.md", { query: "?raw", import: "default" }));
 
@@ -184,7 +197,8 @@ export default {
 
   mounted() {
     this.updateStamp();
-    this.startTypingLoop();
+    this.seedInitialFeed();
+    this.startAmbientFeed();
   },
 
   beforeUnmount() {
@@ -199,74 +213,114 @@ export default {
       this.stamp = `UTC ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
     },
 
-    startTypingLoop() {
+    // Pre-fill a couple of lines so it doesn't start from an empty box
+    seedInitialFeed() {
+      if (!this.showLogin) return;
+      const seed = [
+        "UNITED NATIONS SPACE COMMAND // SECURE MILNET",
+        "NODE: ORBITAL BRIEFING SYSTEM (OBS)",
+        "» AUTH HANDSHAKE: LISTENING",
+      ];
+      this.typedLines = seed.slice(-this.maxLines);
+      this.pickNextTarget();
+    },
+
+    pickNextTarget() {
+      // occasional blank spacer line
+      if (Math.random() < this.blankLineChance) {
+        this.currentTarget = "";
+        this.currentText = "";
+        this.currentCharIndex = 0;
+        return;
+      }
+
+      // pick a line not used very recently
+      const poolLen = this.feedPool.length;
+      let idx = Math.floor(Math.random() * poolLen);
+      let guard = 0;
+      while (this.lastPickIndices.includes(idx) && guard < 20) {
+        idx = Math.floor(Math.random() * poolLen);
+        guard += 1;
+      }
+
+      this.lastPickIndices.push(idx);
+      if (this.lastPickIndices.length > this.lineRepeatAvoid) this.lastPickIndices.shift();
+
+      // add some dynamic telemetry spice
+      const base = this.feedPool[idx];
+      this.currentTarget = this.withTelemetry(base);
+      this.currentText = "";
+      this.currentCharIndex = 0;
+    },
+
+    withTelemetry(line) {
+      // light, UNSC-ish “living system” vibe without changing your layout
+      const pad = (n) => String(n).padStart(2, "0");
+      const now = new Date();
+      const t = `${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}`;
+
+      // Random packet IDs, etc.
+      const hex = () => Math.floor(Math.random() * 0xffff).toString(16).toUpperCase().padStart(4, "0");
+      const pct = () => `${Math.floor(80 + Math.random() * 20)}%`;
+
+      if (line.includes("TELEMETRY")) return `» TELEMETRY: SYNCHRONIZED // ${pct()} // T+${t}`;
+      if (line.includes("SATCOM")) return `» SATCOM: UPLINK STABLE // CH-${1 + Math.floor(Math.random() * 6)} // ${t}`;
+      if (line.includes("PACKET INTEGRITY")) return `» PACKET INTEGRITY: PASS // CRC ${hex()}-${hex()} // ${t}`;
+      if (line.includes("EDGE CACHE")) return `» EDGE CACHE: PRIMED // SECTOR ${hex()} // ${t}`;
+      if (line.includes("INTRUSION MONITOR")) return `» INTRUSION MONITOR: ARMED // WATCH ${hex()} // ${t}`;
+      if (line.includes("IFF PACKET")) return `» IFF PACKET: RECEIVED // TAG ${hex()} // ${t}`;
+
+      return line;
+    },
+
+    trimToWindow() {
+      // keep the window height stable by trimming top lines
+      if (this.typedLines.length > this.maxLines) {
+        this.typedLines.splice(0, this.typedLines.length - this.maxLines);
+      }
+    },
+
+    commitCurrentLine() {
+      // Commit either a blank spacer or the completed line
+      if (this.currentTarget === "") {
+        this.typedLines.push("");
+      } else {
+        this.typedLines.push(this.currentTarget);
+      }
+      this.trimToWindow();
+    },
+
+    startAmbientFeed() {
       if (!this.showLogin) return;
 
       const minDelay = 12;
       const maxDelay = 30;
 
-      const resetForLoop = () => {
-        this.typedCharIndex = 0;
-        this.lineIndex = 0;
-        this.typedLines = [];
-      };
-
-      const pushLine = (line) => {
-        this.typedLines.push(line);
-        if (this.typedLines.length > this.maxLines) {
-          this.typedLines.splice(0, this.typedLines.length - this.maxLines);
-        }
-      };
-
       const tick = () => {
         this.updateStamp();
 
-        // overlay might have been dismissed mid-loop
         if (!this.showLogin) {
           this.bootTimer = null;
           return;
         }
 
-        // reached end → pause → loop again
-        if (this.lineIndex >= this.fullLines.length) {
-          this.bootTimer = window.setTimeout(() => {
-            resetForLoop();
-            tick();
-          }, this.loopDelayMs);
+        // If target is blank line: commit quickly and pick another
+        if (this.currentTarget === "") {
+          this.commitCurrentLine();
+          this.pickNextTarget();
+          this.bootTimer = window.setTimeout(tick, Math.max(120, this.interLinePauseMs));
           return;
         }
 
-        const target = this.fullLines[this.lineIndex];
+        // Type next character
+        this.currentText = this.currentTarget.slice(0, this.currentCharIndex + 1);
+        this.currentCharIndex += 1;
 
-        // blank spacer line
-        if (target === "") {
-          pushLine("");
-          this.lineIndex += 1;
-          this.typedCharIndex = 0;
-          this.bootTimer = window.setTimeout(tick, 140);
-          return;
-        }
-
-        // ensure we have a "current typing line" at the end
-        if (
-          this.typedLines.length === 0 ||
-          this.typedLines[this.typedLines.length - 1] === "" ||
-          this.typedCharIndex === 0
-        ) {
-          pushLine("");
-        }
-
-        // mutate last line
-        const currentIndex = this.typedLines.length - 1;
-        const next = target.slice(0, this.typedCharIndex + 1);
-        this.typedLines.splice(currentIndex, 1, next);
-        this.typedCharIndex += 1;
-
-        // finished this line
-        if (this.typedCharIndex >= target.length) {
-          this.lineIndex += 1;
-          this.typedCharIndex = 0;
-          this.bootTimer = window.setTimeout(tick, 220);
+        // Finished line: commit and immediately pick next (seamless “reset”)
+        if (this.currentCharIndex >= this.currentTarget.length) {
+          this.commitCurrentLine();
+          this.pickNextTarget();
+          this.bootTimer = window.setTimeout(tick, this.interLinePauseMs);
           return;
         }
 
@@ -538,13 +592,19 @@ export default {
 }
 .logo-ghost img { width: min(520px, 74vw); height: auto; }
 
-.typed {
+/* Fixed-height window so the feed never stretches the layout */
+.typed-window {
   position: relative;
   z-index: 2;
+  height: 220px;           /* <-- tune this to taste */
+  overflow: hidden;        /* key: no stretching, no native scrollbar */
+  padding-right: 6px;
+}
+
+.typed {
   font-size: 14px;
   line-height: 1.7;
   text-shadow: 0 0 10px rgba(120, 180, 255, 0.10);
-  min-height: 210px;
 }
 
 .line { margin: 2px 0; }
@@ -580,14 +640,12 @@ export default {
   letter-spacing: .16em;
 }
 
-/* NEW: center the options horizontally regardless of background logo */
 .login-options-wrap {
   display: flex;
   justify-content: center;
   width: 100%;
 }
 
-/* This becomes a centered 2-up row; wraps nicely on small screens */
 .login-options {
   display: flex;
   justify-content: center;
