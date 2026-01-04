@@ -230,6 +230,17 @@
                           <span class="rank">{{ slot.role }}</span>
                           <span class="id">UNFILLED SLOT</span>
                         </p>
+                        <p class="att-line" v-if="latestAttendanceFor(slot.member)">
+                          <span class="att-label">LAST OP:</span>
+                          <span
+                            class="att-badge"
+                            :class="attendanceClass(latestAttendanceFor(slot.member).code)"
+                            :title="latestAttendanceFor(slot.member).label"
+                          >
+                            {{ attendanceBadgeText(latestAttendanceFor(slot.member)) }}
+                          </span>
+                        </p>
+
                       </div>
                     </div>
 
@@ -375,6 +386,12 @@ export default {
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=107253735&single=true&output=csv",
       trainers: [],
 
+      // Attendance (latest op status per trooper)
+      attendanceCsvUrl:
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=1115158828&single=true&output=csv",
+      latestAttendance: Object.create(null),
+      attendanceLoading: true,
+      attendanceError: "",
       activeSquad: null,
       certLabels: [
         "Rifleman","Machine Gunner","Anti Tank","Corpsmen","Combat Engineer",
@@ -393,6 +410,7 @@ export default {
   },
   created() {
     this.loadTrainerRefData();
+    this.loadAttendanceRefData();
   },
   mounted() {
     this.triggerFlicker();
@@ -542,6 +560,130 @@ attendanceMap() {
         this.trainersLoading = false;
       }
     },
+
+    async loadAttendanceRefData() {
+      try {
+        this.attendanceLoading = true;
+        this.attendanceError = "";
+
+        const res = await fetch(this.attendanceCsvUrl);
+        if (!res.ok) throw new Error(`Failed to fetch Attendance (HTTP ${res.status}).`);
+        const csv = await res.text();
+        const table = this.parseCsv(csv);
+        if (!table || table.length < 2) throw new Error("Attendance sheet is empty.");
+
+        const header = (table[0] || []).map((h) => String(h || "").trim());
+        // Column A = trooper label; columns B.. = dates (left -> right increasing)
+        const lastCol = header.length - 1;
+
+        const map = Object.create(null);
+
+        for (let r = 1; r < table.length; r++) {
+          const row = table[r] || [];
+          const rawLabel = String(row[0] || "").trim();
+          if (!rawLabel) continue;
+
+          let code = "";
+          let date = "";
+
+          // Scan left-to-right; keep last non-empty as the most recent recorded op
+          for (let c = 1; c <= lastCol; c++) {
+            const v = String(row[c] || "").trim();
+            if (v) {
+              code = v;
+              date = String(header[c] || "").trim();
+            }
+          }
+
+          if (!code) continue;
+
+          const rec = { code, date, label: rawLabel };
+
+          // Index by service number if present (3+ digits)
+          const idMatch = rawLabel.match(/\b(\d{3,})\b/);
+          if (idMatch) {
+            map[`ID:${idMatch[1]}`] = rec;
+          }
+
+          // Index by a few name keys to improve match reliability
+          const keys = this.attendanceNameKeys(rawLabel);
+          keys.forEach((k) => { map[`NM:${k}`] = rec; });
+        }
+
+        this.latestAttendance = map;
+      } catch (e) {
+        this.attendanceError = String(e?.message || e);
+        console.error("Attendance load failed:", e);
+      } finally {
+        this.attendanceLoading = false;
+      }
+    },
+
+    attendanceNameKeys(label) {
+      const out = [];
+
+      const full = this.nameKey(label);
+      if (full) out.push(full);
+
+      // Pull nickname/callsign if quoted: PFC "M. Jinter"
+      const q = label.match(/"([^"]+)"/);
+      if (q && q[1]) {
+        const k = this.nameKey(q[1]);
+        if (k) out.push(k);
+      }
+
+      // Remove leading rank token(s) and ID token(s) to get "Name" part
+      const ranks = new Set([
+        "RCT","PVT","PFC","SPC","SPC2","SPC3","SPC4","LCPL","CPL","SGT","SSGT","GYSGT",
+        "WO","CWO2","CWO3","CWO4","CWO5","2NDLT","1STLT","CAPT","MAJ",
+        "HR","HA","HN","HM3","HM2","HM1","HMC"
+      ]);
+
+      const parts = String(label || "").trim().split(/\s+/).filter(Boolean);
+      while (parts.length && (ranks.has(parts[0].toUpperCase()) || /^\d{2,}$/.test(parts[0]) || /^#?\d{2,}$/.test(parts[0]))) {
+        parts.shift();
+      }
+      if (parts.length) {
+        const rest = this.nameKey(parts.join(" "));
+        if (rest) out.push(rest);
+      }
+
+      return Array.from(new Set(out));
+    },
+
+    latestAttendanceFor(member) {
+      if (!member) return null;
+
+      if (member.id && this.latestAttendance[`ID:${member.id}`]) {
+        return this.latestAttendance[`ID:${member.id}`];
+      }
+
+      if (member.name) {
+        const nk = this.nameKey(member.name);
+        if (this.latestAttendance[`NM:${nk}`]) {
+          return this.latestAttendance[`NM:${nk}`];
+        }
+      }
+
+      return null;
+    },
+
+    attendanceBadgeText(rec) {
+      if (!rec) return "";
+      const d = rec.date ? ` ${rec.date}` : "";
+      return `${rec.code}${d}`;
+    },
+
+    attendanceClass(code) {
+      const c = String(code || "").trim().toUpperCase();
+      if (c === "AT") return "att-at";
+      if (c === "LOA") return "att-loa";
+      if (c === "RES" || c === "RES.") return "att-res";
+      if (c === "DIS") return "att-dis";
+      if (c === "DNT") return "att-dnt";
+      return "att-unk";
+    },
+
 
     range(a, b) { const out = []; for (let i = a; i <= b; i++) out.push(i); return out; },
     readDown(table, startRow, col) {
@@ -1282,4 +1424,34 @@ attendanceMap() {
 
 /* Safety belt */
 :deep(.squad-modal img){ max-width: 100%; height:auto; }
+
+/* Attendance badge */
+.att-line{
+  margin: .2rem 0 0;
+  font-size: .78rem;
+  color:#9ec5e6;
+  display:flex;
+  gap:.45rem;
+  align-items:center;
+  flex-wrap:wrap;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+}
+.att-label{ opacity:.85; }
+.att-badge{
+  display:inline-flex;
+  align-items:center;
+  padding: .18rem .5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(170,220,255,0.18);
+  background: rgba(0,0,0,0.22);
+  color: #e6f3ff;
+  letter-spacing: .10em;
+}
+.att-badge.att-at{ border-color: rgba(120,255,190,0.35); color: rgba(120,255,190,0.92); }
+.att-badge.att-loa{ border-color: rgba(163,231,255,0.35); color: rgba(163,231,255,0.95); }
+.att-badge.att-res{ border-color: rgba(170,220,255,0.28); color: rgba(190,230,255,0.82); opacity: .9; }
+.att-badge.att-dis{ border-color: rgba(255,160,128,0.35); color: rgba(255,180,150,0.92); }
+.att-badge.att-dnt{ border-color: rgba(255,107,107,0.40); color: rgba(255,140,140,0.95); }
+
 </style>
