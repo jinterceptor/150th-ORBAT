@@ -124,7 +124,7 @@ export default {
 .modal-head{
   display:flex;
   align-items:center;
-  gap: 10px;
+  gap: 12px;
   padding: 12px 14px;
   border-bottom: 1px solid rgba(170,220,255,0.12);
   background: rgba(0,0,0,0.16);
@@ -135,16 +135,16 @@ export default {
 /* Protocol icon shell (SVG is black, so use a shell) */
 .modal-head::before{
   content:"";
-  width: 22px;
-  height: 22px;
-  border-radius: 7px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   background: rgba(170,220,255,0.18);
   border: 1px solid rgba(170,220,255,0.22);
   box-shadow: 0 0 0 1px rgba(0,0,0,0.18) inset, 0 0 16px rgba(120,180,255,0.10);
-  background-image: url("/icons/protocol.svg");
+  background-image: url("/icons/npc.svg");
   background-repeat: no-repeat;
   background-position: center;
-  background-size: 14px 14px;
+  background-size: 28px 28px;
   flex: 0 0 auto;
   opacity: .95;
 }
