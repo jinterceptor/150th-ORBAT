@@ -2124,6 +2124,19 @@ async loadRemote(unitKey) {
 </script>
 
 <style scoped>
+
+/* Overview modal: remove any badge/background behind chalk titles */
+#deploymentView .squad-modal.overview .overview-head .title{
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+#deploymentView .squad-modal.overview .overview-head .left,
+#deploymentView .squad-modal.overview .overview-head .meta{
+  background: transparent !important;
+}
+
 /* =========================
    UNSC TERMINAL THEME PASS
    Visual-only: NO template/script changes.
