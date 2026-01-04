@@ -874,17 +874,15 @@ export default {
   min-height: 380px;
 }
 
-.logo-ghost {
-  position: absolute;
+.logo-ghost{
+  position: fixed;
   inset: 0;
+  pointer-events: none;
   display: grid;
   place-items: center;
-  pointer-events: none;
-  opacity: 0.12;
-  filter: drop-shadow(0 0 24px rgba(0, 0, 0, 0.9));
-  /* Nudge the watermark up so it sits visually centered */
-  transform: translateY(-28px);
+  z-index: 0; /* behind UI chrome */
 }
+
 
 .logo-ghost img { width: min(520px, 74vw); height: auto; }
 
@@ -1017,4 +1015,11 @@ export default {
   35% { transform: translate3d(0px, 2px, 0); opacity: 0.9; }
   60% { transform: translate3d(2px, 0px, 0); opacity: 0.78; }
 }
+
+/* Ensure UI chrome stays above the background watermark */
+.boot-shell, .login-shell, .gate, .access-shell, .terminal-shell, .app-shell{
+  position: relative;
+  z-index: 1;
+}
+
 </style>
