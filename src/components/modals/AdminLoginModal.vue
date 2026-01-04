@@ -135,9 +135,9 @@ export default {
 /* Protocol icon shell (SVG is black, so use a shell) */
 .modal-head::before{
   content:"";
-  width: 40px;
-  height: 40px;
-  border-radius: 11px;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
   background: rgba(170,220,255,0.18);
   border: 1px solid rgba(170,220,255,0.22);
   box-shadow: 0 0 0 1px rgba(0,0,0,0.18) inset, 0 0 16px rgba(120,180,255,0.10);
@@ -176,7 +176,7 @@ export default {
 .control input{
   background: rgba(5,12,20,0.88);
   border: 1px solid rgba(170,220,255,0.22);
-  border-radius: 11px;
+  border-radius: 9px;
   padding: 10px 10px;
   color: rgba(226,243,255,0.95);
   box-shadow: 0 0 0 1px rgba(170,220,255,0.04) inset;
@@ -202,7 +202,7 @@ export default {
   border: 1px solid rgba(170,220,255,0.22);
   background: linear-gradient(180deg, rgba(8,14,20,0.65), rgba(3,6,10,0.72));
   color: rgba(226,243,255,0.95);
-  border-radius: 11px;
+  border-radius: 9px;
   padding: 10px 12px;
   cursor: pointer;
   letter-spacing: 0.12em;
