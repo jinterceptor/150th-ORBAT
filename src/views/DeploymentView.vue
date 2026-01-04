@@ -2124,6 +2124,261 @@ async loadRemote(unitKey) {
 </script>
 
 <style scoped>
+/* =========================
+   UNSC TERMINAL THEME PASS
+   Visual-only: NO template/script changes.
+   ========================= */
+
+/* Window shell */
+#deploymentView .deployment-window.section-container{
+  border-radius: 16px;
+  border: 1px solid rgba(170, 220, 255, 0.22);
+  background: linear-gradient(180deg, rgba(8, 14, 20, 0.92), rgba(3, 6, 10, 0.95));
+  box-shadow:
+    0 0 0 1px rgba(170, 220, 255, 0.06) inset,
+    0 0 26px rgba(120, 180, 255, 0.10),
+    0 0 110px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  position: relative;
+}
+
+/* Scanlines + soft glow */
+#deploymentView .deployment-window.section-container::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.02),
+    rgba(255, 255, 255, 0.02) 1px,
+    rgba(0, 0, 0, 0) 3px,
+    rgba(0, 0, 0, 0) 6px
+  );
+  mix-blend-mode: overlay;
+  opacity: 0.26;
+  z-index: 0;
+}
+#deploymentView .deployment-window.section-container::after{
+  content:"";
+  position:absolute;
+  inset:-20%;
+  pointer-events:none;
+  background: radial-gradient(circle at 30% 20%, rgba(120, 180, 255, 0.07), transparent 55%);
+  opacity: .9;
+  animation: depFlicker 2.8s infinite;
+  z-index: 0;
+}
+@keyframes depFlicker{
+  0%, 100% { transform: translate3d(0,0,0); opacity: .72; }
+  12% { transform: translate3d(-1px, 1px, 0); opacity: .86; }
+  24% { transform: translate3d(1px, -1px, 0); opacity: .70; }
+  40% { transform: translate3d(0px, 2px, 0); opacity: .90; }
+  65% { transform: translate3d(2px, 0px, 0); opacity: .78; }
+}
+
+/* Keep content above effects */
+#deploymentView .header-shell,
+#deploymentView .section-header,
+#deploymentView .section-content-container{
+  position: relative;
+  z-index: 1;
+}
+
+/* Header chrome */
+#deploymentView .header-shell{
+  border-bottom: 1px solid rgba(170, 220, 255, 0.12);
+  background: rgba(0,0,0,0.16);
+}
+
+/* Neutralize clipped shape so it matches terminal window */
+#deploymentView .section-header.clipped-medium-backward-pilot{
+  clip-path: none !important;
+  background: transparent !important;
+}
+
+/* Add window dots (no template change) */
+#deploymentView .section-header::before{
+  content:"";
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(170, 220, 255, 0.22);
+  box-shadow:
+    16px 0 0 rgba(170, 220, 255, 0.22),
+    32px 0 0 rgba(170, 220, 255, 0.22);
+  margin-right: 10px;
+  flex: 0 0 auto;
+  opacity: .95;
+}
+#deploymentView .section-header{
+  padding: 12px 14px !important;
+  gap: 10px !important;
+}
+#deploymentView .section-header img{
+  width: 18px;
+  height: 18px;
+  opacity: .9;
+  filter: drop-shadow(0 0 10px rgba(120,180,255,0.18));
+}
+#deploymentView .section-header h1{
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(190, 230, 255, 0.92);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Remove rhombus flourish (visual only) */
+#deploymentView .rhombus-back{ opacity: .15; filter: saturate(.9); }
+
+/* Panel styling -> terminal glass */
+#deploymentView .panel{
+  border: 1px dashed rgba(170, 220, 255, 0.20) !important;
+  background: rgba(0,0,0,0.22) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 0 0 1px rgba(170,220,255,0.05) inset, 0 0 22px rgba(0,0,0,0.28);
+}
+
+/* Toolbar + dividers */
+#deploymentView .detail-toolbar{
+  border: 1px solid rgba(170, 220, 255, 0.14);
+  background: rgba(0,0,0,0.14);
+  border-radius: 12px;
+  padding: 10px 10px;
+}
+#deploymentView .divider{
+  background: rgba(170,220,255,0.18) !important;
+}
+
+/* Inputs/selects */
+#deploymentView .select,
+#deploymentView select,
+#deploymentView .search,
+#deploymentView .sort{
+  background: rgba(5, 12, 20, 0.85) !important;
+  border: 1px solid rgba(170,220,255,0.22) !important;
+  color: rgba(226, 243, 255, 0.95) !important;
+  border-radius: 10px !important;
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(170,220,255,0.04) inset;
+}
+#deploymentView .select:focus,
+#deploymentView select:focus,
+#deploymentView .search:focus,
+#deploymentView .sort:focus{
+  box-shadow: 0 0 0 2px rgba(120,180,255,0.22);
+}
+
+/* Buttons: keep your existing styles but add terminal glow */
+#deploymentView .btn{
+  border-color: rgba(170,220,255,0.22) !important;
+  background: linear-gradient(180deg, rgba(8,14,20,0.65), rgba(3,6,10,0.72)) !important;
+  box-shadow:
+    0 0 0 1px rgba(170,220,255,0.06) inset,
+    0 0 18px rgba(120,180,255,0.08);
+}
+#deploymentView .btn:hover{
+  border-color: rgba(170,220,255,0.55) !important;
+  box-shadow:
+    0 0 0 1px rgba(170,220,255,0.08) inset,
+    0 0 22px rgba(120,180,255,0.12);
+}
+#deploymentView .btn.primary{
+  border-color: rgba(120,255,190,0.38) !important;
+  background: linear-gradient(180deg, rgba(12,40,26,0.86), rgba(6,20,14,0.90)) !important;
+  box-shadow:
+    0 0 0 1px rgba(120,255,190,0.10) inset,
+    0 0 22px rgba(120,255,190,0.08);
+}
+#deploymentView .btn.primary:hover{
+  border-color: rgba(120,255,190,0.62) !important;
+}
+
+/* Chalk meta block */
+#deploymentView .squad-modal-meta{
+  border-bottom-color: rgba(170,220,255,0.22) !important;
+}
+#deploymentView .squad-tag{
+  border-color: rgba(170,220,255,0.55) !important;
+  color: rgba(190, 230, 255, 0.92) !important;
+  background: rgba(0,0,0,0.12);
+}
+
+/* Member cards -> terminal tiles */
+#deploymentView .member-card{
+  border-left-color: rgba(170,220,255,0.55) !important;
+  border-radius: 14px !important;
+  background: rgba(0,0,0,0.26) !important;
+  border: 1px solid rgba(170,220,255,0.14);
+  box-shadow: 0 0 0 1px rgba(170,220,255,0.05) inset, 0 0 22px rgba(0,0,0,0.30);
+}
+#deploymentView .member-card.vacant{
+  border-left-color: rgba(170,220,255,0.22) !important;
+  background:
+    repeating-linear-gradient(45deg, rgba(170,220,255,0.06) 0, rgba(170,220,255,0.06) 10px, transparent 10px, transparent 20px),
+    rgba(0,0,0,0.22) !important;
+}
+#deploymentView .member-card.closed{
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.04) 0, rgba(255,255,255,0.04) 8px, transparent 8px, transparent 16px),
+    rgba(0,0,0,0.20) !important;
+  border-left-color: rgba(170,220,255,0.16) !important;
+}
+
+/* Text palette */
+#deploymentView .muted{ color: rgba(158, 197, 230, 0.90) !important; }
+#deploymentView .member-header h3{ color: rgba(226, 243, 255, 0.95) !important; }
+#deploymentView .rank-line{ color: rgba(158, 197, 230, 0.90) !important; }
+#deploymentView .role-accent{ color: rgba(120,255,190,0.92) !important; }
+#deploymentView .member-footer{ color: rgba(158,197,230,0.78) !important; }
+
+/* Modals */
+#deploymentView .squad-overlay{
+  background: rgba(0,0,0,0.82) !important;
+  backdrop-filter: blur(2px);
+}
+#deploymentView .squad-modal{
+  border: 1px solid rgba(170,220,255,0.18);
+  background: linear-gradient(180deg, rgba(8,14,20,0.92), rgba(3,6,10,0.96)) !important;
+  box-shadow:
+    0 0 0 1px rgba(170,220,255,0.06) inset,
+    0 0 30px rgba(0,0,0,0.65);
+}
+#deploymentView .squad-close{
+  border-color: rgba(170,220,255,0.22) !important;
+  background: rgba(0,0,0,0.10) !important;
+}
+
+/* Pick rows / Overview cards */
+#deploymentView .pick-row.compact,
+#deploymentView .overview-card{
+  border-color: rgba(170,220,255,0.18) !important;
+  background: rgba(0,0,0,0.22) !important;
+  border-radius: 14px !important;
+}
+#deploymentView .overview-head{
+  background: rgba(0,0,0,0.14) !important;
+  border-bottom-color: rgba(170,220,255,0.12) !important;
+}
+
+/* Scrollbars (match login/status) */
+#deploymentView .deploy-scroll::-webkit-scrollbar,
+#deploymentView .squad-modal-scroll::-webkit-scrollbar{
+  width: 10px;
+}
+#deploymentView .deploy-scroll::-webkit-scrollbar-thumb,
+#deploymentView .squad-modal-scroll::-webkit-scrollbar-thumb{
+  background: rgba(90,140,180,0.55);
+  border-radius: 999px;
+}
+#deploymentView .deploy-scroll::-webkit-scrollbar-track,
+#deploymentView .squad-modal-scroll::-webkit-scrollbar-track{
+  background: rgba(0,0,0,0.22);
+}
+
+
 #deploymentView { color: #e6f3ff; }
 
 /* Shell / toolbar */
