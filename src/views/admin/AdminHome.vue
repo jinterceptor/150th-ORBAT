@@ -65,145 +65,6 @@
             Data sources:<br />
             <span class="mono">Members CSV</span> (roster) + <span class="mono">RefData CSV</span> (Troop Status)
           </div>
-
-        </div>
-
-        <div v-else class="attendance-panel">
-          <div class="filters">
-            <div class="row row-att">
-              <label class="control">
-                <span>Search</span>
-                <input v-model="attendanceSearch" type="text" placeholder="Name, rank, squad, status, code" />
-              </label>
-
-              <label class="control">
-                <span>Squad</span>
-                <select v-model="attendanceSelectedSquad">
-                  <option value="__ALL__">All squads</option>
-                  <option v-for="s in squads" :key="s" :value="s">{{ s }}</option>
-                </select>
-              </label>
-
-              <label class="control">
-                <span>Status</span>
-                <select v-model="attendanceSelectedStatus">
-                  <option value="__ALL__">All statuses</option>
-                  <option v-for="s in attendanceStatuses" :key="s" :value="s">{{ s }}</option>
-                </select>
-              </label>
-
-              <label class="control">
-                <span>Code</span>
-                <select v-model="attendanceSelectedCode">
-                  <option value="__ALL__">Any</option>
-                  <option v-for="c in attendanceCodes" :key="c" :value="c">{{ c }}</option>
-                  <option value="__MISSING__">Missing</option>
-                </select>
-              </label>
-
-              <label class="control">
-                <span>Sort</span>
-                <select v-model="attendanceSortKey">
-                  <option value="recent">Most recent</option>
-                  <option value="oldest">Oldest</option>
-                  <option value="days">Days since</option>
-                  <option value="name">Name</option>
-                  <option value="rank">Rank</option>
-                  <option value="squad">Squad</option>
-                  <option value="code">Code</option>
-                </select>
-              </label>
-
-              <label class="control chk">
-                <input v-model="attendanceIncludeNoRecord" type="checkbox" />
-                <span>Include no-record</span>
-              </label>
-            </div>
-
-            <div class="row row-att-2">
-              <label class="control">
-                <span>Days since (min)</span>
-                <input v-model.number="attendanceDaysMin" type="number" min="0" placeholder="0" />
-              </label>
-
-              <label class="control">
-                <span>Days since (max)</span>
-                <input v-model.number="attendanceDaysMax" type="number" min="0" placeholder="365" />
-              </label>
-
-              <label class="control">
-                <span>Date from</span>
-                <input v-model="attendanceDateFrom" type="text" placeholder="DD/MM/YYYY" />
-              </label>
-
-              <label class="control">
-                <span>Date to</span>
-                <input v-model="attendanceDateTo" type="text" placeholder="DD/MM/YYYY" />
-              </label>
-
-              <label class="control">
-                <span>Stale ≥ days</span>
-                <input v-model.number="attendanceStaleDays" type="number" min="0" placeholder="14" />
-              </label>
-
-              <div class="muted tiny" style="align-self:end;">
-                Latest per trooper; based on Row 2 header dates.
-              </div>
-            </div>
-          </div>
-
-          <div class="chips">
-            <span class="chip">Total: {{ attendanceTable.length }}</span>
-            <span class="chip warn">Missing: {{ attendanceMissingCount }}</span>
-            <span class="chip">Stale (≥{{ attendanceStaleDays }}d): {{ attendanceStaleCount }}</span>
-            <span class="chip">Oldest: {{ attendanceOldestDays }}</span>
-            <span v-if="attendanceLoading" class="chip">Loading…</span>
-            <span v-if="attendanceError" class="chip warn">{{ attendanceError }}</span>
-          </div>
-
-          <div class="table-shell">
-            <div class="tr head grid7">
-              <span class="th name">Name</span>
-              <span class="th rank">Rank</span>
-              <span class="th status">Status</span>
-              <span class="th squad">Squad</span>
-              <span class="th code">Last</span>
-              <span class="th date">Date</span>
-              <span class="th days">Days</span>
-            </div>
-
-            <div class="rows-scroll">
-              <div v-if="attendanceTable.length === 0" class="empty">
-                No matching results.
-              </div>
-
-              <div
-                v-for="(row, i) in attendanceTable"
-                :key="row.id || row.name + i"
-                class="tr grid7"
-              >
-                <span class="td name">{{ row.name }}</span>
-                <span class="td rank">{{ row.rank || "—" }}</span>
-                <span class="td status"><span class="status-pill" :class="statusClass(row.status)">{{ row.status }}</span></span>
-                <span class="td squad">{{ row.squad || "—" }}</span>
-                <span class="td code">
-                  <span v-if="row.lastCode">{{ row.lastCode }}</span>
-                  <span v-else class="muted">—</span>
-                </span>
-                <span class="td date">
-                  <span v-if="row.lastDate">{{ row.lastDate }}</span>
-                  <span v-else class="muted">—</span>
-                </span>
-                <span class="td days">
-                  <span v-if="isFiniteNum(row.daysSince)">{{ row.daysSince }}</span>
-                  <span v-else class="muted">—</span>
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
         </div>
       </div>
     </section>
@@ -323,6 +184,130 @@
             Notes: “Status” comes from RefData (Troop List / Troop Status). Discharged filtered out.
           </div>
         </div>
+
+        <div v-else class="attendance-panel">
+          <div class="filters">
+            <div class="row row-att">
+              <label class="control">
+                <span>Search</span>
+                <input v-model="attendanceSearch" type="text" placeholder="Name, rank, squad, status, code" />
+              </label>
+
+              <label class="control">
+                <span>Squad</span>
+                <select v-model="attendanceSelectedSquad">
+                  <option value="__ALL__">All squads</option>
+                  <option v-for="sq in squads" :key="sq" :value="sq">{{ sq }}</option>
+                </select>
+              </label>
+
+              <label class="control">
+                <span>Status</span>
+                <select v-model="attendanceSelectedStatus">
+                  <option value="__ALL__">All statuses</option>
+                  <option v-for="st in attendanceStatuses" :key="st" :value="st">{{ st }}</option>
+                </select>
+              </label>
+
+              <label class="control">
+                <span>Code</span>
+                <select v-model="attendanceSelectedCode">
+                  <option value="__ALL__">Any</option>
+                  <option v-for="c in attendanceCodes" :key="c" :value="c">{{ c }}</option>
+                  <option value="__MISSING__">Missing</option>
+                </select>
+              </label>
+
+              <label class="control">
+                <span>Sort</span>
+                <select v-model="attendanceSortKey">
+                  <option value="recent">Most recent</option>
+                  <option value="oldest">Oldest</option>
+                  <option value="days">Days since</option>
+                  <option value="name">Name</option>
+                  <option value="rank">Rank</option>
+                  <option value="squad">Squad</option>
+                  <option value="code">Code</option>
+                </select>
+              </label>
+
+              <label class="control chk">
+                <input v-model="attendanceIncludeNoRecord" type="checkbox" />
+                <span>Include no-record</span>
+              </label>
+            </div>
+
+            <div class="row row-att-2">
+              <label class="control">
+                <span>Days since (min)</span>
+                <input v-model.number="attendanceDaysMin" type="number" min="0" placeholder="0" />
+              </label>
+
+              <label class="control">
+                <span>Days since (max)</span>
+                <input v-model.number="attendanceDaysMax" type="number" min="0" placeholder="365" />
+              </label>
+
+              <label class="control">
+                <span>Date from</span>
+                <input v-model="attendanceDateFrom" type="text" placeholder="DD/MM/YYYY" />
+              </label>
+
+              <label class="control">
+                <span>Date to</span>
+                <input v-model="attendanceDateTo" type="text" placeholder="DD/MM/YYYY" />
+              </label>
+
+              <label class="control">
+                <span>Stale ≥ days</span>
+                <input v-model.number="attendanceStaleDays" type="number" min="0" placeholder="14" />
+              </label>
+
+              <div class="muted tiny" style="align-self:end;">
+                Latest per trooper; based on Row 2 header dates.
+              </div>
+            </div>
+          </div>
+
+          <div class="chips">
+            <span class="chip">Total: {{ attendanceTable.length }}</span>
+            <span class="chip warn">Missing: {{ attendanceMissingCount }}</span>
+            <span class="chip">Stale (≥{{ attendanceStaleDays }}d): {{ attendanceStaleCount }}</span>
+            <span class="chip">Oldest: {{ attendanceOldestDays }}</span>
+            <span v-if="attendanceLoading" class="chip">Loading…</span>
+            <span v-if="attendanceError" class="chip warn">{{ attendanceError }}</span>
+          </div>
+
+          <div class="table-shell">
+            <div class="tr head grid7">
+              <span class="th name">Name</span>
+              <span class="th rank">Rank</span>
+              <span class="th status">Status</span>
+              <span class="th squad">Squad</span>
+              <span class="th code">Last</span>
+              <span class="th date">Date</span>
+              <span class="th days">Days</span>
+            </div>
+
+            <div class="rows-scroll">
+              <div v-if="attendanceTable.length === 0" class="empty">
+                No matching results.
+              </div>
+
+              <div v-for="(row, i) in attendanceTable" :key="row.id || row.name + i" class="tr grid7">
+                <span class="td name">{{ row.name }}</span>
+                <span class="td rank">{{ row.rank || "—" }}</span>
+                <span class="td status"><span class="status-pill" :class="statusClass(row.status)">{{ row.status }}</span></span>
+                <span class="td squad">{{ row.squad || "—" }}</span>
+                <span class="td code"><span v-if="row.lastCode">{{ row.lastCode }}</span><span v-else class="muted">—</span></span>
+                <span class="td date"><span v-if="row.lastDate">{{ row.lastDate }}</span><span v-else class="muted">—</span></span>
+                <span class="td days"><span v-if="isFiniteNum(row.daysSince)">{{ row.daysSince }}</span><span v-else class="muted">—</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        </div>
       </div>
     </section>
   </div>
@@ -342,7 +327,7 @@ export default {
   data() {
     return {
       activeTab: "promotions",
-search: "",
+      search: "",
       selectedSquad: "__ALL__",
       sortKey: "remaining",
       onlyPromotable: false,
@@ -529,92 +514,60 @@ search: "",
       const squadFilter = this.attendanceSelectedSquad;
       const statusFilter = this.attendanceSelectedStatus;
       const codeFilter = this.attendanceSelectedCode;
-
       const minDays = Number.isFinite(Number(this.attendanceDaysMin)) ? Number(this.attendanceDaysMin) : null;
       const maxDays = Number.isFinite(Number(this.attendanceDaysMax)) ? Number(this.attendanceDaysMax) : null;
       const fromTs = this.parseAttendanceDate(this.attendanceDateFrom);
       const toTs = this.parseAttendanceDate(this.attendanceDateTo);
       const hasFrom = Number.isFinite(fromTs);
       const hasTo = Number.isFinite(toTs);
-
       const now = Date.now();
       const rows = [];
-
       for (const m of this.filteredMembers) {
         const name = String(m?.name || "").trim();
         const rank = String(m?.rank || "").trim();
         const squad = String(m?.squad || "").trim();
         const status = this.memberStatusOf(m);
-
         const rec = this.latestAttendanceForMember(m);
         const lastCode = rec?.code ? String(rec.code).trim() : "";
         const lastDate = rec?.date ? String(rec.date).trim() : "";
         const ts = Number.isFinite(rec?.ts) ? rec.ts : this.parseAttendanceDate(lastDate);
         const daysSince = Number.isFinite(ts) ? Math.floor((now - ts) / 86400000) : null;
-
         const isMissing = !lastCode || !lastDate;
         if (isMissing && !this.attendanceIncludeNoRecord) continue;
-
         if (term) {
           const hay = [name, rank, squad, status, lastCode, lastDate].join(" ").toLowerCase();
           if (!hay.includes(term)) continue;
         }
         if (squadFilter !== "__ALL__" && squad !== squadFilter) continue;
         if (statusFilter !== "__ALL__" && status !== statusFilter) continue;
-
         if (codeFilter === "__MISSING__") {
           if (!isMissing) continue;
         } else if (codeFilter !== "__ALL__") {
           if (String(lastCode).toUpperCase() !== String(codeFilter).toUpperCase()) continue;
         }
-
         if (minDays !== null) {
           if (!Number.isFinite(daysSince) || daysSince < minDays) continue;
         }
         if (maxDays !== null) {
           if (!Number.isFinite(daysSince) || daysSince > maxDays) continue;
         }
-
         if (hasFrom) {
           if (!Number.isFinite(ts) || ts < fromTs) continue;
         }
         if (hasTo) {
           if (!Number.isFinite(ts) || ts > toTs) continue;
         }
-
-        rows.push({
-          id: m?.id,
-          name,
-          rank,
-          squad,
-          status,
-          lastCode: lastCode || null,
-          lastDate: lastDate || null,
-          ts: Number.isFinite(ts) ? ts : null,
-          daysSince,
-        });
+        rows.push({ id: m?.id, name, rank, squad, status, lastCode: lastCode || null, lastDate: lastDate || null, ts: Number.isFinite(ts) ? ts : null, daysSince });
       }
-
       const safeNum = (v, fallback = 999999999) => (Number.isFinite(Number(v)) ? Number(v) : fallback);
       const byName = (a, b) => String(a.name).localeCompare(String(b.name), undefined, { sensitivity: "base" });
-
-      if (this.attendanceSortKey === "name") {
-        rows.sort(byName);
-      } else if (this.attendanceSortKey === "rank") {
-        rows.sort((a, b) => this.rankValue(a.rank) - this.rankValue(b.rank) || byName(a, b));
-      } else if (this.attendanceSortKey === "squad") {
-        rows.sort((a, b) => String(a.squad).localeCompare(String(b.squad), undefined, { sensitivity: "base" }) || byName(a, b));
-      } else if (this.attendanceSortKey === "code") {
-        rows.sort((a, b) => String(a.lastCode || "").localeCompare(String(b.lastCode || ""), undefined, { sensitivity: "base" }) || byName(a, b));
-      } else if (this.attendanceSortKey === "oldest") {
-        rows.sort((a, b) => safeNum(a.ts) - safeNum(b.ts) || byName(a, b));
-      } else if (this.attendanceSortKey === "days") {
-        rows.sort((a, b) => safeNum(b.daysSince, -1) - safeNum(a.daysSince, -1) || byName(a, b));
-      } else {
-        // recent
-        rows.sort((a, b) => safeNum(b.ts, -1) - safeNum(a.ts, -1) || byName(a, b));
-      }
-
+      if (this.attendanceSortKey === "name") rows.sort(byName);
+      else if (this.attendanceSortKey === "rank") rows.sort((a, b) => this.rankValue(a.rank) - this.rankValue(b.rank) || byName(a, b));
+      else if (this.attendanceSortKey === "squad") rows.sort((a, b) => String(a.squad).localeCompare(String(b.squad), undefined, { sensitivity: "base" }) || byName(a, b));
+      else if (this.attendanceSortKey === "code") rows.sort((a, b) => String(a.lastCode || "").localeCompare(String(b.lastCode || ""), undefined, { sensitivity: "base" }) || byName(a, b));
+      else if (this.attendanceSortKey === "oldest") rows.sort((a, b) => safeNum(a.ts) - safeNum(b.ts) || byName(a, b));
+      else if (this.attendanceSortKey === "days") rows.sort((a, b) => safeNum(b.daysSince, -1) - safeNum(a.daysSince, -1) || byName(a, b));
+      else rows.sort((a, b) => safeNum(b.ts, -1) - safeNum(a.ts, -1) || byName(a, b));
       return rows;
     },
 
@@ -680,7 +633,6 @@ search: "",
         CWO4: 7, CWO3: 8, CWO2: 9, WO: 10,
         GYSGT: 11, SSGT: 12, SGT: 13, CPL: 14, LCPL: 15, PFC: 16, SPC: 17, PVT: 18,
         HM2: 19, HM3: 20, HN: 21, HA: 22,
-        SPC2: 23, SPC3: 24, SPC4: 25,
       };
       const key = String(rank || "").trim().toUpperCase().replace(/[.\s]/g, "");
       return order[key] || 999;
@@ -707,7 +659,6 @@ search: "",
     parseAttendanceDate(s) {
       const v = String(s || "").trim();
       if (!v) return NaN;
-
       let m = v.match(/^\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})\s*$/);
       if (m) {
         const dd = Number(m[1]);
@@ -716,7 +667,6 @@ search: "",
         if (yy < 100) yy += 2000;
         if (dd >= 1 && dd <= 31 && mm >= 1 && mm <= 12) return Date.UTC(yy, mm - 1, dd);
       }
-
       m = v.match(/^\s*(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})\s*$/);
       if (m) {
         const yy = Number(m[1]);
@@ -724,7 +674,6 @@ search: "",
         const dd = Number(m[3]);
         if (dd >= 1 && dd <= 31 && mm >= 1 && mm <= 12) return Date.UTC(yy, mm - 1, dd);
       }
-
       return NaN;
     },
 
@@ -732,28 +681,22 @@ search: "",
       const out = [];
       const full = this.nameKey(label);
       if (full) out.push(full);
-
       const q = String(label || "").match(/"([^"]+)"/);
       if (q && q[1]) {
         const k = this.nameKey(q[1]);
         if (k) out.push(k);
       }
-
       const ranks = new Set([
         "PVT","PV2","PFC","LCPL","CPL","SGT","SSGT","GYSGT",
         "WO","CWO2","CWO3","CWO4","CWO5","2NDLT","1STLT","CAPT","MAJ",
         "HR","HA","HN","HM3","HM2","HM1","HMC",
       ]);
-
       const parts = String(label || "").trim().split(/\s+/).filter(Boolean);
-      while (parts.length && (ranks.has(parts[0].toUpperCase()) || /^\d{2,}$/.test(parts[0]) || /^#?\d{2,}$/.test(parts[0]))) {
-        parts.shift();
-      }
+      while (parts.length && (ranks.has(parts[0].toUpperCase()) || /^\d{2,}$/.test(parts[0]) || /^#?\d{2,}$/.test(parts[0]))) parts.shift();
       if (parts.length) {
         const rest = this.nameKey(parts.join(" "));
         if (rest) out.push(rest);
       }
-
       return Array.from(new Set(out));
     },
 
@@ -762,61 +705,45 @@ search: "",
       try {
         this.attendanceLoading = true;
         this.attendanceError = "";
-
         const res = await fetch(this.attendanceCsvUrl);
         if (!res.ok) throw new Error(`Failed to fetch Attendance (HTTP ${res.status}).`);
         const csv = await res.text();
         const table = this.parseCsv(csv);
         if (!table || table.length < 2) throw new Error("Attendance sheet is empty.");
-
         const opHeader = (table[0] || []).map((h) => this.cleanHeader(h));
         const dateHeader = (table[1] || []).map((h) => this.cleanHeader(h));
         const lastCol = Math.max(opHeader.length, dateHeader.length) - 1;
-
         const map = Object.create(null);
-
         for (let r = 2; r < table.length; r++) {
           const row = table[r] || [];
           const rawLabel = String(row[0] || "").trim();
           if (!rawLabel) continue;
-
           let best = null;
           let bestTs = Number.NEGATIVE_INFINITY;
           let bestCol = -1;
-
           for (let c = 1; c <= lastCol; c++) {
             const headerDate = String(dateHeader[c] || opHeader[c] || "").trim();
             if (!headerDate) continue;
-
             const v = String(row[c] || "").replace(/\u00A0/g, " ").trim();
             if (!v) continue;
             if (this.isAttendancePlaceholder(v)) continue;
-
             const ts = this.parseAttendanceDate(headerDate);
             const tsOk = Number.isFinite(ts);
             const bestOk = bestTs !== Number.NEGATIVE_INFINITY;
-
-            const isBetter = tsOk
-              ? (!bestOk || ts > bestTs)
-              : (!bestOk && c > bestCol);
-
+            const isBetter = tsOk ? (!bestOk || ts > bestTs) : (!bestOk && c > bestCol);
             if (!best || isBetter) {
               best = { code: v, date: headerDate, ts: tsOk ? ts : null };
               bestTs = tsOk ? ts : Number.NEGATIVE_INFINITY;
               bestCol = c;
             }
           }
-
           if (!best) continue;
           const rec = { code: best.code, date: best.date, ts: best.ts, label: rawLabel };
-
           const idMatch = rawLabel.match(/\b(\d{3,})\b/);
           if (idMatch) map[`ID:${idMatch[1]}`] = rec;
-
           const keys = this.attendanceNameKeys(rawLabel);
           keys.forEach((k) => { map[`NM:${k}`] = rec; });
         }
-
         this.latestAttendanceMap = map;
       } catch (e) {
         this.attendanceError = String(e?.message || e);
@@ -1292,6 +1219,7 @@ search: "",
 .chip.warn { border-color: rgba(255,190,80,0.7); }
 
 .table-shell { flex: 1 1 auto; min-height: 0; border: 1px dashed rgba(30,144,255,0.35); border-radius: .35rem; background: rgba(0,10,30,0.18); display: flex; flex-direction: column; overflow-x: auto; overflow-y: hidden; }
+
 
 .grid7 {
   display: grid;
