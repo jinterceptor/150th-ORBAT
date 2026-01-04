@@ -8,11 +8,7 @@
         <span class="window-icons" aria-hidden="true">
           <span class="proto-shell"><img src="/icons/protocol.svg" alt=""></span>
         </span>
-          <span class="proto-shell"><img src="/icons/protocol.svg" alt=""></span>
-          <span class="proto-shell"><img src="/icons/protocol.svg" alt=""></span>
-        </span>
-
-<h1>ADMIN</h1>
+        <h1>ADMIN</h1>
         </div>
         <div class="admin-plate-connector" aria-hidden="true"></div>
       </div>
@@ -56,9 +52,6 @@
       <div class="header-shell">
         <div class="section-header clipped-medium-backward-pilot right-header">
         <span class="window-icons" aria-hidden="true">
-          <span class="proto-shell"><img src="/icons/protocol.svg" alt=""></span>
-        </span>
-          <span class="proto-shell"><img src="/icons/protocol.svg" alt=""></span>
           <span class="proto-shell"><img src="/icons/protocol.svg" alt=""></span>
         </span>
 
