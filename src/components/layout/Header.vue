@@ -250,6 +250,8 @@ header > *{ position: relative; z-index: 1; }
 .title.clipped-x-large-forward{
   clip-path: none !important;
   border-radius: 14px;
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
 }
 
 /* Logo glow */
