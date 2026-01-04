@@ -2303,7 +2303,7 @@ async loadRemote(unitKey) {
 #deploymentView .squad-tag{
   border-color: rgba(170,220,255,0.55) !important;
   color: rgba(190, 230, 255, 0.92) !important;
-  background: rgba(0,0,0,0.12);
+  background: transparent !important;
 }
 
 /* Member cards -> terminal tiles */
