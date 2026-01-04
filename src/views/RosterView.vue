@@ -230,6 +230,17 @@
                           <span class="rank">{{ slot.role }}</span>
                           <span class="id">UNFILLED SLOT</span>
                         </p>
+                        <p class="att-line" v-if="latestAttendanceFor(slot.member)">
+                          <span class="att-label">LAST OP:</span>
+                          <span
+                            class="att-badge"
+                            :class="attendanceClass(latestAttendanceFor(slot.member).code)"
+                            :title="latestAttendanceFor(slot.member).label"
+                          >
+                            {{ attendanceBadgeText(latestAttendanceFor(slot.member)) }}
+                          </span>
+                        </p>
+
                       </div>
                     </div>
 
@@ -274,18 +285,6 @@
                           <span class="rank">{{ slot.member?.rank || 'N/A' }}</span>
                           <span class="id">ID: {{ slot.member?.id || 'N/A' }}</span>
                         </p>
-
-                        <p class="att-line" v-if="latestAttendanceFor(slot.member)">
-                          <span class="att-label">LAST OP:</span>
-                          <span
-                            class="att-badge"
-                            :class="attendanceClass(latestAttendanceFor(slot.member).code)"
-                            :title="latestAttendanceFor(slot.member).label"
-                          >
-                            {{ attendanceBadgeText(latestAttendanceFor(slot.member)) }}
-                          </span>
-                        </p>
-
                       </div>
                     </div>
 
@@ -571,15 +570,17 @@ attendanceMap() {
         if (!res.ok) throw new Error(`Failed to fetch Attendance (HTTP ${res.status}).`);
         const csv = await res.text();
         const table = this.parseCsv(csv);
-        if (!table || table.length < 2) throw new Error("Attendance sheet is empty.");
+        if (!table || table.length < 3) throw new Error("Attendance sheet is empty.");
 
-        const header = (table[0] || []).map((h) => String(h || "").trim());
+        // This project’s CSVs use row 1 as the real header (row 0 may be meta/title).
+        const headerRow = table[1] || [];
         // Column A = trooper label; columns B.. = dates (left -> right increasing)
-        const lastCol = header.length - 1;
+        const lastCol = headerRow.length - 1;
 
         const map = Object.create(null);
 
-        for (let r = 1; r < table.length; r++) {
+        // Data starts on row 2
+        for (let r = 2; r < table.length; r++) {
           const row = table[r] || [];
           const rawLabel = String(row[0] || "").trim();
           if (!rawLabel) continue;
@@ -592,7 +593,7 @@ attendanceMap() {
             const v = String(row[c] || "").trim();
             if (v) {
               code = v;
-              date = String(header[c] || "").trim();
+              date = String(headerRow[c] || "").trim();
             }
           }
 
@@ -671,10 +672,9 @@ attendanceMap() {
 
     attendanceBadgeText(rec) {
       if (!rec) return "";
-      const d = rec.date ? ` — ${rec.date}` : "";
-      return `${String(rec.code || "").trim()}${d}`;
+      const d = rec.date ? ` ${rec.date}` : "";
+      return `${rec.code}${d}`;
     },
-
 
     attendanceClass(code) {
       const c = String(code || "").trim().toUpperCase();
