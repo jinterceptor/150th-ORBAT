@@ -3,7 +3,6 @@ import { createRouter, createWebHistory } from "vue-router";
 
 import Status from "@/views/StatusView.vue";
 import Pilots from "@/views/RosterView.vue";
-import Events from "@/views/EventsView.vue";
 import AdminHome from "@/views/admin/AdminHome.vue";
 import Deployment from "@/views/DeploymentView.vue";
 
@@ -23,8 +22,7 @@ const routes = [
 
   { path: "/status", name: "Mission Status", component: Status, props: true, meta: { title: `${DEFAULT_TITLE} BRIEFING SYSTEM` } },
   { path: "/roster", name: "Unit Roster", component: Pilots, props: true, meta: { title: `${DEFAULT_TITLE} UNIT ROSTER` } },
-  { path: "/events", name: "Events", component: Events, props: true, meta: { title: `${DEFAULT_TITLE} EVENTS` } },
-
+  
   // NEW: Deployment (gate to staff/officer; change to public by removing requiresAdmin)
   { path: "/deployment", name: "Deployment", component: Deployment, props: true, meta: { title: `${DEFAULT_TITLE} DEPLOYMENT`, requiresAdmin: true } },
 
