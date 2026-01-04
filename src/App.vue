@@ -1,54 +1,31 @@
 <!-- /src/App.vue -->
 <template>
   <div v-if="showLogin" class="login-overlay" :class="{ fading: isFading }">
-    <div class="term">
-      <div class="term-hdr">
-        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-        <div class="term-title">UNSC SECURE ACCESS TERMINAL // BRIEFING GRID</div>
-        <div class="term-stamp">{{ stamp }}</div>
+    <div class="login-bg">
+      <img class="login-logo" src="/faction-logos/FUD_UNSC_Logo.png" alt="UNSC Logo" />
+    </div>
+
+    <div class="login-text" @click.stop>
+      <div class="login-lore">
+        UNITED NATIONS SPACE COMMAND<br />
+        SECURE MILITARY NETWORK
+      </div>
+      <div class="login-warning">
+        UNAUTHORIZED ACCESS IS PUNISHABLE UNDER THE<br />
+        UNIFIED MILITARY CODE
       </div>
 
-      <div class="term-body">
-        <div class="scanlines" aria-hidden="true"></div>
-        <div class="flicker" aria-hidden="true"></div>
+      <!-- Two explicit login options -->
+      <div class="login-options">
+        <button class="login-option" @click="memberLogin">
+          <div class="opt-title">Member Login</div>
+          <div class="opt-desc">Continue to Mission Status</div>
+        </button>
 
-        <div class="logo-ghost" aria-hidden="true">
-          <img src="/faction-logos/FUD_UNSC_Logo.png" alt="" />
-        </div>
-
-        <!-- Ambient terminal feed (scrolls after 5 lines) -->
-        <div class="typed-window">
-          <div class="typed" v-html="typedHtml"></div>
-        </div>
-
-        <div class="gate">
-          <div class="gate-title">ACCESS OPTIONS</div>
-
-          <div class="login-options-wrap">
-            <div class="login-options">
-              <button class="login-option" :disabled="isFading" @click="memberLogin">
-                <div class="opt-title">Member Access</div>
-                <div class="opt-desc">Read-only // Mission Status & Roster</div>
-              </button>
-
-              <button class="login-option" :disabled="isFading" @click="openAdminLogin">
-                <div class="opt-title">Officer / Staff</div>
-                <div class="opt-desc">Authenticate // Admin & Deployment</div>
-              </button>
-            </div>
-          </div>
-
-          <div class="hint dim">
-            SELECT ACCESS PATH. UNAUTHORIZED ACCESS IS PUNISHABLE UNDER THE UNIFIED MILITARY CODE.
-          </div>
-        </div>
-      </div>
-
-      <div class="term-ftr dim">
-        <span>SYS: OK</span>
-        <span>IFF: VALID</span>
-        <span>NET: LINK</span>
-        <span>SEC: GREEN</span>
+        <button class="login-option" @click="openAdminLogin">
+          <div class="opt-title">Officer / Staff</div>
+          <div class="opt-desc">Authenticate to Admin Panel</div>
+        </button>
       </div>
     </div>
 
@@ -97,42 +74,10 @@ export default {
   components: { Header, Sidebar, AdminLoginModal },
   data() {
     return {
-      // --- existing (working) auth overlay state ---
       showLogin: true,
       isFading: false,
       showAdminModal: false,
 
-      // --- added: terminal ambience state (NO changes to data loading logic) ---
-      feedPool: [
-        "UNITED NATIONS SPACE COMMAND // SECURE MILNET",
-        "NODE: ORBITAL BRIEFING SYSTEM (OBS)",
-        "ROUTE: KHARON REACH RELAY // HEKATE AO",
-        "AUTHORITY: NAVSPECWARCOM // 150TH RRG",
-        "» ENCRYPTION SUITE: SWORD/VAULT // ACTIVE",
-        "» THREAT FILTER: ENABLED // CONTENT SANITIZED",
-        "» IFF PACKET: RECEIVED // VERIFIED",
-        "» WRITE ACCESS: STAFF CREDENTIALS REQUIRED",
-        "» TELEMETRY: SYNCHRONIZED",
-        "» SATCOM: UPLINK STABLE",
-        "» EDGE CACHE: PRIMED",
-        "» INTRUSION MONITOR: ARMED",
-        "» PACKET INTEGRITY: PASS",
-        "» AUTH HANDSHAKE: LISTENING",
-        "» LOCAL SESSION: QUARANTINE OK"
-      ],
-      typedLines: [],
-      currentTarget: "",
-      currentText: "",
-      currentCharIndex: 0,
-      bootTimer: null,
-      stamp: "",
-      maxLines: 5,              // start scrolling after first 5 committed lines
-      interLinePauseMs: 320,    // slightly longer line pause to match slower typing
-      blankLineChance: 0.08,
-      lineRepeatAvoid: 6,
-      lastPickIndices: [],
-
-      // --- existing (working) config/data ---
       animate: Config.animate,
       initialSlug: Config.initialSlug,
       planetPath: Config.planetPath,
@@ -142,42 +87,10 @@ export default {
       events: [],
       members: [],
       orbat: [],
-      reserves: []
+      reserves: [],
     };
   },
-
-  computed: {
-    // caret is inline on the active typing line (not floating on its own line)
-    typedHtml() {
-      const escape = (s) =>
-        String(s)
-          .replaceAll("&", "&amp;")
-          .replaceAll("<", "&lt;")
-          .replaceAll(">", "&gt;");
-
-      const lineClass = (l) => (String(l || "").trim().startsWith("»") ? "line dim" : "line");
-
-      const committed = this.typedLines
-        .map((l) => {
-          if (l === "") return `<div class="line spacer"></div>`;
-          return `<div class="${lineClass(l)}">${escape(l)}</div>`;
-        })
-        .join("");
-
-      // If we deliberately picked a blank spacer as the next target, show caret alone.
-      if (this.currentTarget === "") {
-        return `${committed}<div class="line dim"><span class="caret"></span></div>`;
-      }
-
-      // Live typing line + caret appended inline
-      const liveText = escape(this.currentText || "");
-      const liveCls = lineClass(this.currentTarget);
-      return `${committed}<div class="${liveCls}">${liveText}<span class="caret"></span></div>`;
-    }
-  },
-
   created() {
-    // --- untouched: your working init logic ---
     this.setTitleFavicon(`${Config.defaultTitle} UNSC BRIEFING`, Config.icon);
 
     // preload markdown
@@ -185,12 +98,9 @@ export default {
     this.importEvents(import.meta.glob("@/assets/events/*.md", { query: "?raw", import: "default" }));
 
     // async CSVs
-    const membersUrl =
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=1185035639&single=true&output=csv";
-    const refDataUrl =
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=107253735&single=true&output=csv";
-    const opsUrl =
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=1115158828&single=true&output=csv";
+    const membersUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=1185035639&single=true&output=csv";
+    const refDataUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=107253735&single=true&output=csv";
+    const opsUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq9fpYoWY_heQNfXegQ52zvOIGk-FCMML3kw2cX3M3s8blNRSH6XSRUdtTo7UXaJDDkg4bGQcl3jRP/pub?gid=1115158828&single=true&output=csv";
 
     this.loadMembersCSV(membersUrl)
       .then(() => this.loadRefDataCSV(refDataUrl))
@@ -202,141 +112,15 @@ export default {
       this.showLogin = false;
     }
   },
-
-  mounted() {
-    // --- added: terminal ambience start (does not touch app data loading) ---
-    this.updateStamp();
-    this.seedInitialFeed();
-    this.startAmbientFeed();
-  },
-
-  beforeUnmount() {
-    if (this.bootTimer) window.clearTimeout(this.bootTimer);
-  },
-
   methods: {
-    // --- added: ambience helpers ---
-    updateStamp() {
-      const d = new Date();
-      const pad = (n) => String(n).padStart(2, "0");
-      this.stamp = `UTC ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
-    },
-
-    // Start typing from the very beginning (no pre-seeded lines)
-    seedInitialFeed() {
-      if (!this.showLogin) return;
-
-      this.typedLines = [];
-      this.currentText = "";
-      this.currentCharIndex = 0;
-
-      // Force the very first line to begin at character 1
-      this.currentTarget = "UNITED NATIONS SPACE COMMAND // SECURE MILNET";
-
-      // reset recent picks
-      this.lastPickIndices = [];
-    },
-
-    pickNextTarget() {
-      if (Math.random() < this.blankLineChance) {
-        this.currentTarget = "";
-        this.currentText = "";
-        this.currentCharIndex = 0;
-        return;
-      }
-
-      const poolLen = this.feedPool.length;
-      let idx = Math.floor(Math.random() * poolLen);
-      let guard = 0;
-      while (this.lastPickIndices.includes(idx) && guard < 20) {
-        idx = Math.floor(Math.random() * poolLen);
-        guard += 1;
-      }
-
-      this.lastPickIndices.push(idx);
-      if (this.lastPickIndices.length > this.lineRepeatAvoid) this.lastPickIndices.shift();
-
-      const base = this.feedPool[idx];
-      this.currentTarget = this.withTelemetry(base);
-      this.currentText = "";
-      this.currentCharIndex = 0;
-    },
-
-    withTelemetry(line) {
-      const pad = (n) => String(n).padStart(2, "0");
-      const now = new Date();
-      const t = `${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}`;
-      const hex = () => Math.floor(Math.random() * 0xffff).toString(16).toUpperCase().padStart(4, "0");
-      const pct = () => `${Math.floor(80 + Math.random() * 20)}%`;
-
-      if (line.includes("TELEMETRY")) return `» TELEMETRY: SYNCHRONIZED // ${pct()} // T+${t}`;
-      if (line.includes("SATCOM")) return `» SATCOM: UPLINK STABLE // CH-${1 + Math.floor(Math.random() * 6)} // ${t}`;
-      if (line.includes("PACKET INTEGRITY")) return `» PACKET INTEGRITY: PASS // CRC ${hex()}-${hex()} // ${t}`;
-      if (line.includes("EDGE CACHE")) return `» EDGE CACHE: PRIMED // SECTOR ${hex()} // ${t}`;
-      if (line.includes("INTRUSION MONITOR")) return `» INTRUSION MONITOR: ARMED // WATCH ${hex()} // ${t}`;
-      if (line.includes("IFF PACKET")) return `» IFF PACKET: RECEIVED // TAG ${hex()} // ${t}`;
-      return line;
-    },
-
-    trimToWindow() {
-      // start "scrolling" immediately after first 5 committed lines
-      if (this.typedLines.length > this.maxLines) {
-        this.typedLines.splice(0, this.typedLines.length - this.maxLines);
-      }
-    },
-
-    commitCurrentLine() {
-      this.typedLines.push(this.currentTarget === "" ? "" : this.currentTarget);
-      this.trimToWindow();
-    },
-
-    startAmbientFeed() {
-      if (!this.showLogin) return;
-
-      // half-speed typing (increase delays)
-      const minDelay = 24;
-      const maxDelay = 60;
-
-      const tick = () => {
-        this.updateStamp();
-
-        if (!this.showLogin) {
-          this.bootTimer = null;
-          return;
-        }
-
-        if (this.currentTarget === "") {
-          this.commitCurrentLine();
-          this.pickNextTarget();
-          this.bootTimer = window.setTimeout(tick, Math.max(180, this.interLinePauseMs));
-          return;
-        }
-
-        this.currentText = this.currentTarget.slice(0, this.currentCharIndex + 1);
-        this.currentCharIndex += 1;
-
-        if (this.currentCharIndex >= (this.currentTarget || "").length) {
-          this.commitCurrentLine();
-          this.pickNextTarget();
-          this.bootTimer = window.setTimeout(tick, this.interLinePauseMs);
-          return;
-        }
-
-        const jitter = Math.floor(minDelay + Math.random() * (maxDelay - minDelay));
-        const extra = Math.random() < 0.06 ? 140 : 0;
-        this.bootTimer = window.setTimeout(tick, jitter + extra);
-      };
-
-      tick();
-    },
-
-    // --- existing (working) login methods (UNCHANGED) ---
+    // MEMBER → straight to /status
     memberLogin() {
       if (this.isFading) return;
       sessionStorage.setItem("authRole", "member");
       this.fadeAndEnter("/status");
     },
 
+    // OFFICER/STAFF → open modal (AdminLoginModal handles credentials)
     openAdminLogin() {
       if (this.isFading) return;
       this.showAdminModal = true;
@@ -345,6 +129,7 @@ export default {
       this.showAdminModal = false;
     },
     onAdminLoginSuccess() {
+      // why: ensure guards see staff role immediately
       sessionStorage.setItem("authRole", "staff");
       this.showAdminModal = false;
       this.fadeAndEnter("/admin");
@@ -352,12 +137,6 @@ export default {
 
     fadeAndEnter(targetPath) {
       this.isFading = true;
-
-      // stop ambience loop cleanly once we commit to leaving the login overlay
-      if (this.bootTimer) {
-        window.clearTimeout(this.bootTimer);
-        this.bootTimer = null;
-      }
 
       const a = this.$refs.startupAudio;
       if (a && typeof a.play === "function") {
@@ -373,7 +152,6 @@ export default {
       }, 800);
     },
 
-    // --- everything below is your working version (UNCHANGED) ---
     normalize(str) {
       return String(str || "").replace(/"/g, "").replace(/\s+/g, " ").trim().toLowerCase();
     },
@@ -414,7 +192,7 @@ export default {
             });
             resolve();
           },
-          error: () => resolve()
+          error: () => resolve(),
         });
       });
     },
@@ -435,7 +213,7 @@ export default {
         HM2:  { nextAt: 30, nextRank: null },
         CWO2: { nextAt: 10, nextRank: "CWO3" },
         CWO3: { nextAt: 20, nextRank: "CWO4" },
-        CWO4: { nextAt: 30, nextRank: null }
+        CWO4: { nextAt: 30, nextRank: null },
       })[r] || null;
     },
     opsToNextPromotion(member) {
@@ -476,13 +254,13 @@ export default {
                   squad: "",
                   fireteam: "",
                   slot: "",
-                  opsAttended: 0
+                  opsAttended: 0,
                 };
               })
               .filter(Boolean);
             resolve(this.members);
           },
-          error: reject
+          error: reject,
         });
       });
     },
@@ -511,7 +289,7 @@ export default {
 
             const KNOWN_ROLE_HEADER_HINTS = [
               "squad roles","role","chalk 1 fireteam 1","chalk 2 fireteam 1","chalk 3 fireteam 1","chalk 4 fireteam 1",
-              "broadsword","wyvern","caladrius","ifrit","chalk actual"
+              "broadsword","wyvern","caladrius","ifrit","chalk actual",
             ];
 
             let slotHeaderRowIndex = -1, slotCol = -1, roleCol = -1;
@@ -645,146 +423,141 @@ export default {
             this.orbat = Object.values(orbatMap).map((s) => ({
               squad: s.squad,
               members: (s.members || []).slice().sort((a, b) => (a.name || "").localeCompare(b.name || "")),
-              fireteams: Object.values(s.fireteams || {}).map((ft) => ({ name: ft.name, slots: (ft.slots || []).slice() }))
+              fireteams: Object.values(s.fireteams || {}).map((ft) => ({ name: ft.name, slots: (ft.slots || []).slice() })),
             }));
 
             resolve(this.orbat);
           },
-          error: reject
+          error: reject,
         });
       });
     },
 
-    // IMPORTANT: keep your working mission/event import exactly as-is
     async importMissions(files) {
-      const entries = Object.entries(files);
-      const contents = await Promise.all(entries.map(([, f]) => f()));
+  const entries = Object.entries(files);
+  const contents = await Promise.all(entries.map(([, f]) => f()));
 
-      const knownStatuses = new Set(["start", "partial-success", "success", "failure"]);
+  const knownStatuses = new Set(["start", "partial-success", "success", "failure"]);
 
-      const toTitle = (s) =>
-        String(s || "")
-          .replace(/[-_]+/g, " ")
-          .replace(/\s+/g, " ")
-          .trim()
-          .replace(/\b\w/g, (c) => c.toUpperCase());
+  const toTitle = (s) =>
+    String(s || "")
+      .replace(/[-_]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/\b\w/g, (c) => c.toUpperCase());
 
-      const inferCampaignFromPath = (path) => {
-        const p = String(path || "");
-        const parts = p.split("/missions/");
-        if (parts.length < 2) return { key: "UNASSIGNED", name: "Unassigned" };
-        const after = parts[1];
-        const segs = after.split("/").filter(Boolean);
-        if (segs.length <= 1) return { key: "UNASSIGNED", name: "Unassigned" };
-        const slug = segs[0];
-        return { key: slug.toUpperCase(), name: toTitle(slug) };
-      };
+  const inferCampaignFromPath = (path) => {
+    const p = String(path || "");
+    const parts = p.split("/missions/");
+    if (parts.length < 2) return { key: "UNASSIGNED", name: "Unassigned" };
+    const after = parts[1];
+    const segs = after.split("/").filter(Boolean);
+    if (segs.length <= 1) return { key: "UNASSIGNED", name: "Unassigned" };
+    const slug = segs[0];
+    return { key: slug.toUpperCase(), name: toTitle(slug) };
+  };
 
-      const parseHeader = (lines) => {
-        const slug = String(lines[0] || "").trim();
-        let cursor = 1;
+  const parseHeader = (lines) => {
+    const slug = String(lines[0] || "").trim();
+    let cursor = 1;
 
-        let title = "";
-        let status = "start";
+    let title = "";
+    let status = "start";
 
-        const l1 = String(lines[1] || "").trim();
-        const l2 = String(lines[2] || "").trim();
+    const l1 = String(lines[1] || "").trim();
+    const l2 = String(lines[2] || "").trim();
 
-        if (knownStatuses.has(l1)) {
-          status = l1;
-          cursor = 2;
-        } else if (knownStatuses.has(l2)) {
-          title = l1;
-          status = l2;
-          cursor = 3;
-        } else if (l1 && !l1.startsWith("@")) {
-          title = l1;
-          cursor = 2;
+    // New format: slug + status (title omitted)
+    if (knownStatuses.has(l1)) {
+      status = l1;
+      cursor = 2;
+    } else if (knownStatuses.has(l2)) {
+      // Legacy format: slug + title + status
+      title = l1;
+      status = l2;
+      cursor = 3;
+    } else if (l1 && !l1.startsWith("@")) {
+      // Legacy: slug + title (status defaults)
+      title = l1;
+      cursor = 2;
+    }
+
+    return { slug, title, status, cursor };
+  };
+
+  const parseDirectives = (lines, startIdx) => {
+    let i = startIdx;
+    const meta = {};
+    while (i < lines.length) {
+      const raw = String(lines[i] || "");
+      const line = raw.trim();
+      if (!line.startsWith("@")) break;
+
+      const [tag, ...rest] = line.split(" ");
+      const payload = rest.join(" ").trim();
+
+      if (tag === "@campaign") {
+        meta.campaign = payload.replace(/^"(.*)"$/, "$1").trim();
+      } else if (tag === "@order") {
+        const n = Number(payload);
+        if (Number.isFinite(n)) meta.order = n;
+      } else if (tag === "@theme") {
+        try {
+          meta.theme = payload ? JSON.parse(payload) : {};
+        } catch (e) {
+          console.warn(`Invalid @theme JSON for mission; ignoring.`, e);
         }
+      }
 
-        return { slug, title, status, cursor };
-      };
+      i += 1;
+    }
+    return { meta, cursor: i };
+  };
 
-      const parseDirectives = (lines, startIdx) => {
-        let i = startIdx;
-        const meta = {};
-        while (i < lines.length) {
-          const raw = String(lines[i] || "");
-          const line = raw.trim();
-          if (!line.startsWith("@")) break;
+  const parseNumeric = (s) => {
+    const m = String(s || "").match(/(\d+)/);
+    return m ? Number(m[1]) : NaN;
+  };
 
-          const [tag, ...rest] = line.split(" ");
-          const payload = rest.join(" ").trim();
+  contents.forEach((c, idx) => {
+    const path = entries[idx][0];
+    const lines = String(c || "").split(/\r?\n/);
 
-          if (tag === "@campaign") {
-            meta.campaign = payload.replace(/^"(.*)"$/, "$1").trim();
-          } else if (tag === "@order") {
-            const n = Number(payload);
-            if (Number.isFinite(n)) meta.order = n;
-          } else if (tag === "@theme") {
-            try {
-              meta.theme = payload ? JSON.parse(payload) : {};
-            } catch (e) {
-              console.warn(`Invalid @theme JSON for mission; ignoring.`, e);
-            }
-          }
+    const inferred = inferCampaignFromPath(path);
+    const { slug, title, status, cursor: afterHeader } = parseHeader(lines);
+    const { meta, cursor: afterMeta } = parseDirectives(lines, afterHeader);
 
-          i += 1;
-        }
-        return { meta, cursor: i };
-      };
+    let order = Number(meta.order);
+    if (!Number.isFinite(order)) {
+      const fileBase = String(path || "").split("/").pop()?.replace(/\.md$/i, "") || "";
+      const orderFromSlug = parseNumeric(slug);
+      const orderFromFile = parseNumeric(fileBase);
+      order = Number.isFinite(orderFromSlug) ? orderFromSlug : orderFromFile;
+    }
 
-      const parseNumeric = (s) => {
-        const m = String(s || "").match(/(\d+)/);
-        return m ? Number(m[1]) : NaN;
-      };
+    const content = lines.slice(afterMeta).join("\n");
 
-      contents.forEach((c, idx) => {
-        const path = entries[idx][0];
-        const lines = String(c || "").split(/\r?\n/);
+    const campaignName = meta.campaign ? meta.campaign : inferred.name;
+    const campaignKey = meta.campaign ? String(meta.campaign).toUpperCase() : inferred.key;
 
-        const inferred = inferCampaignFromPath(path);
-        const { slug, title, status, cursor: afterHeader } = parseHeader(lines);
-        const { meta, cursor: afterMeta } = parseDirectives(lines, afterHeader);
-
-        let order = Number(meta.order);
-        if (!Number.isFinite(order)) {
-          const fileBase = String(path || "").split("/").pop()?.replace(/\.md$/i, "") || "";
-          const orderFromSlug = parseNumeric(slug);
-          const orderFromFile = parseNumeric(fileBase);
-          order = Number.isFinite(orderFromSlug) ? orderFromSlug : orderFromFile;
-        }
-
-        const content = lines.slice(afterMeta).join("\n");
-
-        const campaignName = meta.campaign ? meta.campaign : inferred.name;
-        const campaignKey = meta.campaign ? String(meta.campaign).toUpperCase() : inferred.key;
-
-        this.missions.push({
-          slug,
-          name: title,
-          status: knownStatuses.has(status) ? status : "start",
-          content,
-          campaign: campaignName,
-          campaignKey,
-          order,
-          theme: meta.theme || {},
-          sourcePath: path
-        });
-      });
-    },
-
+    this.missions.push({
+      slug,
+      name: title, // legacy only; UI no longer requires this
+      status: knownStatuses.has(status) ? status : "start",
+      content,
+      campaign: campaignName,
+      campaignKey,
+      order,
+      theme: meta.theme || {},
+      sourcePath: path,
+    });
+  });
+},
     async importEvents(files) {
       const contents = await Promise.all(Object.values(files).map((f) => f()));
       contents.forEach((c) => {
         const l = c.split("\n");
-        this.events.push({
-          title: l[0],
-          location: l[1],
-          time: l[2],
-          thumbnail: l[3],
-          content: l.slice(4).join("\n")
-        });
+        this.events.push({ title: l[0], location: l[1], time: l[2], thumbnail: l[3], content: l.slice(4).join("\n") });
       });
     },
 
@@ -814,8 +587,8 @@ export default {
       }
       used.add(candidate);
       return candidate;
-    }
-  }
+    },
+  },
 };
 </script>
 
@@ -823,216 +596,46 @@ export default {
 #app { min-height: 100vh; overflow: hidden !important; }
 
 .login-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 99999;
-  display: grid;
-  place-items: center;
-  background: radial-gradient(ellipse at center, rgba(6, 12, 18, 0.96), rgba(0, 0, 0, 0.985));
-  opacity: 1;
-  transition: opacity 0.8s ease;
+  position: fixed; inset: 0; z-index: 99999;
+  display: grid; place-items: center;
+  background: #000;
+  cursor: default;
+  opacity: 1; transition: opacity 0.8s ease;
 }
 .login-overlay.fading { opacity: 0; pointer-events: none; }
 
-.term {
-  width: min(920px, 94vw);
-  border-radius: 16px;
-  border: 1px solid rgba(170, 220, 255, 0.22);
-  background: linear-gradient(180deg, rgba(8, 14, 20, 0.92), rgba(3, 6, 10, 0.95));
-  overflow: hidden;
-  box-shadow:
-    0 0 0 1px rgba(170, 220, 255, 0.06) inset,
-    0 0 26px rgba(120, 180, 255, 0.10),
-    0 0 110px rgba(0, 0, 0, 0.6);
-  color: rgba(190, 230, 255, 0.92);
-  font-family: "Titillium Web", sans-serif;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
+.login-bg { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.login-logo { width: min(520px, 70vw); height: auto; opacity: 0.18; filter: drop-shadow(0 0 24px rgba(0, 0, 0, 0.9)); }
 
-.term-hdr {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  border-bottom: 1px solid rgba(170, 220, 255, 0.12);
-  background: rgba(0, 0, 0, 0.16);
-}
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: rgba(170, 220, 255, 0.22);
-  box-shadow: 0 0 8px rgba(120, 180, 255, 0.12);
-}
-.term-title { font-size: 12px; opacity: 0.9; }
-.term-stamp { margin-left: auto; font-size: 12px; opacity: 0.6; letter-spacing: .12em; }
-
-.term-body {
-  position: relative;
-  padding: 26px 20px 18px;
-  min-height: 380px;
-}
-
-.logo-ghost{
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  display: grid;
-  place-items: center;
-  z-index: -1; /* behind UI chrome */
-}
-
-
-
-.logo-ghost img { width: min(520px, 74vw); height: auto; }
-
-.typed-window {
-  position: relative;
-  z-index: 2;
-  height: 190px;
-  overflow: hidden;
-  padding-right: 6px;
-
-  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 78%, rgba(0,0,0,0) 100%);
-  mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 78%, rgba(0,0,0,0) 100%);
-}
-
-.typed {
-  font-size: 14px;
-  line-height: 1.7;
-  text-shadow: 0 0 10px rgba(120, 180, 255, 0.10);
-}
-
-.line { margin: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dim { opacity: 0.7; }
-.line.spacer { height: 10px; }
-
-/* caret sits inline at end of active line */
-.caret {
-  display: inline-block;
-  width: 10px;
-  height: 14px;
-  margin-left: 8px;
-  border-left: 2px solid rgba(190, 230, 255, 0.9);
-  animation: blink 1.1s infinite;
-  transform: translateY(2px);
-}
-@keyframes blink {
-  0%, 45% { opacity: 1; }
-  46%, 100% { opacity: 0; }
-}
-
-.gate {
-  position: relative;
-  z-index: 2;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(170, 220, 255, 0.14);
-}
-
-.gate-title {
-  font-size: 12px;
-  opacity: 0.85;
-  margin-bottom: 10px;
-  letter-spacing: .16em;
-}
-
-.login-options-wrap {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-}
+.login-text { position: relative; z-index: 1; text-align: center; color: rgba(170, 255, 210, 0.92); font-family: "Titillium Web", sans-serif; letter-spacing: 0.18em; text-transform: uppercase; }
+.login-lore { font-size: 14px; margin-bottom: 1.2em; opacity: 0.9; }
+.login-warning { font-size: 11px; line-height: 1.8em; opacity: 0.75; margin-bottom: 2em; }
 
 .login-options {
-  display: flex;
-  justify-content: center;
-  gap: 14px;
-  width: min(760px, 100%);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  width: min(720px, 92vw);
   margin: 0 auto;
-  flex-wrap: wrap;
 }
-
 .login-option {
-  flex: 1 1 280px;
-  max-width: 360px;
-
-  background: rgba(0, 0, 0, 0.38);
-  border: 1px solid rgba(170, 220, 255, 0.26);
+  background: rgba(0,0,0,.45);
+  border: 1px solid rgba(170,255,210,.35);
   border-radius: 14px;
-  padding: 16px 18px;
+  padding: 18px 20px;
   cursor: pointer;
-  color: rgba(190, 230, 255, 0.92);
+  color: rgba(170, 255, 210, 0.92);
   text-transform: uppercase;
   letter-spacing: .12em;
-  transition: transform 120ms ease, border-color 140ms ease, opacity 140ms ease;
 }
-.login-option:hover { border-color: rgba(170, 220, 255, 0.9); transform: translateY(-1px); }
-.login-option:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
-
-.opt-title { font-size: 16px; font-weight: 800; margin-bottom: 6px; }
+.login-option:hover { border-color: rgba(170,255,210,.9); }
+.opt-title { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
 .opt-desc { font-size: 12px; opacity: .8; letter-spacing: .08em; }
 
-.hint { margin-top: 12px; font-size: 11px; letter-spacing: .14em; line-height: 1.7; }
-
-.term-ftr {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-top: 1px solid rgba(170, 220, 255, 0.12);
-  background: rgba(0, 0, 0, 0.16);
-  font-size: 12px;
-}
-
-/* FX */
-.scanlines {
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(255, 255, 255, 0.02),
-    rgba(255, 255, 255, 0.02) 1px,
-    rgba(0, 0, 0, 0) 3px,
-    rgba(0, 0, 0, 0) 6px
-  );
-  mix-blend-mode: overlay;
-  opacity: 0.35;
-  pointer-events: none;
-}
-
-.flicker {
-  position: absolute;
-  inset: -20%;
-  background: radial-gradient(circle at 30% 20%, rgba(120, 180, 255, 0.07), transparent 55%);
-  animation: flicker 2.6s infinite;
-  pointer-events: none;
-  opacity: 0.9;
-}
-
-@keyframes flicker {
-  0%, 100% { transform: translate3d(0, 0, 0); opacity: 0.75; }
-  10% { transform: translate3d(-1px, 1px, 0); opacity: 0.85; }
-  20% { transform: translate3d(1px, -1px, 0); opacity: 0.7; }
-  35% { transform: translate3d(0px, 2px, 0); opacity: 0.9; }
-  60% { transform: translate3d(2px, 0px, 0); opacity: 0.78; }
-}
-
-/* Ensure UI chrome stays above the background watermark */
-.boot-shell, .login-shell, .gate, .access-shell, .terminal-shell, .app-shell{
-  position: relative;
-  z-index: 1;
-}
-
-
-/* Keep all primary chrome above the watermark */
-.section-container, .terminal-window, .deployment-window, .window, .app-window{
-  position: relative;
-  z-index: 2;
-}
-
-/* Prevent stacking surprises */
-.app-shell, .boot-shell, .login-shell, .gate, .access-shell, .terminal-shell{
-  isolation: isolate;
-}
-
+/* Router transitions kept off intentionally to avoid route/animation race
+.hud-enter-active { animation: hud-in 420ms ease-out both; }
+.hud-leave-active { animation: hud-out 220ms ease-in both; }
+@keyframes hud-in { 0%{opacity:0;filter:blur(2px);} 100%{opacity:1;filter:blur(0);} }
+@keyframes hud-out { 0%{opacity:1;filter:blur(0);} 100%{opacity:0;filter:blur(2px);} }
+*/
 </style>
