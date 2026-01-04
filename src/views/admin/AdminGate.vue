@@ -59,14 +59,191 @@ export default {
 </script>
 
 <style scoped>
-.grid { display:grid; grid-template-columns: 1fr 1fr; gap:1rem; }
-.card { border:1px dashed rgba(30,144,255,.35); background:rgba(0,10,30,.25); border-radius:.5rem; padding:.75rem; display:grid; gap:.6rem; }
-.control { display:grid; gap:.25rem; }
-.control span { color:#9ec5e6; font-size:.9rem; }
-.control input { background:rgba(5,20,40,.85); border:1px solid rgba(30,144,255,.35); border-radius:.35rem; padding:.45rem .55rem; color:#e6f3ff; }
-.btn { border:1px solid rgba(120,255,170,.7); background:rgba(0,30,20,.35); color:#e6fff5; border-radius:.4rem; padding:.45rem .75rem; cursor:pointer; text-align:center; }
-.muted { color:#9ec5e6; }
-.err { color:#ffb080; }
-.ok { color:#79ffba; }
-@media (max-width:860px){ .grid{ grid-template-columns:1fr; } }
+/* =========================
+   UNSC TERMINAL ADMIN GATE
+   Visual-only: NO logic changes.
+   ========================= */
+
+/* Window shell */
+.section-container{
+  border-radius: 16px;
+  border: 1px solid rgba(170, 220, 255, 0.22);
+  background: linear-gradient(180deg, rgba(8, 14, 20, 0.92), rgba(3, 6, 10, 0.95));
+  box-shadow:
+    0 0 0 1px rgba(170, 220, 255, 0.06) inset,
+    0 0 26px rgba(120, 180, 255, 0.10),
+    0 0 110px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  position: relative;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* Scanlines + soft glow */
+.section-container::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.02),
+    rgba(255, 255, 255, 0.02) 1px,
+    rgba(0, 0, 0, 0) 3px,
+    rgba(0, 0, 0, 0) 6px
+  );
+  mix-blend-mode: overlay;
+  opacity: 0.26;
+  z-index: 0;
+}
+.section-container::after{
+  content:"";
+  position:absolute;
+  inset:-20%;
+  pointer-events:none;
+  background: radial-gradient(circle at 30% 20%, rgba(120, 180, 255, 0.07), transparent 55%);
+  opacity: 0.9;
+  animation: gateFlicker 2.9s infinite;
+  z-index: 0;
+}
+@keyframes gateFlicker{
+  0%, 100% { transform: translate3d(0,0,0); opacity: .72; }
+  12% { transform: translate3d(-1px, 1px, 0); opacity: .86; }
+  24% { transform: translate3d(1px, -1px, 0); opacity: .70; }
+  40% { transform: translate3d(0px, 2px, 0); opacity: .90; }
+  65% { transform: translate3d(2px, 0px, 0); opacity: .78; }
+}
+
+/* Keep content above effects */
+.section-header, .section-content-container{ position: relative; z-index: 1; }
+
+/* Header chrome */
+.section-header{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(170, 220, 255, 0.12);
+  background: rgba(0,0,0,0.16);
+}
+.section-header.clipped-medium-backward{
+  clip-path: none !important;
+  background: rgba(0,0,0,0.16) !important;
+}
+
+/* Window dots */
+.section-header::before{
+  content:"";
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(170, 220, 255, 0.22);
+  box-shadow:
+    16px 0 0 rgba(170, 220, 255, 0.22),
+    32px 0 0 rgba(170, 220, 255, 0.22);
+  margin-right: 8px;
+  flex: 0 0 auto;
+  opacity: .95;
+}
+
+.section-header img{
+  width: 18px;
+  height: 18px;
+  opacity: .9;
+  filter: drop-shadow(0 0 10px rgba(120,180,255,0.18));
+}
+.section-header h1{
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(190, 230, 255, 0.92);
+  letter-spacing: 0.14em;
+}
+
+/* Grid */
+.grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding: 16px;
+}
+
+/* Cards */
+.card{
+  border: 1px dashed rgba(170,220,255,0.20);
+  background: rgba(0,0,0,0.22);
+  border-radius: 14px;
+  padding: 14px;
+  display:grid;
+  gap: 10px;
+  box-shadow: 0 0 0 1px rgba(170,220,255,0.05) inset, 0 0 22px rgba(0,0,0,0.28);
+}
+.card h2{
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: rgba(226, 243, 255, 0.95);
+}
+.muted{
+  margin: 0;
+  color: rgba(158,197,230,0.92);
+  letter-spacing: 0.06em;
+  text-transform: none;
+}
+
+/* Controls */
+.control{ display:grid; gap: 6px; }
+.control span{
+  color: rgba(158,197,230,0.92);
+  font-size: 12px;
+  letter-spacing: 0.10em;
+}
+.control input{
+  background: rgba(5, 12, 20, 0.88);
+  border: 1px solid rgba(170,220,255,0.22);
+  border-radius: 12px;
+  padding: 10px 10px;
+  color: rgba(226, 243, 255, 0.95);
+  box-shadow: 0 0 0 1px rgba(170,220,255,0.04) inset;
+  outline: none;
+}
+.control input:focus{
+  border-color: rgba(120,180,255,0.55);
+  box-shadow: 0 0 0 2px rgba(120,180,255,0.22);
+}
+
+/* Buttons */
+.btn{
+  border: 1px solid rgba(170,220,255,0.22);
+  background: linear-gradient(180deg, rgba(8,14,20,0.65), rgba(3,6,10,0.72));
+  color: rgba(226, 243, 255, 0.95);
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor:pointer;
+  text-align:center;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 12px;
+  box-shadow:
+    0 0 0 1px rgba(170,220,255,0.06) inset,
+    0 0 18px rgba(120,180,255,0.08);
+}
+.btn:hover{
+  border-color: rgba(170,220,255,0.55);
+  box-shadow:
+    0 0 0 1px rgba(170,220,255,0.08) inset,
+    0 0 22px rgba(120,180,255,0.12);
+}
+.btn:disabled{
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+/* Messages */
+.err{ color:#ffb080; margin: 0; letter-spacing: .06em; text-transform:none; }
+.ok{ color: rgba(120,255,190,0.92); margin: 0; letter-spacing: .08em; text-transform:none; }
+
+@media (max-width:860px){
+  .grid{ grid-template-columns: 1fr; padding: 14px; }
+}
 </style>
