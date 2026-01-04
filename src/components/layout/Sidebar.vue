@@ -91,10 +91,11 @@ export default {
 /* Target Oruga sidebar container */
 #sidebar{
   position: relative;
+
   /* Sidebar width (give labels room + big icons) */
   width: 320px;
   min-width: 320px;
-}
+
   border-right: 1px solid rgba(170,220,255,0.14);
   background: linear-gradient(180deg, rgba(8,14,20,0.90), rgba(3,6,10,0.94));
   box-shadow:
@@ -102,7 +103,6 @@ export default {
     0 0 28px rgba(120,180,255,0.08);
   overflow: hidden;
 }
-
 /* Scanlines */
 #sidebar::before{
   content:"";
@@ -215,7 +215,6 @@ export default {
 }
 
 /* Mobile reduced mode often collapses text; keep icons crisp */
-}
 
 /* Active indicator bar (Oruga) -> terminal cyan instead of green */
 #sidebar :deep(.o-sidebar__item.is-active::before),
