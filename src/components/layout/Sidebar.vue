@@ -21,6 +21,11 @@
           <span>Roster</span>
         </router-link>
 
+        <router-link class="clipped-bottom-right" to="/events" @click.native="playBrowse">
+          <img src="/icons/events.svg" />
+          <span>Logs</span>
+        </router-link>
+
         <!-- NEW: Deployment (Officer/Staff only) -->
         <router-link
           v-if="isOfficerOrStaff"
@@ -74,50 +79,33 @@ export default {
 </script>
 
 <style scoped>
+/* =========================
+   UNSC TERMINAL SIDEBAR THEME
+   (safe: minimal overrides, keep icon sizing as original)
+   ========================= */
 
-/* Override Oruga default sidebar backgrounds (some themes apply green panels) */
+.sidebar-page{ position: relative; }
+.sidebar-layout{ height: 100%; }
+
+/* Oruga container: kill theme background (the green rail) */
 #sidebar :deep(.o-sidebar__wrapper),
-#sidebar :deep(.o-sidebar__content),
 #sidebar :deep(.o-sidebar__container),
+#sidebar :deep(.o-sidebar__content),
 #sidebar :deep(.o-sidebar__items){
   background: transparent !important;
 }
 
-/* Paint the actual rail on the outermost Oruga node */
-#sidebar{
-  background: linear-gradient(180deg, rgba(8,14,20,0.90), rgba(3,6,10,0.94)) !important;
-}
-
-
-/* =========================
-   UNSC TERMINAL SIDEBAR THEME
-   Visual-only: no logic changes
-   ========================= */
-
-.sidebar-page{
-  position: relative;
-}
-
-/* Ensure the sidebar area reads like a terminal rail */
-.sidebar-layout{
-  height: 100%;
-}
-
-/* Target Oruga sidebar container */
+/* Paint the rail */
 #sidebar{
   position: relative;
-
-  /* Sidebar width (give labels room + big icons) */
-  width: 320px;
-  min-width: 320px;
-
   border-right: 1px solid rgba(170,220,255,0.14);
-  background: linear-gradient(180deg, rgba(8,14,20,0.90), rgba(3,6,10,0.94));
+  background: linear-gradient(180deg, rgba(8,14,20,0.92), rgba(3,6,10,0.96)) !important;
   box-shadow:
     0 0 0 1px rgba(170,220,255,0.06) inset,
     0 0 28px rgba(120,180,255,0.08);
   overflow: hidden;
 }
+
 /* Scanlines */
 #sidebar::before{
   content:"";
@@ -132,7 +120,7 @@ export default {
     rgba(0,0,0,0) 6px
   );
   mix-blend-mode: overlay;
-  opacity: 0.22;
+  opacity: 0.20;
   z-index: 0;
 }
 #sidebar::after{
@@ -146,128 +134,43 @@ export default {
 }
 
 /* Keep links above effects */
-#sidebar :deep(a),
-#sidebar :deep(.o-sidebar__content),
-#sidebar :deep(.o-sidebar__items){
-  position: relative;
-  z-index: 1;
-}
+#sidebar :deep(a){ position: relative; z-index: 1; }
 
-
-/* Ensure Oruga containers respect width */
-#sidebar :deep(.o-sidebar__content),
-#sidebar :deep(.o-sidebar__items){
-  width: 100%;
-}
-
-/* Link styling */
-#sidebar :deep(a){
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  margin: 10px 12px;
-  border-radius: 14px;
-  min-height: 72px; /* matches icon size */
-  min-width: 0;
-
-  border: 1px solid rgba(170,220,255,0.14);
-  background: rgba(0,0,0,0.18);
+/* Keep your clipped shape; just unify color palette */
+#sidebar :deep(.clipped-bottom-right){
+  border: 1px solid rgba(170,220,255,0.18);
+  background: rgba(0,0,0,0.16);
   color: rgba(190,230,255,0.92);
-  text-decoration: none;
-
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  font-size: 12px;
-
-  box-shadow: 0 0 0 1px rgba(170,220,255,0.04) inset;
-  transition: border-color .12s ease, box-shadow .12s ease, transform .12s ease, background .12s ease;
+  box-shadow: 0 0 0 1px rgba(170,220,255,0.05) inset;
 }
 
-
-#sidebar :deep(a:hover){
+/* Hover / active */
+#sidebar :deep(.clipped-bottom-right:hover){
   border-color: rgba(170,220,255,0.55);
   box-shadow:
     0 0 0 1px rgba(170,220,255,0.08) inset,
-    0 0 22px rgba(120,180,255,0.10);
-  transform: translateY(-1px);
+    0 0 20px rgba(120,180,255,0.10);
 }
-
-#sidebar :deep(a.router-link-active){
-  border-color: rgba(120,255,190,0.48);
+#sidebar :deep(.router-link-active){
+  border-color: rgba(120,255,190,0.45);
   box-shadow:
     0 0 0 1px rgba(120,255,190,0.10) inset,
-    0 0 24px rgba(120,255,190,0.10);
+    0 0 22px rgba(120,255,190,0.10);
 }
 
-/* Icons */
-#sidebar :deep(a img){
-  width: 56px !important;
-  height: 56px !important;
-  max-width: none !important;
-  max-height: none !important;
-  flex: 0 0 56px;
-  opacity: .95;
-  filter: drop-shadow(0 0 14px rgba(120,180,255,0.16));
-}
-
-
-/* Label */
+/* Text: prevent clipping */
 #sidebar :deep(a span){
-  min-width: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: normal;
-}
-
-
-/* Keep your clipped class from affecting the new "terminal tile" shape */
-#sidebar :deep(.clipped-bottom-right){
-  clip-path: none !important;
-}
-
-/* Mobile reduced mode often collapses text; keep icons crisp */
-
-/* Active indicator bar (Oruga) -> terminal cyan instead of green */
-#sidebar :deep(.o-sidebar__item.is-active::before),
-#sidebar :deep(.o-sidebar__item--active::before),
-#sidebar :deep(.o-sidebar__item--active > a::before),
-#sidebar :deep(.router-link-active::before){
-  background: rgba(170,220,255,0.55) !important;
-  box-shadow: 0 0 16px rgba(120,180,255,0.16) !important;
-}
-
-/* Larger icons (closer to original) */
-#sidebar :deep(a img){
-  width: 56px;
-  height: 56px;
-  opacity: .95;
-  filter: drop-shadow(0 0 14px rgba(120,180,255,0.16));
-}
-
-
-
-/* Prevent long labels (e.g., Deployment) from clipping */
-#sidebar :deep(a){
-  min-width: 0;
-  padding-right: 14px;
-}
-#sidebar :deep(a span){
-  min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-
-@media (max-width: 860px){
-  #sidebar{ width: 260px; min-width: 260px; }
-  #sidebar :deep(a){ margin: 8px 10px; padding: 10px 12px; min-height: 64px; }
-  #sidebar :deep(a img){ width: 44px !important; height: 44px !important; flex: 0 0 44px; }
+/* Active indicator bar (if present) */
+#sidebar :deep(.o-sidebar__item.is-active::before),
+#sidebar :deep(.o-sidebar__item--active::before),
+#sidebar :deep(.o-sidebar__item--active > a::before){
+  background: rgba(170,220,255,0.55) !important;
+  box-shadow: 0 0 16px rgba(120,180,255,0.16) !important;
 }
-
-
 </style>
