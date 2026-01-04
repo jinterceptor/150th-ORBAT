@@ -208,10 +208,24 @@ export default {
 
 /* Larger icons (closer to original) */
 #sidebar :deep(a img){
-  width: 28px;
-  height: 28px;
+  width: 56px;
+  height: 56px;
   opacity: .95;
-  filter: drop-shadow(0 0 12px rgba(120,180,255,0.14));
+  filter: drop-shadow(0 0 14px rgba(120,180,255,0.16));
+}
+
+
+
+/* Prevent long labels (e.g., Deployment) from clipping */
+#sidebar :deep(a){
+  min-width: 0;
+  padding-right: 14px;
+}
+#sidebar :deep(a span){
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 </style>
