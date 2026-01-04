@@ -570,17 +570,18 @@ attendanceMap() {
         if (!res.ok) throw new Error(`Failed to fetch Attendance (HTTP ${res.status}).`);
         const csv = await res.text();
         const table = this.parseCsv(csv);
-        if (!table || table.length < 3) throw new Error("Attendance sheet is empty.");
+        if (!table || table.length < 2) throw new Error("Attendance sheet is empty.");
 
-        // This project’s CSVs use row 1 as the real header (row 0 may be meta/title).
-        const headerRow = table[1] || [];
-        // Column A = trooper label; columns B.. = dates (left -> right increasing)
+        // Attendance sheet: header row is row 2 (1-indexed) => table[1]
+        const headerIdx = 1;
+
+        const headerRow = (table[headerIdx] || []).map((h) => String(h || "").trim());
         const lastCol = headerRow.length - 1;
 
         const map = Object.create(null);
 
-        // Data starts on row 2
-        for (let r = 2; r < table.length; r++) {
+        // Data starts after the header row
+        for (let r = headerIdx + 1; r < table.length; r++) {
           const row = table[r] || [];
           const rawLabel = String(row[0] || "").trim();
           if (!rawLabel) continue;
