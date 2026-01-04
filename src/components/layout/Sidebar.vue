@@ -91,6 +91,10 @@ export default {
 /* Target Oruga sidebar container */
 #sidebar{
   position: relative;
+  /* Sidebar width (give labels room + big icons) */
+  width: 320px;
+  min-width: 320px;
+}
   border-right: 1px solid rgba(170,220,255,0.14);
   background: linear-gradient(180deg, rgba(8,14,20,0.90), rgba(3,6,10,0.94));
   box-shadow:
@@ -134,14 +138,23 @@ export default {
   z-index: 1;
 }
 
+
+/* Ensure Oruga containers respect width */
+#sidebar :deep(.o-sidebar__content),
+#sidebar :deep(.o-sidebar__items){
+  width: 100%;
+}
+
 /* Link styling */
 #sidebar :deep(a){
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  margin: 8px 10px;
-  border-radius: 12px;
+  gap: 12px;
+  padding: 12px 14px;
+  margin: 10px 12px;
+  border-radius: 14px;
+  min-height: 72px; /* matches icon size */
+  min-width: 0;
 
   border: 1px solid rgba(170,220,255,0.14);
   background: rgba(0,0,0,0.18);
@@ -155,6 +168,7 @@ export default {
   box-shadow: 0 0 0 1px rgba(170,220,255,0.04) inset;
   transition: border-color .12s ease, box-shadow .12s ease, transform .12s ease, background .12s ease;
 }
+
 
 #sidebar :deep(a:hover){
   border-color: rgba(170,220,255,0.55);
@@ -173,16 +187,27 @@ export default {
 
 /* Icons */
 #sidebar :deep(a img){
-  width: 18px;
-  height: 18px;
-  opacity: .9;
-  filter: drop-shadow(0 0 10px rgba(120,180,255,0.12));
+  width: 56px !important;
+  height: 56px !important;
+  max-width: none !important;
+  max-height: none !important;
+  flex: 0 0 56px;
+  opacity: .95;
+  filter: drop-shadow(0 0 14px rgba(120,180,255,0.16));
 }
+
 
 /* Label */
 #sidebar :deep(a span){
-  white-space: nowrap;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
 }
+
 
 /* Keep your clipped class from affecting the new "terminal tile" shape */
 #sidebar :deep(.clipped-bottom-right){
@@ -190,11 +215,6 @@ export default {
 }
 
 /* Mobile reduced mode often collapses text; keep icons crisp */
-@media (max-width: 860px){
-  #sidebar :deep(a){
-    margin: 8px 8px;
-    padding: 10px 10px;
-  }
 }
 
 /* Active indicator bar (Oruga) -> terminal cyan instead of green */
@@ -226,6 +246,13 @@ export default {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+
+@media (max-width: 860px){
+  #sidebar{ width: 260px; min-width: 260px; }
+  #sidebar :deep(a){ margin: 8px 10px; padding: 10px 12px; min-height: 64px; }
+  #sidebar :deep(a img){ width: 44px !important; height: 44px !important; flex: 0 0 44px; }
 }
 
 </style>
