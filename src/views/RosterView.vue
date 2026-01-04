@@ -453,13 +453,13 @@ attendanceMap() {
       if (!this.activeSquad) return [];
       if (this.activeSquad.fireteams && this.activeSquad.fireteams.length) {
         const sorted = this.activeSquad.fireteams.slice().map((ft) => ({
-          name: ft.name || "Element",
+          name: this.prettyFireteamName(ft.name),
           slots: (ft.slots || []).slice(),
         }));
         const orderKey = (n) => {
           const t = String(n || "").toLowerCase();
-          if (t === "fireteam 1") return 0;
-          if (t === "fireteam 2") return 1;
+          if (t === "fireteam 1" || t === "fireteam alpha") return 0;
+          if (t === "fireteam 2" || t === "fireteam bravo") return 1;
           if (t === "fireteam 3") return 2;
           if (t === "fireteam 4") return 3;
           if (t === "element") return 90;
@@ -821,6 +821,14 @@ attendanceMap() {
     },
     cleanHeader(s) { return String(s).replace(/^"+|"+$/g, "").replace(/\s+/g, " ").trim(); },
     cleanName(s) { return String(s).replace(/\s+/g, " ").trim(); },
+    prettyFireteamName(name) {
+      const t = String(name || "").replace(/\u00A0/g, " ").trim();
+      const l = t.toLowerCase();
+      if (l === "fireteam 1") return "Fireteam Alpha";
+      if (l === "fireteam 2") return "Fireteam Bravo";
+      return t || "Element";
+    },
+
     isRealName(s) { const v = String(s || "").trim(); return v && v.toLowerCase() !== "vacant"; },
 
     parseCsv(text) {
