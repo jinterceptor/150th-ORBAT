@@ -5,8 +5,7 @@
     <section class="section-container left-window">
       <div class="header-shell">
         <div class="section-header simple-admin-plate admin-plate--clipped">
-          <img src="/icons/protocol.svg" alt="" />
-          <h1>ADMIN</h1>
+<h1>ADMIN</h1>
         </div>
         <div class="admin-plate-connector" aria-hidden="true"></div>
       </div>
@@ -17,8 +16,7 @@
         <div v-else class="rail">
           <button class="rail-card active" type="button">
             <div class="rail-card-head">
-              <img src="/icons/protocol.svg" class="rail-icon" alt="" />
-              <div class="rail-title">Promotions Overview</div>
+<div class="rail-title">Promotions Overview</div>
             </div>
 
             <div class="rail-card-body">
@@ -50,8 +48,7 @@
     <section class="section-container right-window">
       <div class="header-shell">
         <div class="section-header clipped-medium-backward-pilot right-header">
-          <img src="/icons/protocol.svg" alt="" />
-          <h1>PROMOTIONS OVERVIEW</h1>
+<h1>PROMOTIONS OVERVIEW</h1>
         </div>
         <div class="rhombus-back">&nbsp;</div>
       </div>
