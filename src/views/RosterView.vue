@@ -572,14 +572,17 @@ attendanceMap() {
         const csv = await res.text();
         const table = this.parseCsv(csv);
         if (!table || table.length < 2) throw new Error("Attendance sheet is empty.");
+        if (table.length < 3) console.warn("Attendance sheet: expected dates on Row 2, but sheet has < 3 rows.");
 
-        const header = (table[0] || []).map((h) => String(h || "").trim());
-        // Column A = trooper label; columns B.. = dates (left -> right increasing)
-        const lastCol = header.length - 1;
+        const opHeader = (table[0] || []).map((h) => this.cleanHeader(h));
+        const dateHeader = (table[1] || []).map((h) => this.cleanHeader(h));
+        // Column A = trooper label; columns B.. = ops (latest = rightmost).
+        // Dates live on Row 2 (index 1) per your sheet.
+        const lastCol = Math.max(opHeader.length, dateHeader.length) - 1;
 
         const map = Object.create(null);
 
-        for (let r = 1; r < table.length; r++) {
+        for (let r = 2; r < table.length; r++) {
           const row = table[r] || [];
           const rawLabel = String(row[0] || "").trim();
           if (!rawLabel) continue;
@@ -592,7 +595,7 @@ attendanceMap() {
             const v = String(row[c] || "").trim();
             if (v) {
               code = v;
-              date = String(header[c] || "").trim();
+              date = String(dateHeader[c] || opHeader[c] || "").trim();
             }
           }
 
