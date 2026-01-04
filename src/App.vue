@@ -880,8 +880,9 @@ export default {
   pointer-events: none;
   display: grid;
   place-items: center;
-  z-index: 0; /* behind UI chrome */
+  z-index: -1; /* behind UI chrome */
 }
+
 
 
 .logo-ghost img { width: min(520px, 74vw); height: auto; }
@@ -1020,6 +1021,18 @@ export default {
 .boot-shell, .login-shell, .gate, .access-shell, .terminal-shell, .app-shell{
   position: relative;
   z-index: 1;
+}
+
+
+/* Keep all primary chrome above the watermark */
+.section-container, .terminal-window, .deployment-window, .window, .app-window{
+  position: relative;
+  z-index: 2;
+}
+
+/* Prevent stacking surprises */
+.app-shell, .boot-shell, .login-shell, .gate, .access-shell, .terminal-shell{
+  isolation: isolate;
 }
 
 </style>
