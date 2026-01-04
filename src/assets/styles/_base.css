@@ -283,8 +283,12 @@ div.location-info {
 }
 
 .o-side__content {
-	background-color: var(--primary-color);
-	height: 100%;
+  background: linear-gradient(180deg, rgba(8,14,20,0.92), rgba(3,6,10,0.96));
+  border-right: 1px solid rgba(170,220,255,0.14);
+  box-shadow: 0 0 0 1px rgba(170,220,255,0.06) inset, 0 0 28px rgba(120,180,255,0.08);
+  position: relative;
+  overflow: hidden;
+height: 100%;
 	width: 90px;
 	padding-right: 0.5em;
 	padding-top: 1em;
@@ -2216,4 +2220,29 @@ div.markdown .file-marker.end::after {
 	background: rgba(255, 190, 80, 0.6);
 	box-shadow: 0 0 12px rgba(255, 190, 80, 0.25);
 }
+/* UNSC scanlines for sidebar rail */
+.o-side__content::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.02),
+    rgba(255,255,255,0.02) 1px,
+    rgba(0,0,0,0) 3px,
+    rgba(0,0,0,0) 6px
+  );
+  mix-blend-mode: overlay;
+  opacity: 0.20;
+}
+.o-side__content::after{
+  content:"";
+  position:absolute;
+  inset:-30%;
+  pointer-events:none;
+  background: radial-gradient(circle at 30% 30%, rgba(120,180,255,0.06), transparent 55%);
+  opacity: .85;
+}
 
+.o-side__content > *{ position: relative; z-index: 1; }
