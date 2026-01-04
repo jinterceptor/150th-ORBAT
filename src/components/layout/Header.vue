@@ -141,6 +141,23 @@ export default {
 </script>
 
 <style scoped>
+
+/* Header spans top edge: no rounding */
+header{ border-radius: 0 !important; }
+
+
+/* Keep planet/location panel on the right */
+header .header-container,
+header .inner,
+header .topbar{
+  display: flex;
+  align-items: center;
+}
+header .planet-location-container{
+  margin-left: auto !important;
+  flex: 0 0 auto;
+}
+
 /* =========================
    UNSC TERMINAL HEADER THEME
    Visual-only: NO template/script changes.
@@ -148,7 +165,7 @@ export default {
 
 header{
   position: relative;
-  border-radius: 16px;
+  border-radius: 0px;
   border: 1px solid rgba(170, 220, 255, 0.22);
   background: linear-gradient(180deg, rgba(8,14,20,0.90), rgba(3,6,10,0.94));
   box-shadow:
