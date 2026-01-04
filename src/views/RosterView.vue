@@ -671,9 +671,10 @@ attendanceMap() {
 
     attendanceBadgeText(rec) {
       if (!rec) return "";
-      const d = rec.date ? ` ${rec.date}` : "";
-      return `${rec.code}${d}`;
+      const d = rec.date ? ` — ${rec.date}` : "";
+      return `${String(rec.code || "").trim()}${d}`;
     },
+
 
     attendanceClass(code) {
       const c = String(code || "").trim().toUpperCase();
