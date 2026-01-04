@@ -882,7 +882,10 @@ export default {
   pointer-events: none;
   opacity: 0.12;
   filter: drop-shadow(0 0 24px rgba(0, 0, 0, 0.9));
+  /* Nudge the watermark up so it sits visually centered */
+  transform: translateY(-28px);
 }
+
 .logo-ghost img { width: min(520px, 74vw); height: auto; }
 
 .typed-window {
