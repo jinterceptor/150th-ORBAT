@@ -5,6 +5,12 @@
     <section class="section-container left-window">
       <div class="header-shell">
         <div class="section-header simple-admin-plate admin-plate--clipped">
+        <span class="window-icons" aria-hidden="true">
+          <span class="proto-shell"><img src="/icons/protocol.svg" alt=""></span>
+          <span class="proto-shell"><img src="/icons/protocol.svg" alt=""></span>
+          <span class="proto-shell"><img src="/icons/protocol.svg" alt=""></span>
+        </span>
+
 <h1>ADMIN</h1>
         </div>
         <div class="admin-plate-connector" aria-hidden="true"></div>
@@ -48,6 +54,12 @@
     <section class="section-container right-window">
       <div class="header-shell">
         <div class="section-header clipped-medium-backward-pilot right-header">
+        <span class="window-icons" aria-hidden="true">
+          <span class="proto-shell"><img src="/icons/protocol.svg" alt=""></span>
+          <span class="proto-shell"><img src="/icons/protocol.svg" alt=""></span>
+          <span class="proto-shell"><img src="/icons/protocol.svg" alt=""></span>
+        </span>
+
 <h1>PROMOTIONS OVERVIEW</h1>
         </div>
         <div class="rhombus-back">&nbsp;</div>
@@ -563,19 +575,7 @@ export default {
 .admin-home .rhombus-back{ opacity: .15; filter: saturate(.9); }
 
 /* Add "window dots" to both headers */
-.admin-home .section-header::before{
-  content:"";
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: rgba(170, 220, 255, 0.22);
-  box-shadow:
-    16px 0 0 rgba(170, 220, 255, 0.22),
-    32px 0 0 rgba(170, 220, 255, 0.22);
-  margin-right: 10px;
-  flex: 0 0 auto;
-  opacity: .95;
-}
+.admin-home .section-header::before{ content: none !important; display:none !important; }
 
 /* Header typography */
 .admin-home .section-header{
@@ -599,6 +599,32 @@ export default {
   text-transform: uppercase;
   white-space: nowrap;
 }
+
+/* Header window icons (protocol.svg is black, so give it a visible shell) */
+.admin-home .window-icons{
+  display: inline-flex;
+  gap: 6px;
+  margin-right: 10px;
+  flex: 0 0 auto;
+  align-items: center;
+}
+.admin-home .proto-shell{
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  background: rgba(170,220,255,0.18);
+  border: 1px solid rgba(170,220,255,0.22);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.18) inset, 0 0 16px rgba(120,180,255,0.10);
+}
+.admin-home .proto-shell img{
+  width: 12px;
+  height: 12px;
+  opacity: .92;
+  filter: drop-shadow(0 0 8px rgba(120,180,255,0.14));
+}
+
 
 /* Left rail card -> terminal tile */
 .admin-home .rail-card{
