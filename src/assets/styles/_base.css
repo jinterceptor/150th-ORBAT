@@ -2216,3 +2216,103 @@ div.markdown .file-marker.end::after {
 	background: rgba(255, 190, 80, 0.6);
 	box-shadow: 0 0 12px rgba(255, 190, 80, 0.25);
 }
+
+
+<style scoped>
+/* =========================
+   UNSC TERMINAL SIDEBAR THEME
+   Visual-only: NO template/script changes.
+   Targets Oruga's .o-side__content rail that was using --primary-color (green).
+   ========================= */
+
+.sidebar-page{ position: relative; }
+.sidebar-layout{ height: 100%; display:flex; }
+
+/* Kill the green rail from base.css (.o-side__content { background-color: var(--primary-color); }) */
+#sidebar :deep(.o-side__content){
+  background: linear-gradient(180deg, rgba(8,14,20,0.92), rgba(3,6,10,0.96)) !important;
+  border-right: 1px solid rgba(170,220,255,0.14);
+  box-shadow:
+    0 0 0 1px rgba(170,220,255,0.06) inset,
+    0 0 28px rgba(120,180,255,0.08);
+  overflow: hidden;
+  position: relative;
+}
+
+/* Scanlines on the rail */
+#sidebar :deep(.o-side__content)::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.02),
+    rgba(255,255,255,0.02) 1px,
+    rgba(0,0,0,0) 3px,
+    rgba(0,0,0,0) 6px
+  );
+  mix-blend-mode: overlay;
+  opacity: 0.20;
+}
+#sidebar :deep(.o-side__content)::after{
+  content:"";
+  position:absolute;
+  inset:-30%;
+  pointer-events:none;
+  background: radial-gradient(circle at 30% 30%, rgba(120,180,255,0.06), transparent 55%);
+  opacity: .85;
+}
+
+/* Links: keep original icon sizing from base.css (48px) but restyle tiles */
+.sidebar-layout :deep(a),
+.sidebar-layout :deep(a:visited){
+  color: rgba(190,230,255,0.92) !important;
+  text-decoration: none;
+}
+
+.sidebar-layout :deep(a.clipped-bottom-right){
+  border: 1px solid rgba(170,220,255,0.18);
+  background: rgba(0,0,0,0.14);
+  box-shadow: 0 0 0 1px rgba(170,220,255,0.05) inset;
+  border-radius: 14px;
+  padding-top: 0.6em;
+  padding-bottom: 0.6em;
+  margin-bottom: 1em;
+}
+
+/* Hover / active */
+.sidebar-layout :deep(a.clipped-bottom-right:hover){
+  border-color: rgba(170,220,255,0.55);
+  box-shadow:
+    0 0 0 1px rgba(170,220,255,0.08) inset,
+    0 0 20px rgba(120,180,255,0.10);
+}
+
+.sidebar-layout :deep(a.router-link-exact-active){
+  background: rgba(0,0,0,0.20) !important;
+  border-color: rgba(120,255,190,0.45) !important;
+  box-shadow:
+    0 0 0 1px rgba(120,255,190,0.10) inset,
+    0 0 22px rgba(120,255,190,0.10);
+  color: rgba(226,243,255,0.96) !important;
+}
+
+/* Active indicator bar (if Oruga theme adds one) */
+#sidebar :deep(.o-side__content .o-sidebar__item.is-active::before),
+#sidebar :deep(.o-side__content .o-sidebar__item--active::before),
+#sidebar :deep(.o-side__content .o-side__item.is-active::before),
+#sidebar :deep(.o-side__content .o-side__item--active::before){
+  background: rgba(170,220,255,0.55) !important;
+  box-shadow: 0 0 16px rgba(120,180,255,0.16) !important;
+}
+
+/* Make sure labels never clip off the rail */
+.sidebar-layout :deep(a span){
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>
+
