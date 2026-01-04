@@ -7,6 +7,7 @@
         <div class="section-header simple-admin-plate admin-plate--clipped">
         <span class="window-icons" aria-hidden="true">
           <span class="proto-shell"><img src="/icons/protocol.svg" alt=""></span>
+        </span>
           <span class="proto-shell"><img src="/icons/protocol.svg" alt=""></span>
           <span class="proto-shell"><img src="/icons/protocol.svg" alt=""></span>
         </span>
@@ -56,6 +57,7 @@
         <div class="section-header clipped-medium-backward-pilot right-header">
         <span class="window-icons" aria-hidden="true">
           <span class="proto-shell"><img src="/icons/protocol.svg" alt=""></span>
+        </span>
           <span class="proto-shell"><img src="/icons/protocol.svg" alt=""></span>
           <span class="proto-shell"><img src="/icons/protocol.svg" alt=""></span>
         </span>
@@ -592,7 +594,7 @@ export default {
 .admin-home .section-header h1{
   margin: 0 !important;
   line-height: 1 !important;
-  font-size: 12px !important;
+  font-size: 18px !important;
   font-weight: 700 !important;
   letter-spacing: 0.12em !important;
   color: rgba(190, 230, 255, 0.92) !important;
