@@ -592,11 +592,13 @@ attendanceMap() {
 
           // Scan left-to-right; keep last non-empty as the most recent recorded op
           for (let c = 1; c <= lastCol; c++) {
-            const v = String(row[c] || "").trim();
-            if (v) {
-              code = v;
-              date = String(dateHeader[c] || opHeader[c] || "").trim();
-            }
+            const raw = String(row[c] || "");
+            const v = raw.replace(/\u00A0/g, " ").trim();
+            if (!v) continue;
+            const norm = v.toUpperCase();
+            if (!this.isAttendanceCode(norm)) continue;
+            code = norm;
+            date = String(dateHeader[c] || opHeader[c] || "").trim();
           }
 
           if (!code) continue;
@@ -677,6 +679,11 @@ attendanceMap() {
       const d = rec.date ? ` ${rec.date}` : "";
       return `${rec.code}${d}`;
     },
+    isAttendanceCode(code) {
+      const c = String(code || "").replace(/\u00A0/g, " ").trim().toUpperCase();
+      return c === "AT" || c === "LOA" || c === "RES" || c === "RES." || c === "DIS" || c === "DNT" || c === "DNT.";
+    },
+
 
     attendanceClass(code) {
       const c = String(code || "").trim().toUpperCase();
