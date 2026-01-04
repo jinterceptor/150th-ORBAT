@@ -590,17 +590,40 @@ attendanceMap() {
           let code = "";
           let date = "";
 
-          // Scan left-to-right; keep last non-empty as the most recent recorded op
+          // Pick the most recent attendance by comparing the column's header date (Row 2).
+          // This avoids relying on column order (some sheets end up reversed / ragged).
+          let best = null;
+          let bestTs = Number.NEGATIVE_INFINITY;
+          let bestCol = -1;
+
           for (let c = 1; c <= lastCol; c++) {
+            const headerDate = String(dateHeader[c] || opHeader[c] || "").trim();
+            if (!headerDate) continue;
+
             const raw = String(row[c] || "");
             const v = raw.replace(/\u00A0/g, " ").trim();
             if (!v) continue;
-            const norm = v.toUpperCase();
-            if (!this.isAttendanceCode(norm)) continue;
-            code = norm;
-            date = String(dateHeader[c] || opHeader[c] || "").trim();
+            if (this.isAttendancePlaceholder(v)) continue;
+
+            const ts = this.parseAttendanceDate(headerDate);
+            const tsOk = Number.isFinite(ts);
+            const bestOk = Number.isFinite(bestTs);
+
+            const isBetter = tsOk
+              ? (!bestOk || ts > bestTs)
+              : (!bestOk && c > bestCol);
+
+            if (!best || isBetter) {
+              best = { code: v, date: headerDate };
+              bestTs = tsOk ? ts : Number.NEGATIVE_INFINITY;
+              bestCol = c;
+            }
           }
 
+          if (best) {
+            code = best.code;
+            date = best.date;
+          }
           if (!code) continue;
 
           const rec = { code, date, label: rawLabel };
@@ -683,6 +706,96 @@ attendanceMap() {
       const c = String(code || "").replace(/\u00A0/g, " ").trim().toUpperCase();
       return c === "AT" || c === "LOA" || c === "RES" || c === "RES." || c === "DIS" || c === "DNT" || c === "DNT.";
     },
+
+
+    isAttendancePlaceholder(v) {
+
+
+      const s = String(v || "").replace(/\u00A0/g, " ").trim();
+
+
+      if (!s) return true;
+
+
+      const u = s.toUpperCase();
+
+
+      return u === "-" || u === "—" || u === "N/A" || u === "NA" || u === "NONE";
+
+
+    },
+
+
+
+    parseAttendanceDate(s) {
+
+
+      const v = String(s || "").trim();
+
+
+      if (!v) return NaN;
+
+
+
+      // Prefer UK-style D/M/YYYY (e.g. 13/12/2025).
+
+
+      let m = v.match(/^\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})\s*$/);
+
+
+      if (m) {
+
+
+        const dd = Number(m[1]);
+
+
+        const mm = Number(m[2]);
+
+
+        let yy = Number(m[3]);
+
+
+        if (yy < 100) yy += 2000;
+
+
+        if (dd >= 1 && dd <= 31 && mm >= 1 && mm <= 12) return Date.UTC(yy, mm - 1, dd);
+
+
+      }
+
+
+
+      // ISO YYYY-MM-DD
+
+
+      m = v.match(/^\s*(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})\s*$/);
+
+
+      if (m) {
+
+
+        const yy = Number(m[1]);
+
+
+        const mm = Number(m[2]);
+
+
+        const dd = Number(m[3]);
+
+
+        if (dd >= 1 && dd <= 31 && mm >= 1 && mm <= 12) return Date.UTC(yy, mm - 1, dd);
+
+
+      }
+
+
+
+      return NaN;
+
+
+    },
+
+
 
 
     attendanceClass(code) {
