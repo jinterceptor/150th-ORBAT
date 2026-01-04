@@ -230,17 +230,6 @@
                           <span class="rank">{{ slot.role }}</span>
                           <span class="id">UNFILLED SLOT</span>
                         </p>
-                        <p class="att-line" v-if="latestAttendanceFor(slot.member)">
-                          <span class="att-label">LAST OP:</span>
-                          <span
-                            class="att-badge"
-                            :class="attendanceClass(latestAttendanceFor(slot.member).code)"
-                            :title="latestAttendanceFor(slot.member).label"
-                          >
-                            {{ attendanceBadgeText(latestAttendanceFor(slot.member)) }}
-                          </span>
-                        </p>
-
                       </div>
                     </div>
 
@@ -285,7 +274,19 @@
                           <span class="rank">{{ slot.member?.rank || 'N/A' }}</span>
                           <span class="id">ID: {{ slot.member?.id || 'N/A' }}</span>
                         </p>
-                      </div>
+                      
+                        <p class="att-line" v-if="latestAttendanceFor(slot.member)">
+                          <span class="att-label">LAST OP:</span>
+                          <span
+                            class="att-badge"
+                            :class="attendanceClass(latestAttendanceFor(slot.member).code)"
+                            :title="latestAttendanceFor(slot.member).label"
+                          >
+                            {{ attendanceBadgeText(latestAttendanceFor(slot.member)) }}
+                          </span>
+                        </p>
+
+</div>
                     </div>
 
                     <div class="member-body">
