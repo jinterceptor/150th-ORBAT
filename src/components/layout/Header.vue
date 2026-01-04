@@ -141,6 +141,143 @@ export default {
 </script>
 
 <style scoped>
+/* =========================
+   UNSC TERMINAL HEADER THEME
+   Visual-only: NO template/script changes.
+   ========================= */
+
+header{
+  position: relative;
+  border-radius: 16px;
+  border: 1px solid rgba(170, 220, 255, 0.22);
+  background: linear-gradient(180deg, rgba(8,14,20,0.90), rgba(3,6,10,0.94));
+  box-shadow:
+    0 0 0 1px rgba(170,220,255,0.06) inset,
+    0 0 26px rgba(120,180,255,0.10),
+    0 0 110px rgba(0,0,0,0.55);
+  overflow: hidden;
+}
+
+/* Scanlines + subtle glow */
+header::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.02),
+    rgba(255,255,255,0.02) 1px,
+    rgba(0,0,0,0) 3px,
+    rgba(0,0,0,0) 6px
+  );
+  mix-blend-mode: overlay;
+  opacity: 0.22;
+  z-index: 0;
+}
+header::after{
+  content:"";
+  position:absolute;
+  inset:-20%;
+  pointer-events:none;
+  background: radial-gradient(circle at 30% 20%, rgba(120,180,255,0.07), transparent 58%);
+  opacity: .85;
+  animation: headerFlicker 3.1s infinite;
+  z-index: 0;
+}
+@keyframes headerFlicker{
+  0%,100%{ transform: translate3d(0,0,0); opacity:.70; }
+  12%{ transform: translate3d(-1px,1px,0); opacity:.86; }
+  25%{ transform: translate3d(1px,-1px,0); opacity:.68; }
+  42%{ transform: translate3d(0,2px,0); opacity:.90; }
+  70%{ transform: translate3d(2px,0,0); opacity:.76; }
+}
+
+/* Keep header content above effects */
+header > *{ position: relative; z-index: 1; }
+
+/* Auth indicator -> terminal pill */
+.auth-indicator{
+  border: 1px solid rgba(170,220,255,0.22);
+  background: rgba(0,0,0,0.28);
+  color: rgba(190,230,255,0.92);
+  box-shadow:
+    0 0 0 1px rgba(170,220,255,0.05) inset,
+    0 0 18px rgba(120,180,255,0.10);
+}
+.auth-role{
+  border-color: rgba(170,220,255,0.24);
+  background: rgba(0,0,0,0.18);
+}
+.auth-role[data-variant="staff"]{
+  border-color: rgba(120,255,190,0.45);
+  color: rgba(120,255,190,0.92);
+}
+.auth-logout{
+  border-color: rgba(170,220,255,0.22);
+  color: rgba(190,230,255,0.92);
+}
+.auth-logout:hover{
+  border-color: rgba(170,220,255,0.55);
+  box-shadow: 0 0 0 1px rgba(170,220,255,0.08) inset;
+}
+
+/* Title block -> terminal chrome */
+.title{
+  border: 1px solid rgba(170,220,255,0.14);
+  background: rgba(0,0,0,0.18);
+  box-shadow: 0 0 0 1px rgba(170,220,255,0.05) inset;
+}
+
+/* Neutralize clipped flourish to match the new window look */
+.title.clipped-x-large-forward{
+  clip-path: none !important;
+  border-radius: 14px;
+}
+
+/* Logo glow */
+.logo{
+  filter: drop-shadow(0 0 14px rgba(120,180,255,0.14));
+}
+
+/* Header typography */
+#title-header{
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(226,243,255,0.96);
+}
+#subtitle-header{
+  color: rgba(190,230,255,0.92);
+  letter-spacing: 0.12em;
+}
+#subtitle-subheader{
+  color: rgba(158,197,230,0.90);
+  letter-spacing: 0.12em;
+}
+
+/* Right-side planet/loc panel -> glass */
+.planet-location-container{
+  border-left: 1px solid rgba(170,220,255,0.12);
+}
+.location-info{
+  border: 1px dashed rgba(170,220,255,0.18);
+  background: rgba(0,0,0,0.16);
+  border-radius: 14px;
+  box-shadow: 0 0 0 1px rgba(170,220,255,0.05) inset;
+}
+
+/* Labels */
+.location-row h4{
+  color: rgba(158,197,230,0.92);
+}
+.subtitle{
+  color: rgba(226,243,255,0.92);
+}
+
+/* Decorative rhombus -> tone down */
+.rhombus{ opacity: .18; }
+
+
 header { position: relative; }
 
 /* Auth indicator pill (position via CSS variables) */
