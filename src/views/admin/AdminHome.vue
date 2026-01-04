@@ -480,6 +480,205 @@ export default {
 </script>
 
 <style scoped>
+/* =========================
+   UNSC TERMINAL THEME PASS
+   Visual-only: NO template/script changes.
+   ========================= */
+
+/* Window shells */
+.admin-home .section-container{
+  border-radius: 16px;
+  border: 1px solid rgba(170, 220, 255, 0.22);
+  background: linear-gradient(180deg, rgba(8, 14, 20, 0.92), rgba(3, 6, 10, 0.95));
+  box-shadow:
+    0 0 0 1px rgba(170, 220, 255, 0.06) inset,
+    0 0 26px rgba(120, 180, 255, 0.10),
+    0 0 110px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  position: relative;
+}
+
+/* Scanlines + glow per window */
+.admin-home .section-container::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.02),
+    rgba(255, 255, 255, 0.02) 1px,
+    rgba(0, 0, 0, 0) 3px,
+    rgba(0, 0, 0, 0) 6px
+  );
+  mix-blend-mode: overlay;
+  opacity: 0.26;
+  z-index: 0;
+}
+.admin-home .section-container::after{
+  content:"";
+  position:absolute;
+  inset:-20%;
+  pointer-events:none;
+  background: radial-gradient(circle at 30% 20%, rgba(120, 180, 255, 0.07), transparent 55%);
+  opacity: .9;
+  animation: adminFlicker 2.9s infinite;
+  z-index: 0;
+}
+@keyframes adminFlicker{
+  0%, 100% { transform: translate3d(0,0,0); opacity: .72; }
+  12% { transform: translate3d(-1px, 1px, 0); opacity: .86; }
+  24% { transform: translate3d(1px, -1px, 0); opacity: .70; }
+  40% { transform: translate3d(0px, 2px, 0); opacity: .90; }
+  65% { transform: translate3d(2px, 0px, 0); opacity: .78; }
+}
+
+/* Keep header/content above effects */
+.admin-home .header-shell,
+.admin-home .section-header,
+.admin-home .section-content-container{
+  position: relative;
+  z-index: 1;
+}
+
+/* Header chrome bars */
+.admin-home .header-shell{
+  border-bottom: 1px solid rgba(170, 220, 255, 0.12);
+  background: rgba(0,0,0,0.16);
+}
+
+/* Make both headers use terminal chrome (remove the green plate visuals) */
+.admin-home .simple-admin-plate{
+  background: transparent !important;
+  width: auto !important;
+  padding: 0 14px !important;
+}
+.admin-home .admin-plate-connector{
+  background: rgba(170, 220, 255, 0.18) !important;
+}
+.admin-home .section-header.admin-plate--clipped{
+  clip-path: none !important;
+}
+.admin-home .section-header.clipped-medium-backward-pilot{
+  clip-path: none !important;
+  background: transparent !important;
+}
+.admin-home .rhombus-back{ opacity: .15; filter: saturate(.9); }
+
+/* Add "window dots" to both headers */
+.admin-home .section-header::before{
+  content:"";
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(170, 220, 255, 0.22);
+  box-shadow:
+    16px 0 0 rgba(170, 220, 255, 0.22),
+    32px 0 0 rgba(170, 220, 255, 0.22);
+  margin-right: 10px;
+  flex: 0 0 auto;
+  opacity: .95;
+}
+
+/* Header typography */
+.admin-home .section-header{
+  padding: 12px 14px !important;
+  gap: 10px !important;
+  height: 52px;
+}
+.admin-home .section-header img{
+  width: 18px;
+  height: 18px;
+  opacity: .9;
+  filter: drop-shadow(0 0 10px rgba(120,180,255,0.18));
+}
+.admin-home .section-header h1{
+  margin: 0 !important;
+  line-height: 1 !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.12em !important;
+  color: rgba(190, 230, 255, 0.92) !important;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Left rail card -> terminal tile */
+.admin-home .rail-card{
+  border: 1px solid rgba(170,220,255,0.18) !important;
+  background: rgba(0,0,0,0.22) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 0 0 1px rgba(170,220,255,0.05) inset, 0 0 22px rgba(0,0,0,0.28);
+}
+.admin-home .rail-card.active{
+  border-color: rgba(170,220,255,0.55) !important;
+}
+.admin-home .rail-title{ letter-spacing: .10em !important; text-transform: uppercase; }
+.admin-home .pill{
+  background: rgba(0,0,0,0.18);
+  border-color: rgba(170,220,255,0.28) !important;
+}
+.admin-home .pill.ok{ border-color: rgba(120,255,190,0.55) !important; }
+.admin-home .pill.warn{ border-color: rgba(255,190,80,0.7) !important; }
+
+/* Filters + table chrome */
+.admin-home .filters,
+.admin-home .table-shell{
+  border-color: rgba(170,220,255,0.18) !important;
+  background: rgba(0,0,0,0.18) !important;
+  border-radius: 14px !important;
+}
+.admin-home .tr.head{
+  background: rgba(0,0,0,0.22) !important;
+  border-bottom-color: rgba(170,220,255,0.16) !important;
+}
+
+/* Inputs/selects */
+.admin-home .control input,
+.admin-home .control select{
+  background: rgba(5, 12, 20, 0.85) !important;
+  border-color: rgba(170,220,255,0.22) !important;
+  border-radius: 10px !important;
+  color: rgba(226, 243, 255, 0.95) !important;
+  box-shadow: 0 0 0 1px rgba(170,220,255,0.04) inset;
+}
+.admin-home .control input:focus,
+.admin-home .control select:focus{
+  outline: none;
+  border-color: rgba(120,180,255,0.55) !important;
+  box-shadow: 0 0 0 2px rgba(120,180,255,0.22);
+}
+.admin-home .control.chk input[type="checkbox"]{ accent-color: #78ffd0; }
+
+/* Chips */
+.admin-home .chip{
+  background: rgba(0,0,0,0.18) !important;
+  border-color: rgba(170,220,255,0.22) !important;
+  border-radius: 999px;
+}
+.admin-home .chip.ok{ border-color: rgba(120,255,190,0.55) !important; }
+.admin-home .chip.warn{ border-color: rgba(255,190,80,0.7) !important; }
+
+/* Progress bar */
+.admin-home .bar{
+  background: rgba(0,0,0,0.24) !important;
+  border-color: rgba(170,220,255,0.16) !important;
+}
+.admin-home .bar .fill{ background: rgba(120,200,255,0.55) !important; }
+.admin-home .bar.done .fill{ background: rgba(120,255,190,0.65) !important; }
+
+/* Status pills */
+.admin-home .status-pill{
+  border-color: rgba(170,220,255,0.22) !important;
+  background: rgba(0,0,0,0.18) !important;
+}
+
+/* Scrollbars */
+.admin-home .rows-scroll::-webkit-scrollbar{ width: 10px; height: 10px; }
+.admin-home .rows-scroll::-webkit-scrollbar-thumb{ background: rgba(90,140,180,0.55); border-radius: 999px; }
+.admin-home .rows-scroll::-webkit-scrollbar-track{ background: rgba(0,0,0,0.22); }
+
+
 /* Override global fixed widths from _base.css for admin screens */
 .windows-grid {
   display: grid;
