@@ -602,7 +602,6 @@ export default {
       if (!Number.isFinite(best)) return "—";
       return `${Math.floor((now - best) / 86400000)}d`;
     },
-},
 
     eligibleNowCount() {
       return this.promotionsTable.filter((r) => r.nextRank && Number.isFinite(r.opsToNext) && r.opsToNext === 0).length;
