@@ -196,4 +196,22 @@ export default {
     padding: 10px 10px;
   }
 }
+
+/* Active indicator bar (Oruga) -> terminal cyan instead of green */
+#sidebar :deep(.o-sidebar__item.is-active::before),
+#sidebar :deep(.o-sidebar__item--active::before),
+#sidebar :deep(.o-sidebar__item--active > a::before),
+#sidebar :deep(.router-link-active::before){
+  background: rgba(170,220,255,0.55) !important;
+  box-shadow: 0 0 16px rgba(120,180,255,0.16) !important;
+}
+
+/* Larger icons (closer to original) */
+#sidebar :deep(a img){
+  width: 28px;
+  height: 28px;
+  opacity: .95;
+  filter: drop-shadow(0 0 12px rgba(120,180,255,0.14));
+}
+
 </style>
