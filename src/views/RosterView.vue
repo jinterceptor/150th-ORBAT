@@ -572,16 +572,13 @@ attendanceMap() {
         const table = this.parseCsv(csv);
         if (!table || table.length < 2) throw new Error("Attendance sheet is empty.");
 
-        // Attendance sheet: header row is row 2 (1-indexed) => table[1]
-        const headerIdx = 1;
-
-        const headerRow = (table[headerIdx] || []).map((h) => String(h || "").trim());
-        const lastCol = headerRow.length - 1;
+        const header = (table[0] || []).map((h) => String(h || "").trim());
+        // Column A = trooper label; columns B.. = dates (left -> right increasing)
+        const lastCol = header.length - 1;
 
         const map = Object.create(null);
 
-        // Data starts after the header row
-        for (let r = headerIdx + 1; r < table.length; r++) {
+        for (let r = 1; r < table.length; r++) {
           const row = table[r] || [];
           const rawLabel = String(row[0] || "").trim();
           if (!rawLabel) continue;
@@ -594,7 +591,7 @@ attendanceMap() {
             const v = String(row[c] || "").trim();
             if (v) {
               code = v;
-              date = String(headerRow[c] || "").trim();
+              date = String(header[c] || "").trim();
             }
           }
 
