@@ -74,6 +74,21 @@ export default {
 </script>
 
 <style scoped>
+
+/* Override Oruga default sidebar backgrounds (some themes apply green panels) */
+#sidebar :deep(.o-sidebar__wrapper),
+#sidebar :deep(.o-sidebar__content),
+#sidebar :deep(.o-sidebar__container),
+#sidebar :deep(.o-sidebar__items){
+  background: transparent !important;
+}
+
+/* Paint the actual rail on the outermost Oruga node */
+#sidebar{
+  background: linear-gradient(180deg, rgba(8,14,20,0.90), rgba(3,6,10,0.94)) !important;
+}
+
+
 /* =========================
    UNSC TERMINAL SIDEBAR THEME
    Visual-only: no logic changes
@@ -253,5 +268,6 @@ export default {
   #sidebar :deep(a){ margin: 8px 10px; padding: 10px 12px; min-height: 64px; }
   #sidebar :deep(a img){ width: 44px !important; height: 44px !important; flex: 0 0 44px; }
 }
+
 
 </style>
