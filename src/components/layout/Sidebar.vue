@@ -21,11 +21,6 @@
           <span>Roster</span>
         </router-link>
 
-        <router-link class="clipped-bottom-right" to="/events" @click.native="playBrowse">
-          <img src="/icons/events.svg" />
-          <span>Logs</span>
-        </router-link>
-
         <!-- NEW: Deployment (Officer/Staff only) -->
         <router-link
           v-if="isOfficerOrStaff"
