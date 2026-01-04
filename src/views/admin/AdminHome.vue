@@ -271,6 +271,7 @@
 
           <div class="chips">
             <span class="chip">Total: {{ attendanceTable.length }}</span>
+            <span class="chip">Members: {{ filteredMembers.length }}</span>
             <span class="chip warn">Missing: {{ attendanceMissingCount }}</span>
             <span class="chip">Stale (≥{{ attendanceStaleDays }}d): {{ attendanceStaleCount }}</span>
             <span class="chip">Oldest: {{ attendanceOldestDays }}</span>
@@ -510,57 +511,97 @@ export default {
       return ["AT", "LOA", "RES", "DIS", "DNT"].slice();
     },
     attendanceTable() {
-      const term = (this.attendanceSearch || "").trim().toLowerCase();
+      const term = String(this.attendanceSearch || "").trim().toLowerCase();
       const squadFilter = this.attendanceSelectedSquad;
       const statusFilter = this.attendanceSelectedStatus;
       const codeFilter = this.attendanceSelectedCode;
-      const minDays = Number.isFinite(Number(this.attendanceDaysMin)) ? Number(this.attendanceDaysMin) : null;
-      const maxDays = Number.isFinite(Number(this.attendanceDaysMax)) ? Number(this.attendanceDaysMax) : null;
+
+      const toFiniteOrNull = (v) => {
+        if (v === null || v === undefined) return null;
+        const s = String(v).trim();
+        if (s === "") return null;
+        const n = Number(s);
+        return Number.isFinite(n) ? n : null;
+      };
+
+      const minDays = toFiniteOrNull(this.attendanceDaysMin);
+      const maxDays = toFiniteOrNull(this.attendanceDaysMax);
+
       const fromTs = this.parseAttendanceDate(this.attendanceDateFrom);
       const toTs = this.parseAttendanceDate(this.attendanceDateTo);
       const hasFrom = Number.isFinite(fromTs);
       const hasTo = Number.isFinite(toTs);
+      const hasDayFilter = minDays !== null || maxDays !== null;
+      const hasDateFilter = hasFrom || hasTo;
+
       const now = Date.now();
       const rows = [];
-      for (const m of this.filteredMembers) {
-        const name = String(m?.name || "").trim();
-        const rank = String(m?.rank || "").trim();
-        const squad = String(m?.squad || "").trim();
-        const status = this.memberStatusOf(m);
-        const rec = this.latestAttendanceForMember(m);
+
+      for (const mem of this.filteredMembers) {
+        const name = String(mem?.name || "").trim();
+        const rank = String(mem?.rank || "").trim();
+        const squad = String(mem?.squad || "").trim();
+        const status = this.memberStatusOf(mem);
+
+        const rec = this.latestAttendanceForMember(mem);
         const lastCode = rec?.code ? String(rec.code).trim() : "";
         const lastDate = rec?.date ? String(rec.date).trim() : "";
+
         const ts = Number.isFinite(rec?.ts) ? rec.ts : this.parseAttendanceDate(lastDate);
-        const daysSince = Number.isFinite(ts) ? Math.floor((now - ts) / 86400000) : null;
+        const tsOk = Number.isFinite(ts);
+        const daysSince = tsOk ? Math.floor((now - ts) / 86400000) : null;
+
         const isMissing = !lastCode || !lastDate;
+
         if (isMissing && !this.attendanceIncludeNoRecord) continue;
+
         if (term) {
           const hay = [name, rank, squad, status, lastCode, lastDate].join(" ").toLowerCase();
           if (!hay.includes(term)) continue;
         }
+
         if (squadFilter !== "__ALL__" && squad !== squadFilter) continue;
         if (statusFilter !== "__ALL__" && status !== statusFilter) continue;
+
         if (codeFilter === "__MISSING__") {
           if (!isMissing) continue;
         } else if (codeFilter !== "__ALL__") {
           if (String(lastCode).toUpperCase() !== String(codeFilter).toUpperCase()) continue;
         }
+
+        // Only enforce day/date filters when we can compute a timestamp.
+        if ((hasDayFilter || hasDateFilter) && !tsOk) continue;
+
         if (minDays !== null) {
           if (!Number.isFinite(daysSince) || daysSince < minDays) continue;
         }
         if (maxDays !== null) {
           if (!Number.isFinite(daysSince) || daysSince > maxDays) continue;
         }
+
         if (hasFrom) {
-          if (!Number.isFinite(ts) || ts < fromTs) continue;
+          if (ts < fromTs) continue;
         }
         if (hasTo) {
-          if (!Number.isFinite(ts) || ts > toTs) continue;
+          if (ts > toTs) continue;
         }
-        rows.push({ id: m?.id, name, rank, squad, status, lastCode: lastCode || null, lastDate: lastDate || null, ts: Number.isFinite(ts) ? ts : null, daysSince });
+
+        rows.push({
+          id: mem?.id,
+          name,
+          rank,
+          squad,
+          status,
+          lastCode: lastCode || null,
+          lastDate: lastDate || null,
+          ts: tsOk ? ts : null,
+          daysSince,
+        });
       }
+
       const safeNum = (v, fallback = 999999999) => (Number.isFinite(Number(v)) ? Number(v) : fallback);
       const byName = (a, b) => String(a.name).localeCompare(String(b.name), undefined, { sensitivity: "base" });
+
       if (this.attendanceSortKey === "name") rows.sort(byName);
       else if (this.attendanceSortKey === "rank") rows.sort((a, b) => this.rankValue(a.rank) - this.rankValue(b.rank) || byName(a, b));
       else if (this.attendanceSortKey === "squad") rows.sort((a, b) => String(a.squad).localeCompare(String(b.squad), undefined, { sensitivity: "base" }) || byName(a, b));
@@ -568,6 +609,7 @@ export default {
       else if (this.attendanceSortKey === "oldest") rows.sort((a, b) => safeNum(a.ts) - safeNum(b.ts) || byName(a, b));
       else if (this.attendanceSortKey === "days") rows.sort((a, b) => safeNum(b.daysSince, -1) - safeNum(a.daysSince, -1) || byName(a, b));
       else rows.sort((a, b) => safeNum(b.ts, -1) - safeNum(a.ts, -1) || byName(a, b));
+
       return rows;
     },
 
