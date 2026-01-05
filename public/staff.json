@@ -8,5 +8,10 @@
     "username": "test",
     "role": "staff",
     "displayName": "T. Test"
+  },
+  {
+    "username": "muzthag",
+    "role": "staff",
+    "displayName": "W. Muzthag"
   }
 ]
