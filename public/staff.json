@@ -28,5 +28,10 @@
     "username": "wolff",
     "role": "staff",
     "displayName": "R. Wolff"
+  },
+  {
+    "username": "wyvern-a",
+    "role": "staff",
+    "displayName": "F. Doom"
   }
 ]
