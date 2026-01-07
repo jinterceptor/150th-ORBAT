@@ -23,5 +23,10 @@
     "username": "a. blepington",
     "role": "officer",
     "displayName": "A. Blepington"
+  },
+  {
+    "username": "wolff",
+    "role": "staff",
+    "displayName": "R. Wolff"
   }
 ]
