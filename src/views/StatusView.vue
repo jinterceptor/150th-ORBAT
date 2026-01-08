@@ -8,9 +8,9 @@
   >
     <!-- Mission Log -->
     <section id="missions" class="section-container" :style="{ 'animation-delay': animationDelay }">
-      <div class="section-header clipped-medium-backward">
-        <img src="/icons/campaign.svg" />
-        <h1>Mission Log</h1>
+      <div class="term-hdr view-hdr">
+        <span class="hdr-icon" aria-hidden="true" :style="{ backgroundImage: `url('/icons/campaign.svg')` }"></span>
+        <div class="term-title">MISSION LOG</div>
       </div>
       <div class="section-content-container">
         
@@ -827,4 +827,15 @@ buildAssignmentMarkdown(mission) {
 
 /* Markdown h3 override (leave h1/h2 as-is) */
 .markdown :deep(h3) { color: #9ec5e6; }
+
+/* Match login terminal header (icon shell + title) */
+#status .term-hdr.view-hdr .term-title{
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(190, 230, 255, 0.92);
+  opacity: 1;
+}
+
 </style>
