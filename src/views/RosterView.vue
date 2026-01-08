@@ -1042,8 +1042,8 @@ attendanceMap() {
   display:grid;
   grid-template-columns: 1.7fr 0.8fr;
   gap: 1.2rem;
-  height: calc(100vh - 96px);
-  padding: 28px 18px 18px;
+  height: calc(100vh - 128px);
+  padding: 60px 18px 18px;
   overflow: hidden;
 }
 
