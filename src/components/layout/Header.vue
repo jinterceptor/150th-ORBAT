@@ -64,18 +64,19 @@
       </div>
     </header>
 
-    <!-- Ambient News Ticker (below header) -->
+    <!-- Continuous Marquee News Ticker -->
     <div v-if="newsEnabled && normalizedNewsItems.length" class="news-ticker" aria-label="UNSC News Ticker">
       <div class="news-label">BROADCAST</div>
+
       <div class="news-viewport">
         <div
           class="news-track"
           :key="tickerKey"
-          :style="{ '--ticker-duration': tickerDuration + 's', '--ticker-gap': tickerGapPx + 'px' }"
-          @animationend="onTickerEnd"
+          :style="{ '--ticker-duration': tickerDuration + 's' }"
+          ref="track"
         >
-          <span class="news-text">{{ currentTickerText }}</span>
-          <span class="news-sep" aria-hidden="true"> // </span>
+          <span class="news-seq" ref="seq">{{ tickerSequence }}</span>
+          <span class="news-seq" aria-hidden="true">{{ tickerSequence }}</span>
         </div>
       </div>
     </div>
@@ -86,6 +87,11 @@
 /**
  * /src/components/layout/Header.vue
  * Add broadcasts by editing `defaultNewsItems` or by passing the `newsItems` prop.
+ *
+ * This ticker is a continuous marquee:
+ * - renders the same random "sequence" twice for seamless looping
+ * - scroll speed is constant via tickerPxPerSecond
+ * - sequence refreshes every sequenceRefreshMs to keep it ambient/random
  */
 import {
   adminUser,
@@ -112,19 +118,17 @@ export default {
     newsEnabled: { type: Boolean, default: true },
     newsItems: { type: Array, default: () => defaultNewsItems },
 
-    // Ambient pause between headlines
-    newsMinDelayMs: { type: Number, default: 250 },
-    newsMaxDelayMs: { type: Number, default: 1200 },
+    // How many headlines to stitch together per loop
+    tickerItemsPerLoop: { type: Number, default: 10 },
 
-    // Scroll timing
-    tickerBaseSeconds: { type: Number, default: 12 },
-    tickerSecondsPerChar: { type: Number, default: 0.055 },
+    // Separator between headlines (set to "//" if you want no spaces)
+    tickerSeparator: { type: String, default: " // " },
 
-    // Slower overall multiplier (set to 1 for original speed)
-    tickerSpeedMultiplier: { type: Number, default: 1.45 },
+    // Constant scroll speed (lower = slower)
+    tickerPxPerSecond: { type: Number, default: 45 },
 
-    // Space after the separator
-    tickerGapPx: { type: Number, default: 70 },
+    // Refresh sequence periodically so it feels ambient/random
+    sequenceRefreshMs: { type: Number, default: 45000 },
   },
   data() {
     return {
@@ -133,11 +137,12 @@ export default {
       unsub: null,
 
       tickerKey: 0,
-      currentIndex: 0,
-      tickerDuration: 18,
+      tickerSequence: "",
+      tickerDuration: 28,
 
-      _tickerTimeout: null,
-      _lastIndex: -1,
+      _sequenceTimer: null,
+      _resizeTimer: null,
+      _lastPick: -1,
     };
   },
   computed: {
@@ -165,11 +170,6 @@ export default {
         .map((s) => s.trim())
         .filter(Boolean);
     },
-    currentTickerText() {
-      const items = this.normalizedNewsItems;
-      if (!items.length) return "";
-      return items[this.currentIndex % items.length];
-    },
   },
   created() {
     this.readAuth();
@@ -177,17 +177,31 @@ export default {
     window.addEventListener("storage", this.onStorage);
 
     this.startTicker();
+    window.addEventListener("resize", this.onResize);
+  },
+  mounted() {
+    this.recalcTickerDuration();
   },
   beforeUnmount() {
     if (this.unsub) this.unsub();
     window.removeEventListener("storage", this.onStorage);
+    window.removeEventListener("resize", this.onResize);
     this.stopTicker();
   },
   watch: {
+    newsEnabled() {
+      this.startTicker();
+    },
     normalizedNewsItems() {
       this.startTicker();
     },
-    newsEnabled() {
+    tickerPxPerSecond() {
+      this.recalcTickerDuration();
+    },
+    tickerItemsPerLoop() {
+      this.startTicker();
+    },
+    tickerSeparator() {
       this.startTicker();
     },
   },
@@ -211,42 +225,63 @@ export default {
       }
     },
 
+    onResize() {
+      if (this._resizeTimer) clearTimeout(this._resizeTimer);
+      this._resizeTimer = setTimeout(() => this.recalcTickerDuration(), 120);
+    },
+
     startTicker() {
       this.stopTicker();
       if (!this.newsEnabled) return;
       if (!this.normalizedNewsItems.length) return;
-      this.pickNextBroadcast(true);
+
+      this.buildNewSequence();
+      this._sequenceTimer = setInterval(() => this.buildNewSequence(), Math.max(5000, Number(this.sequenceRefreshMs) || 45000));
     },
     stopTicker() {
-      if (this._tickerTimeout) clearTimeout(this._tickerTimeout);
-      this._tickerTimeout = null;
+      if (this._sequenceTimer) clearInterval(this._sequenceTimer);
+      this._sequenceTimer = null;
+      if (this._resizeTimer) clearTimeout(this._resizeTimer);
+      this._resizeTimer = null;
     },
-    onTickerEnd() {
-      const min = Math.max(0, Number(this.newsMinDelayMs) || 0);
-      const max = Math.max(min, Number(this.newsMaxDelayMs) || min);
-      const jitter = min + Math.floor(Math.random() * (max - min + 1));
 
-      this.stopTicker();
-      this._tickerTimeout = setTimeout(() => this.pickNextBroadcast(false), jitter);
-    },
-    pickNextBroadcast(force) {
+    buildNewSequence() {
       const items = this.normalizedNewsItems;
-      if (!items.length) return;
+      const n = items.length;
+      const k = Math.max(2, Number(this.tickerItemsPerLoop) || 10);
+      const sep = String(this.tickerSeparator ?? " // ");
 
-      const next = this.randomIndex(items.length, force ? -1 : this._lastIndex);
-      this._lastIndex = next;
-      this.currentIndex = next;
+      const picks = [];
+      let last = this._lastPick;
 
-      const textLen = items[next].length;
-      const base = Math.max(4, Number(this.tickerBaseSeconds) || 12);
-      const perChar = Math.max(0.01, Number(this.tickerSecondsPerChar) || 0.055);
-      const mult = Math.max(0.2, Number(this.tickerSpeedMultiplier) || 1);
+      for (let i = 0; i < k; i++) {
+        const idx = this.randomIndex(n, last);
+        last = idx;
+        picks.push(items[idx]);
+      }
 
-      const raw = base + textLen * perChar;
-      this.tickerDuration = Math.max(8, Math.round(raw * mult * 10) / 10);
+      this._lastPick = last;
 
-      this.tickerKey += 1; // restart animation from offscreen right
+      // Ensure there’s ALWAYS a separator between end->start (since we duplicate)
+      const seq = picks.join(sep) + sep;
+
+      this.tickerSequence = seq;
+      this.tickerKey += 1; // restart animation cleanly
+      this.$nextTick(() => this.recalcTickerDuration());
     },
+
+    recalcTickerDuration() {
+      const seqEl = this.$refs.seq;
+      if (!seqEl || !seqEl.scrollWidth) return;
+
+      // With two identical sequences, one loop distance is exactly the first sequence width.
+      const widthPx = seqEl.scrollWidth;
+      const speed = Math.max(10, Number(this.tickerPxPerSecond) || 45);
+      const seconds = widthPx / speed;
+
+      this.tickerDuration = Math.max(12, Math.round(seconds * 10) / 10);
+    },
+
     randomIndex(n, avoid) {
       if (n <= 1) return 0;
       let idx = Math.floor(Math.random() * n);
@@ -258,14 +293,17 @@ export default {
 </script>
 
 <style scoped>
+/* Wrapper lets ticker sit below header without changing/overlapping header internals */
 .header-wrap{
   width: 100%;
   display: flex;
   flex-direction: column;
 }
 
+/* Header spans top edge: no rounding */
 header{ border-radius: 0 !important; }
 
+/* Keep planet/location panel on the right */
 header .header-container,
 header .inner,
 header .topbar{
@@ -276,6 +314,10 @@ header .planet-location-container{
   margin-left: auto !important;
   flex: 0 0 auto;
 }
+
+/* =========================
+   UNSC TERMINAL HEADER THEME
+   ========================= */
 
 header{
   position: relative;
@@ -326,6 +368,7 @@ header > *{ position: relative; z-index: 1; }
 
 .rhombus{ opacity: .18; }
 
+/* Auth indicator pill (position via CSS variables) */
 .auth-indicator {
   position: absolute;
   left: var(--auth-x, 315px);
@@ -368,6 +411,7 @@ header > *{ position: relative; z-index: 1; }
 }
 .auth-logout:hover { border-color: rgba(170,255,210,.9); }
 
+/* Existing layout styles */
 .location-row.grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -383,7 +427,7 @@ header > *{ position: relative; z-index: 1; }
 .subtitle { font-size: 0.85rem; letter-spacing: 0.08em; }
 
 /* =========================
-   News Ticker
+   News Ticker (continuous loop)
    ========================= */
 .news-ticker{
   height: 32px;
@@ -419,38 +463,30 @@ header > *{ position: relative; z-index: 1; }
   mask-image: linear-gradient(to right, transparent 0%, black 7%, black 93%, transparent 100%);
 }
 
+/* Track contains TWO identical sequences => total width ~200% of one sequence */
 .news-track{
-  --ticker-duration: 18s;
-  --ticker-gap: 70px;
-  display: inline-block;
+  --ticker-duration: 28s;
+  display: inline-flex;
+  align-items: center;
   white-space: nowrap;
   will-change: transform;
-  padding-right: var(--ticker-gap);
-  animation: tickerScroll var(--ticker-duration) linear forwards;
+  animation: tickerLoop var(--ticker-duration) linear infinite;
 }
 
-.news-text{
+/* Each sequence is inline and identical; second one makes loop seamless */
+.news-seq{
   font-family: "Titillium Web", sans-serif;
   font-size: 12px;
   letter-spacing: 0.10em;
   color: rgba(226,243,255,0.92);
   text-transform: uppercase;
   text-shadow: 0 0 14px rgba(120,180,255,0.10);
+  padding-right: 48px;
 }
 
-.news-sep{
-  font-family: "Titillium Web", sans-serif;
-  font-size: 12px;
-  letter-spacing: 0.14em;
-  color: rgba(158,197,230,0.85);
-  text-transform: uppercase;
-  opacity: 0.95;
-}
-
-/* Start fully offscreen (viewport), end fully left + gap */
-@keyframes tickerScroll{
-  0%   { transform: translate3d(100vw, 0, 0); opacity: 0.95; }
-  5%   { opacity: 1; }
-  100% { transform: translate3d(calc(-100% - var(--ticker-gap)), 0, 0); opacity: 0.95; }
+/* Move left by exactly one sequence width (half of the duplicated content) */
+@keyframes tickerLoop{
+  0%   { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
 }
 </style>
