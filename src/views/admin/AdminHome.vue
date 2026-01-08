@@ -1145,6 +1145,7 @@ export default {
   column-gap: 2.4rem;
   align-items: start;
   width: 100%;
+  padding-top: 32px;
 }
 
 /* Override global section sizing for this view (base.css sets fixed 393px width) */
@@ -1152,7 +1153,7 @@ export default {
   width: auto !important;
   max-width: none !important;
   margin: 24px 24px !important;
-  height: calc(100vh - 190px) !important;
+  height: calc(100vh - 222px) !important;
   display: flex;
   flex-direction: column;
 }
