@@ -3,9 +3,9 @@
   <div id="deploymentView" class="content-container" :class="{ animate: animateView }" :style="{ 'animation-delay': animationDelay }">
     <section class="section-container deployment-window">
       <div class="header-shell">
-        <div class="section-header clipped-medium-backward-pilot">
-          <img src="/icons/deployable.svg" alt="" />
-          <h1>DEPLOYMENT — {{ currentUnit?.title || 'Chalk' }}</h1>
+        <div class="term-hdr view-hdr">
+          <span class="hdr-icon" aria-hidden="true" :style="{ backgroundImage: `url('/icons/deployable.svg')` }"></span>
+          <div class="term-title">DEPLOYMENT — {{ currentUnit?.title || 'Chalk' }}</div>
         </div>
         <div class="rhombus-back">&nbsp;</div>
       </div>
@@ -2574,4 +2574,14 @@ async loadRemote(unitKey) {
   margin-top: 32px;
 }
 
+
+/* Match login terminal header (icon shell + title) */
+#deploymentView .term-hdr.view-hdr .term-title{
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(190, 230, 255, 0.92);
+  opacity: 1;
+}
 </style>
