@@ -651,7 +651,7 @@ buildAssignmentMarkdown(mission) {
 
 /* Content padding to match terminal rhythm */
 #status .section-content-container{
-  padding: 16px 16px 18px;
+  padding: 48px 16px 18px;
 }
 
 /* Mission Log (campaign list) theming (light touch, keeps existing behaviors) */
@@ -703,8 +703,8 @@ buildAssignmentMarkdown(mission) {
   gap: 1.2rem;
   align-items: stretch;
 
-  height: calc(100vh - 96px);
-  padding: 28px 18px 18px;
+  height: calc(100vh - 128px);
+  padding: 60px 18px 18px;
   overflow: hidden;
 }
 
