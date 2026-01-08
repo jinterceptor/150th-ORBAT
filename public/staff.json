@@ -43,5 +43,10 @@
     "username": "fenrir blackburn",
     "role": "officer",
     "displayName": "F. Blackburn"
+  },
+  {
+    "username": "neary",
+    "role": "staff",
+    "displayName": "S. Neary"
   }
 ]
