@@ -73,6 +73,19 @@
             <p><strong>Elements:</strong> <span class="stat-num">{{ stats.totalElements }}</span></p>
           </div>
 
+          
+          <!-- Block 1B: Available Deployment Resources -->
+          <div class="status-block resources-block">
+            <p class="block-title"><strong>Available Deployment Resources</strong></p>
+            <ul class="resources-list">
+              <li v-for="r in deploymentResources" :key="r.label" class="resources-item">
+                <span class="stat-num">{{ r.count }}</span>
+                <span class="resources-label">{{ r.label }}</span>
+              </li>
+            </ul>
+          </div>
+
+
           <!-- Block 2: Fill % by Element -->
           <div class="status-block">
             <p class="block-title"><strong>Fill % by Element</strong></p>
@@ -151,6 +164,17 @@ export default {
       missionMarkdown: "",
       missionTheme: {},
       expandedCampaigns: Object.create(null),
+
+
+      // Editable list (shown on Status -> Current Status)
+      deploymentResources: [
+        { label: "Reinforcements", count: 30 },
+        { label: "Pelicans", count: 2 },
+        { label: "Falcons", count: 4 },
+        { label: "LAV Warthogs", count: 4 },
+        { label: "Ground Transports", count: 4 },
+        { label: "Elephant", count: 1 },
+      ],
 
       // RefData CSV (STRICT: Troop List + Troop Status)
       troopStatusCsvUrl:
@@ -848,4 +872,20 @@ buildAssignmentMarkdown(mission) {
   color: rgba(190, 230, 255, 0.92);
   opacity: 1;
 }
+
+
+/* Deployment resources list */
+.resources-list{
+  list-style: none;
+  padding: 0;
+  margin: .35rem 0 0;
+  display: grid;
+  gap: .25rem;
+}
+.resources-item{
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+}
+.resources-label{ opacity: .95; }
 </style>
