@@ -14,11 +14,9 @@
       <div class="title clipped-x-large-forward">
         <img class="logo" src="/faction-logos/Broadsword111.png" />
         <div class="title-container">
-          <!-- PRIMARY TITLE (FIXED) -->
           <div id="title-first-line" class="title-row">
             <span id="title-header">UNSC TACNET</span>
           </div>
-          <!-- SECONDARY LINE (CONFIG-DRIVEN) -->
           <div class="title-row">
             <span id="subtitle-header">{{ header.subheaderTitle }}</span>
             <span id="subtitle-subheader">// {{ header.subheaderSubtitle }}</span>
@@ -34,7 +32,6 @@
         </video>
 
         <div class="location-info">
-          <!-- ROW 1 -->
           <div class="location-row grid">
             <div id="year">
               <h4>Year</h4>
@@ -47,7 +44,6 @@
             </div>
           </div>
 
-          <!-- ROW 2 -->
           <div class="location-row grid">
             <div id="AO">
               <h4>AO</h4>
@@ -68,7 +64,7 @@
       </div>
     </header>
 
-    <!-- Ambient News Ticker (NOW BELOW HEADER — no overlap, header stays original size) -->
+    <!-- Ambient News Ticker (below header) -->
     <div v-if="newsEnabled && normalizedNewsItems.length" class="news-ticker" aria-label="UNSC News Ticker">
       <div class="news-label">BROADCAST</div>
       <div class="news-viewport">
@@ -79,6 +75,7 @@
           @animationend="onTickerEnd"
         >
           <span class="news-text">{{ currentTickerText }}</span>
+          <span class="news-sep" aria-hidden="true"> // </span>
         </div>
       </div>
     </div>
@@ -115,16 +112,19 @@ export default {
     newsEnabled: { type: Boolean, default: true },
     newsItems: { type: Array, default: () => defaultNewsItems },
 
-    // Small “ambient” pause between headlines (kept small per your request)
+    // Ambient pause between headlines
     newsMinDelayMs: { type: Number, default: 250 },
     newsMaxDelayMs: { type: Number, default: 1200 },
 
-    // Scroll speed
-    tickerBaseSeconds: { type: Number, default: 10 },
-    tickerSecondsPerChar: { type: Number, default: 0.045 },
+    // Scroll timing
+    tickerBaseSeconds: { type: Number, default: 12 },
+    tickerSecondsPerChar: { type: Number, default: 0.055 },
 
-    // Gap between headlines while scrolling
-    tickerGapPx: { type: Number, default: 60 },
+    // Slower overall multiplier (set to 1 for original speed)
+    tickerSpeedMultiplier: { type: Number, default: 1.45 },
+
+    // Space after the separator
+    tickerGapPx: { type: Number, default: 70 },
   },
   data() {
     return {
@@ -134,7 +134,7 @@ export default {
 
       tickerKey: 0,
       currentIndex: 0,
-      tickerDuration: 16,
+      tickerDuration: 18,
 
       _tickerTimeout: null,
       _lastIndex: -1,
@@ -181,7 +181,6 @@ export default {
   beforeUnmount() {
     if (this.unsub) this.unsub();
     window.removeEventListener("storage", this.onStorage);
-
     this.stopTicker();
   },
   watch: {
@@ -216,7 +215,6 @@ export default {
       this.stopTicker();
       if (!this.newsEnabled) return;
       if (!this.normalizedNewsItems.length) return;
-
       this.pickNextBroadcast(true);
     },
     stopTicker() {
@@ -240,12 +238,14 @@ export default {
       this.currentIndex = next;
 
       const textLen = items[next].length;
-      const base = Math.max(4, Number(this.tickerBaseSeconds) || 10);
-      const perChar = Math.max(0.01, Number(this.tickerSecondsPerChar) || 0.045);
-      this.tickerDuration = Math.max(6, Math.round((base + textLen * perChar) * 10) / 10);
+      const base = Math.max(4, Number(this.tickerBaseSeconds) || 12);
+      const perChar = Math.max(0.01, Number(this.tickerSecondsPerChar) || 0.055);
+      const mult = Math.max(0.2, Number(this.tickerSpeedMultiplier) || 1);
 
-      // re-mount to restart animation from far-right every time
-      this.tickerKey += 1;
+      const raw = base + textLen * perChar;
+      this.tickerDuration = Math.max(8, Math.round(raw * mult * 10) / 10);
+
+      this.tickerKey += 1; // restart animation from offscreen right
     },
     randomIndex(n, avoid) {
       if (n <= 1) return 0;
@@ -258,17 +258,14 @@ export default {
 </script>
 
 <style scoped>
-/* Wrapper lets ticker sit below header without changing/overlapping header internals */
 .header-wrap{
   width: 100%;
   display: flex;
   flex-direction: column;
 }
 
-/* Header spans top edge: no rounding */
 header{ border-radius: 0 !important; }
 
-/* Keep planet/location panel on the right */
 header .header-container,
 header .inner,
 header .topbar{
@@ -279,10 +276,6 @@ header .planet-location-container{
   margin-left: auto !important;
   flex: 0 0 auto;
 }
-
-/* =========================
-   UNSC TERMINAL HEADER THEME
-   ========================= */
 
 header{
   position: relative;
@@ -296,7 +289,6 @@ header{
   overflow: hidden;
 }
 
-/* Scanlines + subtle glow */
 header::before{
   content:"";
   position:absolute;
@@ -330,11 +322,10 @@ header::after{
   42%{ transform: translate3d(0,2px,0); opacity:.90; }
   70%{ transform: translate3d(2px,0,0); opacity:.76; }
 }
-
-/* Keep header content above effects */
 header > *{ position: relative; z-index: 1; }
 
-/* Auth indicator pill (position via CSS variables) */
+.rhombus{ opacity: .18; }
+
 .auth-indicator {
   position: absolute;
   left: var(--auth-x, 315px);
@@ -377,48 +368,6 @@ header > *{ position: relative; z-index: 1; }
 }
 .auth-logout:hover { border-color: rgba(170,255,210,.9); }
 
-/* Title block -> terminal chrome */
-.title{
-  border: 1px solid rgba(170,220,255,0.14);
-  background: rgba(0,0,0,0.18);
-  box-shadow: 0 0 0 1px rgba(170,220,255,0.05) inset;
-}
-.title.clipped-x-large-forward{
-  clip-path: none !important;
-  border-radius: 14px;
-  border-top-left-radius: 0 !important;
-  border-bottom-left-radius: 0 !important;
-}
-.logo{ filter: drop-shadow(0 0 14px rgba(120,180,255,0.14)); }
-
-#title-header{
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: rgba(226,243,255,0.96);
-}
-#subtitle-header{
-  color: rgba(190,230,255,0.92);
-  letter-spacing: 0.12em;
-}
-#subtitle-subheader{
-  color: rgba(158,197,230,0.90);
-  letter-spacing: 0.12em;
-}
-
-/* Right-side planet/loc panel -> glass */
-.planet-location-container{ border-left: 1px solid rgba(170,220,255,0.12); }
-.location-info{
-  border: 1px dashed rgba(170,220,255,0.18);
-  background: rgba(0,0,0,0.16);
-  border-radius: 14px;
-  box-shadow: 0 0 0 1px rgba(170,220,255,0.05) inset;
-}
-.location-row h4{ color: rgba(158,197,230,0.92); }
-.subtitle{ color: rgba(226,243,255,0.92); }
-
-.rhombus{ opacity: .18; }
-
-/* Existing layout styles */
 .location-row.grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -434,7 +383,7 @@ header > *{ position: relative; z-index: 1; }
 .subtitle { font-size: 0.85rem; letter-spacing: 0.08em; }
 
 /* =========================
-   News Ticker (full-width + true offscreen start)
+   News Ticker
    ========================= */
 .news-ticker{
   height: 32px;
@@ -471,8 +420,8 @@ header > *{ position: relative; z-index: 1; }
 }
 
 .news-track{
-  --ticker-duration: 14s;
-  --ticker-gap: 60px;
+  --ticker-duration: 18s;
+  --ticker-gap: 70px;
   display: inline-block;
   white-space: nowrap;
   will-change: transform;
@@ -487,6 +436,15 @@ header > *{ position: relative; z-index: 1; }
   color: rgba(226,243,255,0.92);
   text-transform: uppercase;
   text-shadow: 0 0 14px rgba(120,180,255,0.10);
+}
+
+.news-sep{
+  font-family: "Titillium Web", sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: rgba(158,197,230,0.85);
+  text-transform: uppercase;
+  opacity: 0.95;
 }
 
 /* Start fully offscreen (viewport), end fully left + gap */
