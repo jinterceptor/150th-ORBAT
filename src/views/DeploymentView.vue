@@ -2569,4 +2569,9 @@ async loadRemote(unitKey) {
 /* Fireteam separators inside the grid */
 .fireteam-row{grid-column:1 / -1;display:flex;align-items:center;gap:.6rem;padding:.35rem .55rem;border:1px solid rgba(158,197,230,0.22);border-radius:.55rem;background:rgba(3,8,16,0.55)}
 .fireteam-title{font-weight:700;letter-spacing:.08em;font-size:.9rem;color:#bfe3ff}
+
+#deploymentView{
+  margin-top: 32px;
+}
+
 </style>
