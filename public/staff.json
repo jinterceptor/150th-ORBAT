@@ -53,5 +53,10 @@
     "username": "kong",
     "role": "officer",
     "displayName": "J. \"Kong\" Jagro"
+  },
+  {
+    "username": "king",
+    "role": "officer",
+    "displayName": "B. King"
   }
 ]
