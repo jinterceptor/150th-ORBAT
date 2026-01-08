@@ -4,7 +4,7 @@
     <!-- LEFT: ORBAT -->
     <section id="members" class="term-window">
       <div class="term-hdr">
-        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="hdr-icon" aria-hidden="true"></span>
         <div class="term-title">
           UNSC ORDER OF BATTLE // UNIT ROSTER
         </div>
@@ -140,7 +140,7 @@
     <!-- RIGHT: TRAINERS -->
     <section id="trainers" class="term-window">
       <div class="term-hdr">
-        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="hdr-icon" aria-hidden="true"></span>
         <div class="term-title">
           TRAINING & CONTACTS // REF DATA
         </div>
@@ -187,7 +187,7 @@
     <div v-if="activeSquad" class="squad-overlay" @click.self="closeSquad">
       <div class="squad-modal">
         <div class="term-hdr modal-hdr">
-          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          <span class="hdr-icon" aria-hidden="true"></span>
           <div class="term-title">SQUAD ROSTER // {{ activeSquad.squad }}</div>
           <button class="squad-close" @click="closeSquad" aria-label="Close">✕</button>
         </div>
@@ -1585,5 +1585,16 @@ attendanceMap() {
 .att-badge.att-res{ border-color: rgba(170,220,255,0.28); color: rgba(190,230,255,0.82); opacity: .9; }
 .att-badge.att-dis{ border-color: rgba(255,160,128,0.35); color: rgba(255,180,150,0.92); }
 .att-badge.att-dnt{ border-color: rgba(255,107,107,0.40); color: rgba(255,140,140,0.95); }
+
+
+/* Match login terminal header (icon shell + title) */
+#rosterView .term-hdr .term-title{
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(190, 230, 255, 0.92);
+  opacity: 1;
+}
 
 </style>
