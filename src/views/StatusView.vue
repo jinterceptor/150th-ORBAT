@@ -49,9 +49,9 @@
 
     <!-- Current Assignment -->
     <section id="assignment" class="section-container" :style="{ 'animation-delay': animationDelay }">
-      <div class="section-header clipped-medium-backward">
-        <img src="/icons/deployable.svg" />
-        <h1>Current Assignment</h1>
+      <div class="term-hdr view-hdr">
+        <span class="hdr-icon" aria-hidden="true" :style="{ backgroundImage: `url('/icons/deployable.svg')` }"></span>
+        <div class="term-title">CURRENT ASSIGNMENT</div>
       </div>
       <div class="section-content-container">
         <vue-markdown-it :source="missionMarkdown" :options="markdownOptions" class="markdown" :style="markdownStyle" />
@@ -60,9 +60,9 @@
 
     <!-- Status Overview -->
     <section id="overview" class="section-container" :style="{ 'animation-delay': animationDelay }">
-      <div class="section-header clipped-medium-backward">
-        <img src="/icons/orbital.svg" />
-        <h1>Current Status</h1>
+      <div class="term-hdr view-hdr">
+        <span class="hdr-icon" aria-hidden="true" :style="{ backgroundImage: `url('/icons/orbital.svg')` }"></span>
+        <div class="term-title">CURRENT STATUS</div>
       </div>
       <div class="section-content-container">
         <div class="status-grid">
@@ -838,4 +838,14 @@ buildAssignmentMarkdown(mission) {
   opacity: 1;
 }
 
+
+/* Match login terminal header (icon shell + title) for all section headers */
+#status .term-hdr.view-hdr .term-title{
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(190, 230, 255, 0.92);
+  opacity: 1;
+}
 </style>
