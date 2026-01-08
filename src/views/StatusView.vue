@@ -169,11 +169,11 @@ export default {
       // Editable list (shown on Status -> Current Status)
       deploymentResources: [
         { label: "Reinforcements", count: 30 },
-        { label: "Pelicans", count: 2 },
-        { label: "Falcons", count: 4 },
-        { label: "LAV Warthogs", count: 4 },
-        { label: "Ground Transports", count: 4 },
-        { label: "Elephant", count: 1 },
+        { label: "D77-TC Pelicans", count: 2 },
+        { label: "UH-144 Falcons", count: 4 },
+        { label: "M12R LAV Warthogs", count: 4 },
+        { label: "Softskin Ground Transports", count: 4 },
+        { label: "M313 Elephant", count: 1 },
       ],
 
       // RefData CSV (STRICT: Troop List + Troop Status)
