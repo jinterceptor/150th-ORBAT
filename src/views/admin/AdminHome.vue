@@ -4,11 +4,9 @@
     <!-- LEFT: nav / summary -->
     <section class="section-container left-window">
       <div class="header-shell">
-        <div class="section-header simple-admin-plate admin-plate--clipped">
-        <span class="window-icons" aria-hidden="true">
-          <span class="proto-shell"><img src="/icons/protocol.svg" alt=""></span>
-        </span>
-        <h1>ADMIN</h1>
+        <div class="term-hdr view-hdr">
+          <span class="hdr-icon" aria-hidden="true" :style="{ backgroundImage: `url('/icons/protocol.svg')` }"></span>
+          <div class="term-title">ADMIN</div>
         </div>
         <div class="admin-plate-connector" aria-hidden="true"></div>
       </div>
@@ -72,12 +70,9 @@
     <!-- RIGHT: Promotions table -->
     <section class="section-container right-window">
       <div class="header-shell">
-        <div class="section-header clipped-medium-backward-pilot right-header">
-        <span class="window-icons" aria-hidden="true">
-          <span class="proto-shell"><img src="/icons/protocol.svg" alt=""></span>
-        </span>
-
-<h1>{{ activeTab === 'promotions' ? 'PROMOTIONS OVERVIEW' : 'ATTENDANCE OVERVIEW' }}</h1>
+        <div class="term-hdr view-hdr">
+          <span class="hdr-icon" aria-hidden="true" :style="{ backgroundImage: `url('/icons/protocol.svg')` }"></span>
+          <div class="term-title">{{ activeTab === 'promotions' ? 'PROMOTIONS OVERVIEW' : 'ATTENDANCE OVERVIEW' }}</div>
         </div>
         <div class="rhombus-back">&nbsp;</div>
       </div>
@@ -1150,7 +1145,6 @@ export default {
   column-gap: 2.4rem;
   align-items: start;
   width: 100%;
-  padding-top: 32px;
 }
 
 /* Override global section sizing for this view (base.css sets fixed 393px width) */
@@ -1158,7 +1152,7 @@ export default {
   width: auto !important;
   max-width: none !important;
   margin: 24px 24px !important;
-  height: calc(100vh - 222px) !important;
+  height: calc(100vh - 190px) !important;
   display: flex;
   flex-direction: column;
 }
@@ -1340,4 +1334,17 @@ export default {
 
 .empty { padding: 1rem; text-align: center; color: rgba(158, 197, 230, 0.95); }
 .footnote { font-size: 12px; margin-top: 0.35rem; }
+
+/* Match login terminal header (icon shell + title) */
+.admin-home .header-shell .term-hdr.view-hdr{
+  margin: 0;
+}
+.admin-home .term-hdr.view-hdr .term-title{
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(190, 230, 255, 0.92);
+  opacity: 1;
+}
 </style>
