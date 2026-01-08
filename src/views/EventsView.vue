@@ -157,4 +157,9 @@ export default {
 	border-radius: 0.5rem;
 	margin: 0.5rem 0 1rem;
 }
+
+#eventsView{
+  margin-top: 32px;
+}
+
 </style>
