@@ -121,8 +121,19 @@ export default {
     // How many headlines to stitch together per loop
     tickerItemsPerLoop: { type: Number, default: 10 },
 
-    // Separator between headlines (set to "//" if you want no spaces)
+    /**
+     * Separator between headlines.
+     * NOTE: HTML collapses normal spaces, so large gaps should be driven by tickerSeparatorPad.
+     */
     tickerSeparator: { type: String, default: " // " },
+
+    /**
+     * Extra visual spacing around the separator token.
+     * Implemented using NBSP so the spacing is preserved.
+     * Example with pad=10 and token="//": "          //          "
+     */
+    tickerSeparatorToken: { type: String, default: "//" },
+    tickerSeparatorPad: { type: Number, default: 10 },
 
     // Constant scroll speed (lower = slower)
     tickerPxPerSecond: { type: Number, default: 45 },
@@ -204,6 +215,12 @@ export default {
     tickerSeparator() {
       this.startTicker();
     },
+    tickerSeparatorToken() {
+      this.startTicker();
+    },
+    tickerSeparatorPad() {
+      this.startTicker();
+    },
   },
   methods: {
     readAuth() {
@@ -236,7 +253,10 @@ export default {
       if (!this.normalizedNewsItems.length) return;
 
       this.buildNewSequence();
-      this._sequenceTimer = setInterval(() => this.buildNewSequence(), Math.max(5000, Number(this.sequenceRefreshMs) || 45000));
+      this._sequenceTimer = setInterval(
+        () => this.buildNewSequence(),
+        Math.max(5000, Number(this.sequenceRefreshMs) || 45000),
+      );
     },
     stopTicker() {
       if (this._sequenceTimer) clearInterval(this._sequenceTimer);
@@ -249,7 +269,16 @@ export default {
       const items = this.normalizedNewsItems;
       const n = items.length;
       const k = Math.max(2, Number(this.tickerItemsPerLoop) || 10);
-      const sep = String(this.tickerSeparator ?? " // ");
+
+      const padCount = Math.max(0, Number(this.tickerSeparatorPad) || 0);
+      const pad = "\u00A0".repeat(padCount);
+      const token = String(this.tickerSeparatorToken || "//").trim() || "//";
+      const sep = `${pad}${token}${pad}`;
+
+      // Back-compat: if user sets tickerSeparator explicitly, respect it,
+      // but still pad around it if they configured padding.
+      const baseSep = String(this.tickerSeparator ?? " // ");
+      const effectiveSep = padCount > 0 ? `${pad}${baseSep.trim() || token}${pad}` : baseSep;
 
       const picks = [];
       let last = this._lastPick;
@@ -263,7 +292,7 @@ export default {
       this._lastPick = last;
 
       // Ensure there’s ALWAYS a separator between end->start (since we duplicate)
-      const seq = picks.join(sep) + sep;
+      const seq = picks.join(effectiveSep || sep) + (effectiveSep || sep);
 
       this.tickerSequence = seq;
       this.tickerKey += 1; // restart animation cleanly
