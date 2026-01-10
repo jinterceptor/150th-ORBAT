@@ -174,7 +174,7 @@
                           @change="onChangeCert(detailKey, sIdx, $event.target.value)"
                         >
                           <option value="">None / Standard</option>
-                          <option v-for="c in getCertsForPersonId(slot.id)" :key="c" :value="c">
+                          <option v-for="c in getAssignableCertsForPersonId(slot.id)" :key="c" :value="c">
                             {{ c }}{{ certPointSuffix(c) }}
                           </option>
                         </select>
@@ -426,11 +426,11 @@ export default {
       DISPOSABLE_COST: 1,
       CERT_POINTS: {
         Rifleman: 0, Grenadier: 1, Breacher: 1, RTO: 1,
-        "Machine Gunner": 2, Marksman: 2, "Combat Engineer": 2,
+        "Machine Gunner": 2, ".50 cal machinegunner": 5, Marksman: 2, "Combat Engineer": 2,
         "Anti Tank": 3, Corpsmen: 0, PJ: 3, Pilot: 3, NCO: 0, Officer: 0,
       },
       certLabels: [
-        "Rifleman","Machine Gunner","Anti Tank","Corpsmen","Combat Engineer",
+        "Rifleman","Machine Gunner",".50 cal machinegunner","Anti Tank","Corpsmen","Combat Engineer",
         "Marksman","Breacher","Grenadier","Pilot","RTO","PJ","NCO","Officer",
       ],
       identityToken: "",
@@ -1675,6 +1675,14 @@ async loadRemote(unitKey) {
       return "";
     },
     getCertsForPersonId(personId) { const p = this.personnel.find(pp => String(pp.id) === String(personId)); return p?.certs || []; },
+    getAssignableCertsForPersonId(personId) {
+      const certs = Array.isArray(this.getCertsForPersonId(personId)) ? this.getCertsForPersonId(personId) : [];
+      const out = [...new Set(certs.map(c => String(c || "").trim()).filter(Boolean))];
+      const mgIdx = out.indexOf("Machine Gunner");
+      if (mgIdx >= 0 && !out.includes(".50 cal machinegunner")) out.splice(mgIdx + 1, 0, ".50 cal machinegunner");
+      return out;
+    },
+
     hasCertId(personId, idx) {
       const p = this.personnel.find(pp => String(pp.id) === String(personId));
       if (!p) return false;
@@ -1898,169 +1906,13 @@ async loadRemote(unitKey) {
       const g = this.plan.units[gIdx];
       const target = g.slots[this.picker.slotIdx];
 
-      const available = this.getCertsForPersonId(p.id);
+      const available = this.getAssignableCertsForPersonId(p.id);
       const chosenCertDefault = available.includes(target.cert) ? target.cert : (available[0] || target.role || p.role || "");
 
       const prevPts = (this.CERT_POINTS[target.cert] ?? 0) + (target.disposable ? this.DISPOSABLE_COST : 0);
       const nextPts = (this.CERT_POINTS[chosenCertDefault] ?? 0);
       const delta = nextPts - prevPts;
-      if (this.wouldExceedCap(g.key, Math.max(0, delta))) { this.detailError = `Point cap ( ${this.SQUAD_POINT_CAP} ) would be exceeded.`; return; }
-      this.detailError = "";
-
-      if (from && target?.id && !(from.unitKey === g.key && from.slotIdx === this.picker.slotIdx)) {
-        const srcIdx = this.plan.units.findIndex(u => u.key === from.unitKey);
-        const srcGroup = this.plan.units[srcIdx];
-        const tmp = { ...target };
-        const newTarget = { ...target, id: p.id, name: p.name, role: target.role || p.role || "", cert: chosenCertDefault, disposable: false };
-
-        const newSrcSlots = srcGroup.slots.slice();
-        newSrcSlots[from.slotIdx] = { ...newSrcSlots[from.slotIdx], id: tmp.id, name: tmp.name, cert: tmp.cert || this.ensureSlotCert(tmp, tmp.role), disposable: !!tmp.disposable };
-        const newSrc = { ...srcGroup, slots: this.sortSlotsForUnit(srcGroup, newSrcSlots) };
-
-        const newGSlots = g.slots.slice();
-        newGSlots[this.picker.slotIdx] = newTarget;
-        const newG = { ...g, slots: this.sortSlotsForUnit(g, newGSlots) };
-
-        this.plan.units = this.plan.units.map((u, i) => (i === gIdx ? newG : i === srcIdx ? newSrc : u));
-      } else {
-        const newSlots = g.slots.slice();
-        newSlots[this.picker.slotIdx] = { ...target, id: p.id, name: p.name, role: target.role || p.role || "", cert: chosenCertDefault, disposable: false };
-        const newG = { ...g, slots: this.sortSlotsForUnit(g, newSlots) };
-        this.plan.units = this.plan.units.map((u, i) => (i === gIdx ? newG : u));
-      }
-
-      this.persistPlan();
-      this.closePicker();
-    },
-
-    clearCurrentSlot() { if (!this.picker.open) return; this.clearSlot(this.picker.unitKey, this.picker.slotIdx); },
-
-    clearSlot(unitKey, slotIdx) {
-      const idx = this.plan.units.findIndex(u => u.key === unitKey);
-      if (idx < 0) return;
-
-      const g = this.plan.units[idx];
-      const slots = g.slots.slice();
-      const prev = slots[slotIdx];
-      if (!prev) return;
-
-      const cleared = { ...prev, id: null, name: null, cert: "", disposable: false, origStatus: "VACANT" };
-      const ft = String(prev?.fireteam || "").trim();
-
-      // Remove from current position.
-      slots.splice(slotIdx, 1);
-
-      // Re-insert at the end of its fireteam group (or absolute end if unassigned).
-      let insertAt = slots.length;
-      if (ft) {
-        for (let i = slots.length - 1; i >= 0; i--) {
-          if (String(slots[i]?.fireteam || "").trim() === ft) { insertAt = i + 1; break; }
-        }
-      }
-      slots.splice(insertAt, 0, cleared);
-
-      // Keep ordering tidy inside fireteams.
-      let ordered = this.sortSlotsByFireteam(slots, g.fireteams || []);
-
-      // Ensure the cleared slot is at the very back of its fireteam.
-      const cIdx = ordered.indexOf(cleared);
-      if (cIdx >= 0) {
-        ordered.splice(cIdx, 1);
-        if (ft) {
-          let after = ordered.length;
-          for (let i = ordered.length - 1; i >= 0; i--) {
-            if (String(ordered[i]?.fireteam || "").trim() === ft) { after = i + 1; break; }
-          }
-          ordered.splice(after, 0, cleared);
-        } else {
-          ordered.push(cleared);
-        }
-      }
-
-      const newG = { ...g, slots: ordered };
-      this.plan.units = this.plan.units.map((u, i) => (i === idx ? newG : u));
-      this.persistPlan();
-      this.detailError = "";
-    },
-
-    clearGroup(unitKey) {
-      const idx = this.plan.units.findIndex(u => u.key === unitKey);
-      if (idx < 0) return;
-
-      const g = this.plan.units[idx];
-      const emptied = g.slots.map(s => ({
-        ...s,
-        id: null,
-        name: null,
-        cert: "",
-        disposable: false,
-        origStatus: s.origStatus === "CLOSED" ? "CLOSED" : "VACANT",
-      }));
-
-      const newG = { ...g, slots: this.sortSlotsByFireteam(emptied, g.fireteams || []) };
-      this.plan.units = this.plan.units.map((u, i) => (i === idx ? newG : u));
-      this.persistPlan();
-      this.detailError = "";
-    },
-
-    addSlot(unitKey, fireteamKey) {
-      const idx = this.plan.units.findIndex(u => u.key === unitKey);
-      if (idx < 0) return;
-      const g = this.plan.units[idx];
-      const newSlots = g.slots.slice();
-
-      const ft = this.normalizeFireteamKey(fireteamKey);
-      newSlots.push({
-        id: null,
-        name: null,
-        role: "",
-        fireteam: ft || "",
-        origStatus: "VACANT",
-        cert: "",
-        disposable: false
-      });
-
-      const fireteams = Array.isArray(g.fireteams) ? g.fireteams : [];
-      const sorted = this.isChalk(g.title)
-        ? this.sortSlotsByFireteam(newSlots, fireteams)
-        : this.sortSlotsByRole(newSlots);
-
-      const newG = { ...g, slots: sorted };
-      this.plan.units = this.plan.units.map((u, i) => (i === idx ? newG : u));
-      this.persistPlan();
-      this.triggerFlicker(idx);
-    },
-
-    removeSlot(unitKey, slotIdx) {
-      const idx = this.plan.units.findIndex(u => u.key === unitKey);
-      if (idx < 0) return;
-      const g = this.plan.units[idx];
-      const newSlots = g.slots.slice();
-      newSlots.splice(slotIdx, 1);
-      const newG = { ...g, slots: this.sortSlotsForUnit(g, newSlots) };
-      this.plan.units = this.plan.units.map((u, i) => (i === idx ? newG : u));
-      this.persistPlan();
-      this.detailError = "";
-    },
-
-    onChangeCert(unitKey, slotIdx, nextCert) {
-      const uIdx = this.plan.units.findIndex(u => u.key === unitKey);
-      if (uIdx < 0) return;
-
-      const unit = this.plan.units[uIdx];
-      const slot = unit.slots[slotIdx];
-
-      const prevKey = String(slot?.cert || "").trim();
-      const nextKey = String(nextCert || "").trim();
-
-      const prevPts = (this.CERT_POINTS[prevKey] ?? 0) + (slot.disposable ? this.DISPOSABLE_COST : 0);
-      const nextPts = (this.CERT_POINTS[nextKey] ?? 0) + (slot.disposable ? this.DISPOSABLE_COST : 0);
-
-      const delta = nextPts - prevPts;
-      if (this.wouldExceedCap(unitKey, Math.max(0, delta))) {
-        this.detailError = `Point cap ( ${this.SQUAD_POINT_CAP} ) would be exceeded.`;
-        return;
-      }
+      // Soft cap: allow over-cap; UI displays warnings.
 
       this.detailError = "";
       const newSlots = unit.slots.slice();
@@ -2081,7 +1933,7 @@ async loadRemote(unitKey) {
       const add = checked ? this.DISPOSABLE_COST : 0;
       const remove = !checked ? this.DISPOSABLE_COST : 0;
       const delta = add - remove;
-      if (this.wouldExceedCap(unitKey, Math.max(0, delta))) { this.detailError = `Point cap ( ${this.SQUAD_POINT_CAP} ) would be exceeded.`; return; }
+      // Soft cap: allow over-cap; UI displays warnings.
       this.detailError = "";
       const newSlots = unit.slots.slice();
       newSlots[slotIdx] = { ...slot, disposable: checked === true };
