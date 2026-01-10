@@ -1,6 +1,6 @@
 <!-- File: src/views/DeploymentView.vue -->
 <template>
-  <div id="deploymentView" class="content-container" :class="{ animate: animateView }" :style="{ 'animation-delay': animationDelay }">
+  <div id="deploymentView" class="content-container">
     <section class="section-container deployment-window">
       <div class="header-shell">
         <div class="term-hdr view-hdr">
@@ -10,7 +10,7 @@
         <div class="rhombus-back">&nbsp;</div>
       </div>
 
-      <div class="section-content-container deploy-scroll" :class="{ animate: animateView }">
+      <div class="section-content-container deploy-scroll" :class="{ animate: animateView }" :style="{ 'animation-delay': animationDelay }">
         <div class="panel">
           <!-- Top actions: prominent Overview -->
           <div class="top-actions">
@@ -2073,7 +2073,6 @@ async loadRemote(unitKey) {
       const newU = { ...unit, slots: this.sortSlotsForUnit(unit, newSlots) };
       this.plan.units = this.plan.units.map((u, i) => (i === uIdx ? newU : u));
       this.persistPlan();
-      this.triggerFlicker(uIdx);
     },
 
 
