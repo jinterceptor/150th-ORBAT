@@ -113,7 +113,7 @@
             <p><strong>Filled Slots:</strong> <span class="stat-num">{{ stats.filledSlots }}</span></p>
             <p><strong>Free Slots:</strong> <span class="stat-num">{{ stats.vacantSlots }}</span></p>
             <p><strong>Fill Rate:</strong> <span class="stat-num">{{ stats.fillRate }}%</span></p>
-            <p><strong>Active Mission:</strong> <span class="stat-num">{{ currentAssignment ? currentAssignment.name : 'OPERATION: DEAD ORBIT' }}</span></p>
+            <p><strong>Active Mission:</strong> <span class="stat-num">{{ activeStartMissionLabel }}</span></p>
           </div>
         </div>
 
@@ -291,6 +291,38 @@ computed: {
         String(m.status || "").toUpperCase().includes("ACTIVE")
       );
       return active || (ms.length ? ms[ms.length - 1] : null);
+    },
+
+    activeStartMission() {
+      const missions = Array.isArray(this.missions) ? this.missions : [];
+      const starts = missions.filter((m) => String(m?.status || "").trim().toLowerCase() === "start");
+      if (!starts.length) return null;
+
+      const score = (m) => {
+        const slug = String(m?.slug || "");
+        const id = String(m?.id || "");
+        const digits = (slug.match(/\d+/g)?.join("") || id.match(/\d+/g)?.join("") || "");
+        const n = digits ? Number.parseInt(digits, 10) : Number.NaN;
+        return Number.isFinite(n) ? n : -1;
+      };
+
+      starts.sort((a, b) => score(a) - score(b));
+      return starts[starts.length - 1] || null;
+    },
+
+    activeStartMissionLabel() {
+      const m = this.activeStartMission;
+      if (!m) return "NONE";
+
+      const name =
+        String(m?.name || m?.title || "").trim() ||
+        (() => {
+          const html = String(m?.content || "");
+          const mt = html.match(/<div\s+class=["']briefing-title["']>\s*([^<]+)\s*<\/div>/i);
+          return mt ? mt[1].trim() : "";
+        })();
+
+      return name || "NONE";
     },
 
     stats() {
